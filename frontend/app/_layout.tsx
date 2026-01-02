@@ -18,7 +18,28 @@ export default function RootLayout() {
             backgroundColor: "#000000",
           },
         }}
-      />
+      >
+        <Stack.Screen
+          name="index"
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="lobby"
+          options={{
+            title: "Create Game",
+            headerBackTitle: "Back",
+          }}
+        />
+        <Stack.Screen
+          name="join"
+          options={{
+            title: "Join Game",
+            headerBackTitle: "Back",
+          }}
+        />
+      </Stack>
     </>
   );
 }
