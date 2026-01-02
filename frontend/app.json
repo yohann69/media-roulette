@@ -17,7 +17,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "PhotoRoulette needs access to your photos to play the game.",
         "NSPhotoLibraryAddUsageDescription": "PhotoRoulette needs access to save photos."
-      }
+      },
+      "bundleIdentifier": "com.yohann69.mediaroulette"
     },
     "android": {
       "adaptiveIcon": {

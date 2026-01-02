@@ -1,5 +1,5 @@
-import { View, Text } from "react-native";
-import Slider from "@react-native-community/slider";
+import { View, Text, TouchableOpacity, PanResponder } from "react-native";
+import { useRef, useState } from "react";
 
 interface SliderProps {
   label: string;
@@ -20,9 +20,24 @@ export function CustomSlider({
   step = 1,
   options,
 }: SliderProps) {
-  const handleValueChange = (newValue: number) => {
+  const [sliderWidth, setSliderWidth] = useState(0);
+
+  const getPercentage = () => {
+    return ((value - minimumValue) / (maximumValue - minimumValue)) * 100;
+  };
+
+  const handleLayout = (event: any) => {
+    setSliderWidth(event.nativeEvent.layout.width);
+  };
+
+  const handlePress = (event: any) => {
+    if (sliderWidth === 0) return;
+    const x = event.nativeEvent.locationX;
+    const percentage = Math.max(0, Math.min(100, (x / sliderWidth) * 100));
+    const newValue =
+      minimumValue + (percentage / 100) * (maximumValue - minimumValue);
+
     if (options) {
-      // Snap to nearest option
       const closest = options.reduce((prev, curr) =>
         Math.abs(curr - newValue) < Math.abs(prev - newValue) ? curr : prev
       );
@@ -49,40 +64,81 @@ export function CustomSlider({
           {value}
         </Text>
       </View>
-      <Slider
-        style={{ width: "100%", height: 40 }}
-        minimumValue={minimumValue}
-        maximumValue={maximumValue}
-        value={value}
-        onValueChange={handleValueChange}
-        step={step}
-        minimumTrackTintColor="#3b82f6"
-        maximumTrackTintColor="#374151"
-        thumbTintColor="#3b82f6"
-      />
+      <TouchableOpacity
+        activeOpacity={1}
+        onLayout={handleLayout}
+        onPress={handlePress}
+        style={{
+          width: "100%",
+          height: 40,
+          justifyContent: "center",
+        }}
+      >
+        <View
+          style={{
+            height: 4,
+            backgroundColor: "#374151",
+            borderRadius: 2,
+            position: "relative",
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              left: 0,
+              width: `${getPercentage()}%`,
+              height: 4,
+              backgroundColor: "#3b82f6",
+              borderRadius: 2,
+            }}
+          />
+          <View
+            style={{
+              position: "absolute",
+              left: `${getPercentage()}%`,
+              marginLeft: -8,
+              width: 16,
+              height: 16,
+              borderRadius: 8,
+              backgroundColor: "#3b82f6",
+              top: -6,
+            }}
+          />
+        </View>
+      </TouchableOpacity>
       {options && (
         <View
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
-            marginTop: 4,
+            marginTop: 8,
           }}
         >
           {options.map((option) => (
-            <Text
+            <TouchableOpacity
               key={option}
+              onPress={() => onValueChange(option)}
               style={{
-                color: value === option ? "#3b82f6" : "#6b7280",
-                fontSize: 12,
-                fontWeight: value === option ? "600" : "400",
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                borderRadius: 4,
+                backgroundColor:
+                  value === option ? "rgba(59, 130, 246, 0.2)" : "transparent",
               }}
             >
-              {option}
-            </Text>
+              <Text
+                style={{
+                  color: value === option ? "#3b82f6" : "#6b7280",
+                  fontSize: 12,
+                  fontWeight: value === option ? "600" : "400",
+                }}
+              >
+                {option}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
       )}
     </View>
   );
 }
-
