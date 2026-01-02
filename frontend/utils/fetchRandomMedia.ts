@@ -57,8 +57,42 @@ export async function fetchRandomMedia(
     // Shuffle all assets
     const shuffled = shuffleArray(allAssets);
 
+    if (type === "photo") {
+      // For photo mode: only photos, exactly count items
+      const photos = shuffled.filter(
+        (asset) => asset.mediaType === MediaLibrary.MediaType.photo
+      );
+      const selected = shuffleArray(photos).slice(0, Math.min(count, photos.length));
+      
+      return selected.map((asset) => ({
+        id: asset.id,
+        uri: asset.uri,
+        mediaType: "photo" as const,
+        width: asset.width,
+        height: asset.height,
+        creationTime: asset.creationTime,
+      }));
+    }
+
+    if (type === "video") {
+      // For video mode: only videos, exactly count items
+      const videos = shuffled.filter(
+        (asset) => asset.mediaType === MediaLibrary.MediaType.video
+      );
+      const selected = shuffleArray(videos).slice(0, Math.min(count, videos.length));
+      
+      return selected.map((asset) => ({
+        id: asset.id,
+        uri: asset.uri,
+        mediaType: "video" as const,
+        width: asset.width,
+        height: asset.height,
+        creationTime: asset.creationTime,
+      }));
+    }
+
     if (type === "mixed") {
-      // For mixed: pick 20 photos first, then 20 videos
+      // For mixed: pick 20 photos first, then 20 videos (40 total)
       const photos = shuffled.filter(
         (asset) => asset.mediaType === MediaLibrary.MediaType.photo
       );
@@ -66,18 +100,11 @@ export async function fetchRandomMedia(
         (asset) => asset.mediaType === MediaLibrary.MediaType.video
       );
 
-      const photoCount = Math.min(count / 2, photos.length);
-      const videoCount = Math.min(count / 2, videos.length);
-      const remaining = count - photoCount - videoCount;
+      const photoCount = Math.min(20, photos.length);
+      const videoCount = Math.min(20, videos.length);
 
       const selectedPhotos = shuffleArray(photos).slice(0, photoCount);
       const selectedVideos = shuffleArray(videos).slice(0, videoCount);
-      const remainingItems = shuffleArray(
-        shuffled.filter(
-          (asset) =>
-            !selectedPhotos.includes(asset) && !selectedVideos.includes(asset)
-        )
-      ).slice(0, remaining);
 
       return [
         ...selectedPhotos.map((asset) => ({
@@ -96,21 +123,10 @@ export async function fetchRandomMedia(
           height: asset.height,
           creationTime: asset.creationTime,
         })),
-        ...remainingItems.map((asset) => ({
-          id: asset.id,
-          uri: asset.uri,
-          mediaType:
-            asset.mediaType === MediaLibrary.MediaType.photo
-              ? "photo"
-              : "video",
-          width: asset.width,
-          height: asset.height,
-          creationTime: asset.creationTime,
-        })),
       ];
     }
 
-    // For photo or video only, just pick random items
+    // Fallback: just pick random items
     const selected = shuffled.slice(0, Math.min(count, shuffled.length));
 
     return selected.map((asset) => ({

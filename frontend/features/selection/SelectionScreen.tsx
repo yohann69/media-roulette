@@ -11,7 +11,16 @@ export function SelectionScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
-  const { setMediaPool } = useSocket();
+  const { setMediaPool, room } = useSocket();
+  
+  // Get game mode from room settings
+  // Wait for room to be available before determining media type
+  const gameMode = room?.settings?.mode || "Photo";
+  // Map "Photo" -> "photo", "Video" -> "video", "Mix" -> "mixed"
+  const mediaType = gameMode === "Photo" ? "photo" : gameMode === "Video" ? "video" : "mixed";
+  // For mixed mode, we need 40 items (20 photos + 20 videos), otherwise 20
+  const mediaCount = mediaType === "mixed" ? 40 : 20;
+  
   const {
     media,
     loading,
@@ -20,7 +29,15 @@ export function SelectionScreen() {
     requestPermission,
     fetchMedia,
     reroll,
-  } = useMediaFetcher(20, "mixed");
+  } = useMediaFetcher(mediaCount, mediaType);
+  
+  // Refetch media when room settings change
+  useEffect(() => {
+    if (room?.settings?.mode && permissionGranted && !loading) {
+      // Media will be refetched with new type when reroll is called or component remounts
+      console.log("Room settings updated, media type:", mediaType);
+    }
+  }, [room?.settings?.mode, mediaType, permissionGranted, loading]);
 
   const isHost = params.isHost === "true";
   const pin = params.pin || "";
@@ -28,19 +45,25 @@ export function SelectionScreen() {
 
   useEffect(() => {
     const initializeMedia = async () => {
+      // Wait for room to be available if we're joining
+      if (!isHost && !room) {
+        // Wait a bit for room to load
+        return;
+      }
+      
       if (permissionGranted && media.length === 0 && !loading) {
-        await fetchMedia();
+        await fetchMedia(mediaCount, mediaType);
       } else if (!permissionGranted && !loading) {
         const granted = await requestPermission();
         if (granted) {
-          await fetchMedia();
+          await fetchMedia(mediaCount, mediaType);
         }
       }
     };
 
     initializeMedia();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [room, isHost, mediaType, mediaCount]);
 
   const handleReady = async () => {
     if (!pin) {
@@ -81,7 +104,7 @@ export function SelectionScreen() {
   };
 
   const handleReroll = async () => {
-    await reroll();
+    await fetchMedia(mediaCount, mediaType);
   };
 
   if (loading && media.length === 0) {

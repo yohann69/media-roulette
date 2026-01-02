@@ -29,9 +29,10 @@ interface SocketState {
     joinGame: (pin: string, playerName: string) => Promise<boolean>;
     setMediaPool: (pin: string, mediaPool: any[]) => Promise<boolean>;
     startGame: (pin: string) => Promise<boolean>;
-    submitGuess: (pin: string, targetUser: string, timestamp: number) => Promise<boolean>;
-    continueGame: (pin: string) => Promise<boolean>;
-    onPlayerJoined: (callback: (data: any) => void) => void;
+  submitGuess: (pin: string, targetUser: string, timestamp: number) => Promise<boolean>;
+  continueGame: (pin: string) => Promise<boolean>;
+  notifyTimeExpired: (pin: string) => Promise<void>;
+  onPlayerJoined: (callback: (data: any) => void) => void;
     onPlayerLeft: (callback: (data: any) => void) => void;
     onGameStarted: (callback: (data: any) => void) => void;
     onNewRound: (callback: (data: any) => void) => void;
@@ -205,6 +206,13 @@ function createGameHandlers(get: any, set: any) {
                 socket.once("error", () => resolve(false));
                 setTimeout(() => resolve(true), 1000);
             });
+        },
+
+        notifyTimeExpired: async (pin: string): Promise<void> => {
+            const { socket } = get();
+            if (!socket?.connected) return;
+
+            socket.emit("time-expired", { pin });
         },
     };
 }

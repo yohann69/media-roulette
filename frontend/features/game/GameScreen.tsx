@@ -33,6 +33,7 @@ export function GameScreen() {
     currentPlayerId,
     submitGuess,
     continueGame,
+    notifyTimeExpired,
   } = useSocket();
 
   const [gameState, setGameState] = useState<GameState>("reveal");
@@ -71,7 +72,10 @@ export function GameScreen() {
       setActualOwnerId(data.actualOwnerId);
       setRoundResults(data);
       setTimerActive(false);
-      setGameState("result");
+      setTimeExpired(false);
+      // Automatically show leaderboard after round results
+      setShowLeaderboard(true);
+      setGameState("leaderboard");
     },
     onGameFinished: (data) => {
       setFinalLeaderboard(data.leaderboard);
@@ -88,9 +92,13 @@ export function GameScreen() {
     await submitGuess(pin, playerId, timestamp);
   };
 
-  const handleTimeExpired = () => {
+  const handleTimeExpired = async () => {
     setTimeExpired(true);
     setTimerActive(false);
+    // Notify backend that time expired - backend will calculate results for all guesses received
+    if (pin) {
+      await notifyTimeExpired(pin);
+    }
   };
 
   const handleContinue = async () => {
@@ -110,8 +118,15 @@ export function GameScreen() {
     setGameState("leaderboard");
   };
 
-  const handleContinueFromLeaderboard = () => {
+  const handleContinueFromLeaderboard = async () => {
     setShowLeaderboard(false);
+    // If we're not at the last round, continue to next round
+    // The backend will automatically start the next round after a delay
+    // If we're at the last round, the backend will emit game-finished
+    if (currentRound < totalRounds) {
+      // Wait for next round to start (handled by backend)
+      setGameState("reveal");
+    }
   };
 
   const handlePlayAgain = () => {

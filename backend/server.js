@@ -199,11 +199,36 @@ io.on("connection", (socket) => {
 
             socket.emit("guess-received", { success: true });
 
-            // Check if all players have guessed (or we can wait for timer)
-            // For now, we'll process when owner continues or timer expires
+            // Check if all players have guessed (excluding the owner)
+            const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
+            const playersWhoShouldGuess = room.players.filter(p => p.socketId !== actualOwnerId);
+            const guessesReceived = room.roundGuesses.size;
+            
+            // If all players (except owner) have guessed, automatically calculate results
+            if (guessesReceived >= playersWhoShouldGuess.length) {
+                console.log(`All players have guessed for round ${room.currentRound}, calculating results...`);
+                calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
+            }
         } catch (error) {
             socket.emit("error", { message: "Failed to submit guess" });
             console.error("Error submitting guess:", error);
+        }
+    });
+
+    socket.on("time-expired", (data) => {
+        try {
+            const { pin } = data;
+            const room = gameManager.getRoom(pin);
+
+            if (!room || room.gameState !== "playing") {
+                return;
+            }
+
+            // Calculate results for all guesses received so far
+            console.log(`Time expired for round ${room.currentRound}, calculating results...`);
+            calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
+        } catch (error) {
+            console.error("Error handling time expiration:", error);
         }
     });
 
@@ -227,32 +252,8 @@ io.on("connection", (socket) => {
                 return;
             }
 
-            // Get the actual owner from the stored current media
-            const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
-
-            const roundStartTime = roundStartTimes.get(pin) || Date.now();
-            const roundResults = gameManager.calculateRoundResults(
-                pin,
-                actualOwnerId,
-                roundStartTime
-            );
-
-            // Emit round result
-            io.to(pin).emit("round-result", roundResults);
-
-            // Check if game is finished
-            if (room.currentRound >= room.settings.rounds) {
-                gameManager.updateGameState(pin, "finished");
-                io.to(pin).emit("game-finished", {
-                    leaderboard: gameManager.getPlayerScores(pin),
-                });
-            } else {
-                // Start next round after a delay
-                setTimeout(() => {
-                    gameManager.setCurrentRound(pin, room.currentRound + 1);
-                    startNewRound(pin, io, gameManager, roundStartTimes);
-                }, 3000); // 3 second delay between rounds
-            }
+            // Calculate and emit round results (reuse the helper function)
+            calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
         } catch (error) {
             socket.emit("error", { message: "Failed to continue game" });
             console.error("Error continuing game:", error);
@@ -278,6 +279,43 @@ io.on("connection", (socket) => {
         }
     });
 });
+
+/**
+ * Calculate round results and emit to all players
+ */
+function calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes) {
+    const room = gameManager.getRoom(pin);
+    if (!room) return;
+
+    const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
+    const roundStartTime = roundStartTimes.get(pin) || Date.now();
+    
+    const roundResults = gameManager.calculateRoundResults(
+        pin,
+        actualOwnerId,
+        roundStartTime
+    );
+
+    // Emit round result to all players
+    io.to(pin).emit("round-result", roundResults);
+
+    // Check if game is finished
+    if (room.currentRound >= room.settings.rounds) {
+        gameManager.updateGameState(pin, "finished");
+        // Wait a bit before showing final results
+        setTimeout(() => {
+            io.to(pin).emit("game-finished", {
+                leaderboard: gameManager.getPlayerScores(pin),
+            });
+        }, 3000); // 3 second delay before final results
+    } else {
+        // Start next round after a delay (give time to see leaderboard)
+        setTimeout(() => {
+            gameManager.setCurrentRound(pin, room.currentRound + 1);
+            startNewRound(pin, io, gameManager, roundStartTimes);
+        }, 5000); // 5 second delay between rounds (3s leaderboard + 2s transition)
+    }
+}
 
 /**
  * Start a new round - pick media and broadcast to all players
