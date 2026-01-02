@@ -2,7 +2,7 @@ module.exports = function (api) {
   api.cache(false);
   return {
     presets: ["babel-preset-expo"],
-    plugins: ["expo-router/babel"],
+    plugins: ["nativewind/babel", "expo-router/babel"],
   };
 };
 
