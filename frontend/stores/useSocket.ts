@@ -15,7 +15,7 @@ interface Room {
         timer: number;
         mode: string;
     };
-    gameState: "lobby" | "playing" | "finished";
+    gameState: "lobby" | "syncing" | "playing" | "finished";
 }
 
 interface SocketState {
@@ -23,19 +23,26 @@ interface SocketState {
     isConnected: boolean;
     room: Room | null;
     currentPlayerId: string | null;
+    localMediaMap: Map<number, string>; // index -> local file URI
     connect: () => void;
     disconnect: () => void;
     createGame: (hostName: string, settings: any) => Promise<string | null>;
     joinGame: (pin: string, playerName: string) => Promise<boolean>;
     setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
-    startGame: (pin: string, updatedSettings?: any) => Promise<boolean>;
+    prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
+    notifySyncComplete: (pin: string) => Promise<void>;
+    startGame: (pin: string) => Promise<boolean>;
+    setLocalMediaMap: (map: Map<number, string>) => void;
   submitGuess: (pin: string, targetUser: string, timestamp: number) => Promise<boolean>;
-    continueGame: (pin: string) => Promise<boolean>;
-    notifyTimeExpired: (pin: string) => Promise<void>;
-    showMediaAgain: (pin: string) => void;
-    hideMediaAgain: (pin: string) => void;
-    onPlayerJoined: (callback: (data: any) => void) => void;
+  continueGame: (pin: string) => Promise<boolean>;
+  notifyTimeExpired: (pin: string) => Promise<void>;
+  showMediaAgain: (pin: string) => void;
+  hideMediaAgain: (pin: string) => void;
+  onPlayerJoined: (callback: (data: any) => void) => void;
     onPlayerLeft: (callback: (data: any) => void) => void;
+    onSyncMedia: (callback: (data: any) => void) => void;
+    onPlayerReady: (callback: (data: any) => void) => void;
+    onAllPlayersReady: (callback: (data: any) => void) => void;
     onGameStarted: (callback: (data: any) => void) => void;
     onNewRound: (callback: (data: any) => void) => void;
     onRoundResult: (callback: (data: any) => void) => void;
@@ -47,7 +54,7 @@ interface SocketState {
     cleanup: () => void;
 }
 
-const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";
+export const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";
 
 function createSocketHandlers(set: any, get: any) {
     return {
@@ -76,7 +83,7 @@ function createSocketHandlers(set: any, get: any) {
             const { socket } = get();
             if (socket) {
                 socket.disconnect();
-                set({ socket: null, isConnected: false, room: null, currentPlayerId: null });
+                set({ socket: null, isConnected: false, room: null, currentPlayerId: null, localMediaMap: new Map() });
             }
         },
     };
@@ -117,84 +124,41 @@ function createGameHandlers(get: any, set: any) {
 
         setMediaPool: async (pin: string, mediaPool: any[], playAgain?: boolean): Promise<boolean> => {
             const { socket } = get();
-            if (!socket?.connected) {
-                console.error("Socket not connected when trying to set media pool");
-                return false;
-            }
-
-            if (!pin) {
-                console.error("No PIN provided when trying to set media pool");
-                return false;
-            }
-
-            if (!mediaPool || mediaPool.length === 0) {
-                console.error("Empty media pool provided");
-                return false;
-            }
-
-            console.log(`Setting media pool for PIN ${pin} with ${mediaPool.length} items${playAgain ? " (play again)" : ""}`);
-            const processedMedia = await processMediaPool(mediaPool);
-            console.log(`Processed ${processedMedia.length} media items`);
+            if (!socket?.connected) return false;
 
             return new Promise((resolve) => {
-                const timeout = setTimeout(() => {
-                    console.error("Timeout waiting for media-pool-set response");
-                    resolve(false);
-                }, 15000);
-
-                socket.emit("set-media-pool", { pin, mediaPool: processedMedia, playAgain: !!playAgain });
-
-                socket.once("media-pool-set", (data: { success: boolean }) => {
-                    clearTimeout(timeout);
-                    console.log("Media pool set successfully:", data);
-                    // Update room state if play again
-                    if (playAgain) {
-                        const { room } = get();
-                        if (room) {
-                            // Room will be updated via room-update event
-                        }
-                    }
-                    resolve(data.success);
-                });
-
-                socket.once("error", (error: any) => {
-                    clearTimeout(timeout);
-                    console.error("Error setting media pool:", error);
-                    resolve(false);
-                });
+                socket.emit("set-media-pool", { pin, mediaPool, playAgain: !!playAgain });
+                socket.once("media-pool-set", (data: { success: boolean }) => resolve(data.success));
+                socket.once("error", () => resolve(false));
+                setTimeout(() => resolve(false), 15000);
             });
         },
 
-        startGame: async (pin: string, updatedSettings?: any): Promise<boolean> => {
+        prepareGame: async (pin: string, updatedSettings?: any): Promise<void> => {
             const { socket } = get();
-            if (!socket?.connected) {
-                console.error("Socket not connected when trying to start game");
-                return false;
-            }
+            if (!socket?.connected) return;
+            socket.emit("prepare-game", { pin, updatedSettings });
+        },
 
-            console.log(`Starting game for PIN ${pin}`);
+        notifySyncComplete: async (pin: string): Promise<void> => {
+             const { socket } = get();
+            if (!socket?.connected) return;
+            socket.emit("sync-complete", { pin });
+        },
+
+        startGame: async (pin: string): Promise<boolean> => {
+            const { socket } = get();
+            if (!socket?.connected) return false;
 
             return new Promise((resolve) => {
-                const timeout = setTimeout(() => {
-                    console.error("Timeout waiting for game-started response");
-                    resolve(false);
-                }, 10000); // Increased timeout to 10 seconds
-
-                socket.emit("start-game", { pin, updatedSettings });
-                console.log("Emitted start-game event");
-
-                socket.once("game-started", (data: any) => {
-                    clearTimeout(timeout);
-                    console.log("Game started event received:", data);
-                    resolve(true);
-                });
-
-                socket.once("error", (error: any) => {
-                    clearTimeout(timeout);
-                    console.error("Error starting game:", error);
-                    resolve(false);
-                });
+                socket.emit("start-game", { pin });
+                socket.once("game-started", (data: any) => resolve(true));
+                socket.once("error", () => resolve(false));
             });
+        },
+        
+        setLocalMediaMap: (map: Map<number, string>) => {
+            set({ localMediaMap: map });
         },
 
         submitGuess: async (pin: string, targetUser: string, timestamp: number): Promise<boolean> => {
@@ -244,8 +208,7 @@ function createGameHandlers(get: any, set: any) {
 function createEventHandlers(get: any, set: any) {
     return {
         onPlayerJoined: (callback: (data: any) => void) => {
-            const { socket } = get();
-            socket?.on("player-joined", (data: any) => {
+            get().socket?.on("player-joined", (data: any) => {
                 const { room } = get();
                 if (room) set({ room: { ...room, players: data.players } });
                 callback(data);
@@ -253,12 +216,23 @@ function createEventHandlers(get: any, set: any) {
         },
 
         onPlayerLeft: (callback: (data: any) => void) => {
-            const { socket } = get();
-            socket?.on("player-left", (data: any) => {
+            get().socket?.on("player-left", (data: any) => {
                 const { room } = get();
                 if (room) set({ room: { ...room, players: data.players } });
                 callback(data);
             });
+        },
+        
+        onSyncMedia: (callback: (data: any) => void) => {
+            get().socket?.on("sync-media", callback);
+        },
+
+        onPlayerReady: (callback: (data: any) => void) => {
+            get().socket?.on("player-ready", callback);
+        },
+
+        onAllPlayersReady: (callback: (data: any) => void) => {
+            get().socket?.on("all-players-ready", callback);
         },
 
         onGameStarted: (callback: (data: any) => void) => {
@@ -278,16 +252,14 @@ function createEventHandlers(get: any, set: any) {
         },
 
         onRoomDeleted: (callback: (data: any) => void) => {
-            const { socket } = get();
-            socket?.on("room-deleted", (data: any) => {
+            get().socket?.on("room-deleted", (data: any) => {
                 set({ room: null });
                 callback(data);
             });
         },
 
         onRoomUpdate: (callback: (data: any) => void) => {
-            const { socket } = get();
-            socket?.on("room-update", (data: Room) => {
+            get().socket?.on("room-update", (data: Room) => {
                 set({ room: data });
                 callback(data);
             });
@@ -312,6 +284,7 @@ export const useSocket = create<SocketState>((set, get) => ({
     isConnected: false,
     room: null,
     currentPlayerId: null,
+    localMediaMap: new Map(),
     ...createSocketHandlers(set, get),
     ...createGameHandlers(get, set),
     ...createEventHandlers(get, set),

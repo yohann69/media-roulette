@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
+import * as FileSystem from "expo-file-system/legacy";
 import { useSocket } from "../../stores/useSocket";
 import { useGameEvents } from "../../hooks/useGameEvents";
 
@@ -27,6 +28,8 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     notifyTimeExpired,
     showMediaAgain,
     hideMediaAgain,
+    localMediaMap,
+    setLocalMediaMap
   } = useSocket();
 
   const [gameState, setGameState] = useState<GameState>("reveal");
@@ -47,9 +50,18 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
 
   useGameEvents({
     onNewRound: (data) => {
+      // Resolve local file URI
+      let uri = data.mediaData.uri;
+      if (data.mediaData.index !== undefined && localMediaMap.has(data.mediaData.index)) {
+          uri = localMediaMap.get(data.mediaData.index);
+      }
+
       setCurrentRound(data.round);
       setTotalRounds(data.totalRounds);
-      setCurrentMedia(data.mediaData);
+      setCurrentMedia({
+          ...data.mediaData,
+          uri,
+      });
       setTimerDuration(data.duration);
       setRoundStartTime(data.roundStartTime);
       setPlayers(data.options);
@@ -69,10 +81,20 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
       setGameState("leaderboard");
       setIsShowingMediaAgain(false);
     },
-    onGameFinished: (data) => {
+    onGameFinished: async (data) => {
       setFinalLeaderboard(data.leaderboard);
       setGameState("podium");
       setIsShowingMediaAgain(false);
+      
+      // Cleanup local files
+      try {
+          const cacheDir = FileSystem.cacheDirectory || "";
+          const gameDir = `${cacheDir}game_${pin}/`;
+          await FileSystem.deleteAsync(gameDir, { idempotent: true });
+          setLocalMediaMap(new Map()); // Clear map
+      } catch (e) {
+          console.error("Cleanup error:", e);
+      }
     },
     onShowMediaAgain: () => {
       setIsShowingMediaAgain(true);
@@ -151,4 +173,3 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     setGameState,
   };
 }
-

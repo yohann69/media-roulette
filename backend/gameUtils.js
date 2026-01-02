@@ -32,16 +32,19 @@ function startNewRound(pin, io, gameManager, roundStartTimes) {
     const room = gameManager.getRoom(pin);
     if (!room) return;
 
-    const media = gameManager.getRandomMedia(pin);
+    // Get media by index for the current round
+    const media = gameManager.getMediaForRound(pin, room.currentRound);
+    
     if (!media) {
-        io.to(pin).emit("error", { message: "No media available" });
+        // Should not happen if gameMedia is set up correctly
+        io.to(pin).emit("error", { message: "No media available for this round" });
         return;
     }
 
     const roundStartTime = Date.now();
     roundStartTimes.set(pin, roundStartTime);
 
-    room.currentMediaIndex = media.index;
+    room.currentMediaIndex = media.index; // Index in the gameMedia array
     room.currentMediaOwnerId = media.ownerId;
 
     const options = room.players.map((p) => ({
@@ -49,14 +52,15 @@ function startNewRound(pin, io, gameManager, roundStartTimes) {
         name: p.name,
     }));
 
+    // Send only the index (or ID) of the media, clients have it locally
     io.to(pin).emit("new-round", {
         round: room.currentRound,
         totalRounds: room.settings.rounds,
         mediaData: {
             id: media.id,
-            uri: media.uri || media.base64,
-            base64: media.base64,
+            index: media.index, // Used to find file locally
             mediaType: media.mediaType,
+            // URI/Base64 not needed, clients load from local storage using ID/Index
         },
         duration: room.settings.timer,
         options,
@@ -67,4 +71,3 @@ function startNewRound(pin, io, gameManager, roundStartTimes) {
 }
 
 module.exports = { calculateAndEmitRoundResults, startNewRound };
-

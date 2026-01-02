@@ -19,8 +19,6 @@ function setupSocket(io, gameManager, roundStartTimes) {
                         gameState: room.gameState,
                     },
                 });
-
-                console.log(`Game created: PIN ${room.pin} by ${hostName}`);
             } catch (error) {
                 socket.emit("error", { message: "Failed to create game" });
                 console.error("Error creating game:", error);
@@ -58,17 +56,15 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     },
                     players: room.players,
                 });
-
-                console.log(`${playerName} joined game ${pin}`);
             } catch (error) {
                 socket.emit("error", { message: "Failed to join game" });
-                console.error("Error joining game:", error);
             }
         });
 
-        socket.on("start-game", (data) => {
+        // Set media pool (after upload)
+        socket.on("set-media-pool", (data) => {
             try {
-                const { pin, updatedSettings } = data;
+                const { pin, mediaPool, playAgain } = data;
                 const room = gameManager.getRoom(pin);
 
                 if (!room) {
@@ -76,24 +72,93 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     return;
                 }
 
-                const isHost = room.hostSocketId === socket.id ||
-                    room.players.some(p => p.socketId === socket.id && p.isHost);
-
-                if (!isHost) {
-                    socket.emit("error", { message: "Only host can start the game" });
-                    return;
+                if (playAgain && (room.gameState === "finished" || room.gameState === "lobby")) {
+                    gameManager.resetGame(pin);
+                    gameManager.setNewHost(pin, socket.id);
                 }
 
-                if (room.gameState !== "lobby") {
-                    socket.emit("error", { message: "Game already started" });
-                    return;
-                }
+                // Store uploaded media info for this player
+                gameManager.setPlayerMedia(pin, socket.id, mediaPool);
+                
+                io.to(pin).emit("room-update", room);
+                socket.emit("media-pool-set", { success: true });
+            } catch (error) {
+                socket.emit("error", { message: "Failed to set media pool" });
+                console.error("Error setting media pool:", error);
+            }
+        });
+
+        // Host initiates sync (formerly start-game, now step 1 of start)
+        socket.on("prepare-game", (data) => {
+            try {
+                const { pin, updatedSettings } = data;
+                const room = gameManager.getRoom(pin);
+
+                if (!room) return;
+                
+                // Only host
+                const isHost = room.hostSocketId === socket.id || room.players.some(p => p.socketId === socket.id && p.isHost);
+                if (!isHost) return;
 
                 if (updatedSettings) {
                     room.settings = { ...room.settings, ...updatedSettings };
                 }
 
-                console.log(`Starting game ${pin} for host ${socket.id}`);
+                // Select media for the game
+                const gameMedia = gameManager.prepareGameMedia(pin);
+                
+                // Send media list to all players to download
+                io.to(pin).emit("sync-media", { 
+                    media: gameMedia,
+                    count: gameMedia.length
+                });
+
+                gameManager.updateGameState(pin, "syncing");
+            } catch (error) {
+                console.error("Error preparing game:", error);
+                socket.emit("error", { message: "Failed to prepare game" });
+            }
+        });
+
+        // Client finished downloading files
+        socket.on("sync-complete", (data) => {
+            try {
+                const { pin } = data;
+                const room = gameManager.getRoom(pin);
+                if (!room) return;
+
+                gameManager.setPlayerReady(pin, socket.id);
+
+                // Notify host (or everyone) about progress?
+                io.to(pin).emit("player-ready", { 
+                    socketId: socket.id,
+                    readyCount: room.readyPlayers.size,
+                    totalPlayers: room.players.length
+                });
+
+                // Check if everyone is ready
+                if (gameManager.areAllPlayersReady(pin)) {
+                    io.to(pin).emit("all-players-ready");
+                }
+            } catch (error) {
+                console.error("Error in sync-complete:", error);
+            }
+        });
+
+        // Actually start the game (after sync)
+        socket.on("start-game", (data) => {
+            try {
+                const { pin } = data;
+                const room = gameManager.getRoom(pin);
+
+                if (!room) return;
+
+                if (!gameManager.areAllPlayersReady(pin)) {
+                    socket.emit("error", { message: "Not all players are ready" });
+                    return;
+                }
+
+                console.log(`Starting game ${pin}`);
                 gameManager.updateGameState(pin, "playing");
                 gameManager.setCurrentRound(pin, 1);
 
@@ -109,55 +174,15 @@ function setupSocket(io, gameManager, roundStartTimes) {
             }
         });
 
-        socket.on("set-media-pool", (data) => {
-            try {
-                const { pin, mediaPool, playAgain } = data;
-                const room = gameManager.getRoom(pin);
-
-                if (!room) {
-                    socket.emit("error", { message: "Room not found" });
-                    return;
-                }
-
-                if (playAgain) {
-                    if (room.gameState === "finished" || room.gameState === "lobby") {
-                        gameManager.resetGame(pin);
-                        gameManager.setNewHost(pin, socket.id);
-                    }
-                } else {
-                    const isHost = room.hostSocketId === socket.id ||
-                        room.players.some(p => p.socketId === socket.id && p.isHost);
-
-                    if (!isHost) {
-                        socket.emit("error", { message: "Unauthorized" });
-                        return;
-                    }
-                }
-
-                gameManager.setMediaPool(pin, mediaPool);
-                io.to(pin).emit("room-update", room);
-                socket.emit("media-pool-set", { success: true });
-            } catch (error) {
-                socket.emit("error", { message: "Failed to set media pool" });
-                console.error("Error setting media pool:", error);
-            }
-        });
-
         socket.on("submit-guess", (data) => {
             try {
                 const { pin, targetUser, timestamp } = data;
                 const room = gameManager.getRoom(pin);
 
-                if (!room || room.gameState !== "playing") {
-                    socket.emit("error", { message: "Game not in progress" });
-                    return;
-                }
+                if (!room || room.gameState !== "playing") return;
 
                 const roundStartTime = roundStartTimes.get(pin);
-                if (!roundStartTime) {
-                    socket.emit("error", { message: "Round not started" });
-                    return;
-                }
+                if (!roundStartTime) return;
 
                 gameManager.submitGuess(pin, socket.id, targetUser, timestamp, roundStartTime);
                 socket.emit("guess-received", { success: true });
@@ -171,7 +196,6 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 }
             } catch (error) {
                 socket.emit("error", { message: "Failed to submit guess" });
-                console.error("Error submitting guess:", error);
             }
         });
 
@@ -181,26 +205,16 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const room = gameManager.getRoom(pin);
                 if (!room || room.gameState !== "playing") return;
                 calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
-            } catch (error) {
-                console.error("Error handling time expiration:", error);
-            }
+            } catch (error) { }
         });
 
         socket.on("continue-game", (data) => {
             try {
                 const { pin } = data;
                 const room = gameManager.getRoom(pin);
-
-                if (!room || room.hostSocketId !== socket.id || room.gameState !== "playing") {
-                    socket.emit("error", { message: "Invalid request" });
-                    return;
-                }
-
+                if (!room || room.hostSocketId !== socket.id) return;
                 calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
-            } catch (error) {
-                socket.emit("error", { message: "Failed to continue game" });
-                console.error("Error continuing game:", error);
-            }
+            } catch (error) { }
         });
 
         socket.on("show-media-again", (data) => {
@@ -208,25 +222,19 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const { pin } = data;
                 const room = gameManager.getRoom(pin);
                 if (!room || room.currentMediaOwnerId !== socket.id) return;
-                io.to(pin).emit("show-media-again", { mediaData: { id: room.currentMediaIndex } });
-            } catch (error) {
-                console.error("Error in show-media-again:", error);
-            }
+                // Emit media ID so clients can look it up locally
+                io.to(pin).emit("show-media-again", { mediaId: room.currentMediaIndex });
+            } catch (error) { }
         });
 
         socket.on("hide-media-again", (data) => {
             try {
                 const { pin } = data;
-                const room = gameManager.getRoom(pin);
-                if (!room || room.currentMediaOwnerId !== socket.id) return;
                 io.to(pin).emit("hide-media-again");
-            } catch (error) {
-                console.error("Error in hide-media-again:", error);
-            }
+            } catch (error) { }
         });
 
         socket.on("disconnect", () => {
-            console.log(`Client disconnected: ${socket.id}`);
             const result = gameManager.removePlayer(socket.id);
             if (result) {
                 if (result.roomDeleted) {
@@ -241,4 +249,3 @@ function setupSocket(io, gameManager, roundStartTimes) {
 }
 
 module.exports = setupSocket;
-

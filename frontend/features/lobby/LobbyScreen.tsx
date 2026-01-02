@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import * as FileSystem from "expo-file-system";
 import { GamePIN } from "../../components/molecules/GamePIN";
 import { PlayerList } from "../../components/molecules/PlayerList";
 import { GameSettingsDisplay } from "../../components/molecules/GameSettingsDisplay";
@@ -8,7 +9,7 @@ import { WarningBanner } from "../../components/molecules/WarningBanner";
 import { WarningModal } from "../../components/molecules/WarningModal";
 import { Button } from "../../components/atoms/Button";
 import { useUsername } from "../../hooks/useUsername";
-import { useSocket } from "../../stores/useSocket";
+import { useSocket, SOCKET_URL } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 
 interface Player {
@@ -22,9 +23,28 @@ export function LobbyScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { username } = useUsername();
-  const { room, startGame, onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, onRoomUpdate } = useSocket();
+  const { 
+    room, 
+    startGame, 
+    prepareGame,
+    notifySyncComplete,
+    setLocalMediaMap,
+    onPlayerJoined, 
+    onPlayerLeft, 
+    onGameStarted, 
+    onRoomDeleted, 
+    onRoomUpdate,
+    onSyncMedia,
+    onPlayerReady,
+    onAllPlayersReady
+  } = useSocket();
+
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [syncStatus, setSyncStatus] = useState("");
+  const [allReady, setAllReady] = useState(false);
 
   const isHost = params.isHost === "true";
   const pin = params.pin || room?.pin || "";
@@ -50,9 +70,57 @@ export function LobbyScreen() {
 
     onRoomUpdate((data) => {
       console.log("Room updated:", data);
-      // Room state is automatically updated in the store
     });
-  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, onRoomUpdate, router, pin, isHost]);
+
+    onSyncMedia(async (data) => {
+        setIsSyncing(true);
+        setSyncStatus(t("lobby.syncingMedia"));
+        const { media, count } = data; 
+        
+        try {
+            const cacheDir = FileSystem.cacheDirectory || "";
+            const gameDir = `${cacheDir}game_${pin}/`;
+            await FileSystem.makeDirectoryAsync(gameDir, { intermediates: true });
+            
+            const newLocalMap = new Map<number, string>();
+
+            for (let i = 0; i < media.length; i++) {
+                const item = media[i];
+                const fileUrl = `${SOCKET_URL}/uploads/${item.filename}`;
+                const fileUri = `${gameDir}${item.filename}`;
+                
+                const downloadRes = await FileSystem.downloadAsync(fileUrl, fileUri);
+                if (downloadRes.status !== 200) {
+                    console.error("Failed to download file:", item.filename);
+                } else {
+                    newLocalMap.set(item.index, fileUri);
+                }
+                
+                setSyncProgress((i + 1) / media.length);
+            }
+            
+            setLocalMediaMap(newLocalMap);
+            setSyncStatus(t("lobby.waitingForOthers"));
+            await notifySyncComplete(pin);
+        } catch (error) {
+            console.error("Sync error:", error);
+            setSyncStatus(t("common.error"));
+        }
+    });
+
+    onPlayerReady((data) => {
+        console.log("Player ready:", data);
+    });
+
+    onAllPlayersReady(() => {
+        setAllReady(true);
+        setSyncStatus(t("lobby.allReady"));
+        if (!isHost) {
+             setSyncStatus(t("lobby.waitingForHostStart"));
+        }
+    });
+
+  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, onRoomUpdate, onSyncMedia, onPlayerReady, onAllPlayersReady, router, pin, isHost, notifySyncComplete, setLocalMediaMap, t]);
 
   const players: Player[] = room?.players.map((p) => ({
     id: p.socketId,
@@ -60,68 +128,43 @@ export function LobbyScreen() {
     isHost: p.isHost,
   })) || [];
 
-  // Use room settings if available, otherwise fallback to default
   const settings = room?.settings || {
     rounds: 25,
     timer: 5,
     mode: "Photo",
   };
 
-  // Debug settings
-  useEffect(() => {
-    if (room?.settings) {
-      console.log("Lobby settings updated:", room.settings);
-    }
-  }, [room?.settings]);
-
-  const totalMedia = players.length * 20;
+  const totalMedia = players.length * 20; 
   const canStartGame = totalMedia >= settings.rounds;
 
-  // Get host name
   const hostPlayer = players.find((p) => p.isHost);
   const hostName = hostPlayer?.name || t("lobby.host");
 
-  const handleStartGame = async () => {
+  const handlePrepareGame = async () => {
     if (!canStartGame) {
       setShowWarningModal(true);
       return;
     }
+    initiateGameStart();
+  };
 
-    if (!pin) {
-      console.error("No PIN available");
-      return;
-    }
+  const initiateGameStart = async (updatedSettings?: any) => {
+      if (!pin) return;
+      setIsStarting(true);
+      setSyncStatus(t("lobby.preparingGame"));
+      await prepareGame(pin, updatedSettings);
+  };
 
-    console.log(`Attempting to start game with PIN ${pin}`);
-    setIsStarting(true);
-    
-    try {
-      const success = await startGame(pin);
-      setIsStarting(false);
-
-      if (!success) {
-        console.error("Failed to start game - promise returned false");
-      } else {
-        console.log("Game started successfully");
-      }
-    } catch (error) {
-      console.error("Error in handleStartGame:", error);
-      setIsStarting(false);
-    }
+  const handleStartGame = async () => {
+    if (!pin) return;
+    setIsStarting(true); 
+    await startGame(pin);
   };
 
   const handleProceedAnyway = async () => {
     setShowWarningModal(false);
     if (!pin) return;
-
-    setIsStarting(true);
-    // Proceed with reduced rounds
-    const success = await startGame(pin, { ...settings, rounds: totalMedia });
-    setIsStarting(false);
-
-    if (!success) {
-      console.error("Failed to start game");
-    }
+    initiateGameStart({ ...settings, rounds: totalMedia });
   };
 
   return (
@@ -151,21 +194,46 @@ export function LobbyScreen() {
             requiredRounds={settings.rounds}
           />
         )}
+        
+        {isSyncing && (
+            <View className="mt-4 p-4 bg-gray-900 rounded-lg">
+                <Text className="text-white text-center mb-2">{syncStatus}</Text>
+                <View className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <View 
+                        className="h-full bg-primary" 
+                        style={{ width: `${syncProgress * 100}%` }} 
+                    />
+                </View>
+                <Text className="text-gray-400 text-center mt-1">
+                    {Math.round(syncProgress * 100)}%
+                </Text>
+            </View>
+        )}
+
       </ScrollView>
 
       {isHost ? (
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
-          <Button
-            title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
-            onPress={handleStartGame}
-            variant="primary"
-            disabled={isStarting}
-          />
+          {!isSyncing ? (
+              <Button
+                title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
+                onPress={handlePrepareGame}
+                variant="primary"
+                disabled={isStarting}
+              />
+          ) : (
+              <Button
+                title={t("lobby.startGame")}
+                onPress={handleStartGame}
+                variant="primary"
+                disabled={!allReady} 
+              />
+          )}
         </View>
       ) : (
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
           <Button
-            title={t("lobby.waitingForHost", { hostName })}
+            title={isSyncing ? syncStatus : t("lobby.waitingForHost", { hostName })}
             onPress={() => {}}
             variant="secondary"
             disabled

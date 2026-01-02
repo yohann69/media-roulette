@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
+import * as FileSystem from "expo-file-system/legacy";
 import { useMediaFetcher } from "../../hooks/useMediaFetcher";
-import { useSocket } from "../../stores/useSocket";
+import { useSocket, SOCKET_URL } from "../../stores/useSocket";
 
 export function useSelectionScreenLogic(params: { isHost?: string; pin?: string; playAgain?: string }) {
   const router = useRouter();
   const { setMediaPool, room } = useSocket();
   
-  // Get game mode from room settings
   const gameMode = room?.settings?.mode || "Photo";
   const mediaType = gameMode === "Photo" ? "photo" : gameMode === "Video" ? "video" : "mixed";
   const mediaCount = mediaType === "mixed" ? 40 : 20;
@@ -21,7 +21,6 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
     fetchMedia,
   } = useMediaFetcher(mediaCount, mediaType);
   
-  // Refetch media when room settings change
   useEffect(() => {
     if (room?.settings?.mode && permissionGranted && !loading) {
       console.log("Room settings updated, media type:", mediaType);
@@ -32,54 +31,73 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
   const pin = params.pin || "";
   const playAgain = params.playAgain === "true";
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     const initializeMedia = async () => {
-      if (!isHost && !room) {
-        return;
-      }
-      
+      if (!isHost && !room) return;
       if (permissionGranted && media.length === 0 && !loading) {
         await fetchMedia(mediaCount, mediaType);
       } else if (!permissionGranted && !loading) {
         const granted = await requestPermission();
-        if (granted) {
-          await fetchMedia(mediaCount, mediaType);
-        }
+        if (granted) await fetchMedia(mediaCount, mediaType);
       }
     };
-
     initializeMedia();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room, isHost, mediaType, mediaCount]);
 
   const handleReady = async () => {
-    if (!pin) {
-      console.error("No PIN available");
-      return;
-    }
-
-    if (media.length === 0) {
-      console.error("No media to upload");
-      return;
-    }
+    if (!pin) return;
+    if (media.length === 0) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
 
     try {
-      if (isHost || playAgain) {
-        console.log(`Uploading ${media.length} media items for PIN ${pin}${playAgain ? " (play again)" : ""}`);
-        const success = await setMediaPool(pin, media, playAgain);
-        if (!success) {
-          console.error("Failed to upload media pool");
-          setIsUploading(false);
-          return;
+      // Upload files one by one
+      const uploadedMedia = [];
+      const total = media.length;
+
+      for (let i = 0; i < total; i++) {
+        const item = media[i];
+        
+        // Upload to backend
+        const uploadResult = await FileSystem.uploadAsync(
+          `${SOCKET_URL}/upload`,
+          item.uri,
+          {
+            fieldName: "media",
+            httpMethod: "POST",
+            uploadType: FileSystem.UploadType.MULTIPART,
+          }
+        );
+
+        if (uploadResult.status !== 200) {
+          console.error("Failed to upload file", uploadResult);
+          throw new Error("Upload failed");
         }
-        console.log("Media pool uploaded successfully");
+
+        const response = JSON.parse(uploadResult.body);
+        uploadedMedia.push({
+          id: item.id,
+          mediaType: item.mediaType,
+          filename: response.filename,
+          // We don't need to send URI or Base64 to socket, just the backend filename reference
+        });
+
+        setUploadProgress((i + 1) / total);
+      }
+
+      console.log(`Uploaded ${uploadedMedia.length} files`);
+      
+      const success = await setMediaPool(pin, uploadedMedia, playAgain);
+      if (!success) {
+        console.error("Failed to set media pool");
+        setIsUploading(false);
+        return;
       }
 
       setIsUploading(false);
-
       const updatedIsHost = playAgain ? true : isHost;
       router.push({ 
         pathname: "/lobby", 
@@ -101,9 +119,9 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
     error,
     permissionGranted,
     isUploading,
+    uploadProgress,
     handleReady,
     handleReroll,
     requestPermission,
   };
 }
-
