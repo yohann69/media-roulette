@@ -1,12 +1,8 @@
 class GameManager {
   constructor() {
-    // Rooms mapped by PIN (6-digit string)
     this.rooms = new Map();
   }
 
-  /**
-   * Generate a unique 6-digit PIN
-   */
   generatePIN() {
     let pin;
     do {
@@ -15,9 +11,6 @@ class GameManager {
     return pin;
   }
 
-  /**
-   * Create a new game room
-   */
   createRoom(hostSocketId, hostName, settings) {
     const pin = this.generatePIN();
     const room = {
@@ -36,19 +29,18 @@ class GameManager {
         timer: settings.timer || 5,
         mode: settings.mode || "Photo",
       },
-      mediaPool: [], // Will be populated when host selects media
+      mediaPool: [],
       currentRound: 0,
-      gameState: "lobby", // lobby, playing, finished
-      scores: new Map(), // playerId -> { totalScore, roundScore, timeTaken }
+      gameState: "lobby",
+      scores: new Map(),
+      roundGuesses: new Map(), // socketId -> { guessedPlayerId, timestamp, timeTaken }
+      usedMediaIndices: new Set(), // Track which media items have been used
     };
 
     this.rooms.set(pin, room);
     return room;
   }
 
-  /**
-   * Join an existing room
-   */
   joinRoom(pin, socketId, playerName) {
     const room = this.rooms.get(pin);
     if (!room) {
@@ -59,13 +51,11 @@ class GameManager {
       return { success: false, error: "Game already started" };
     }
 
-    // Check if player already in room
     const existingPlayer = room.players.find((p) => p.socketId === socketId);
     if (existingPlayer) {
       return { success: true, room };
     }
 
-    // Add new player
     room.players.push({
       socketId,
       name: playerName,
@@ -76,9 +66,6 @@ class GameManager {
     return { success: true, room };
   }
 
-  /**
-   * Remove a player from a room
-   */
   removePlayer(socketId) {
     for (const [pin, room] of this.rooms.entries()) {
       const playerIndex = room.players.findIndex(
@@ -88,7 +75,6 @@ class GameManager {
         const player = room.players[playerIndex];
         room.players.splice(playerIndex, 1);
 
-        // If host left, delete the room
         if (player.isHost) {
           this.rooms.delete(pin);
           return { pin, roomDeleted: true };
@@ -100,16 +86,10 @@ class GameManager {
     return null;
   }
 
-  /**
-   * Get room by PIN
-   */
   getRoom(pin) {
     return this.rooms.get(pin);
   }
 
-  /**
-   * Get room by socket ID
-   */
   getRoomBySocketId(socketId) {
     for (const [pin, room] of this.rooms.entries()) {
       if (room.players.some((p) => p.socketId === socketId)) {
@@ -119,9 +99,6 @@ class GameManager {
     return null;
   }
 
-  /**
-   * Update game state
-   */
   updateGameState(pin, newState) {
     const room = this.rooms.get(pin);
     if (room) {
@@ -131,60 +108,157 @@ class GameManager {
     return false;
   }
 
-  /**
-   * Set media pool for a room
-   */
   setMediaPool(pin, mediaPool) {
     const room = this.rooms.get(pin);
     if (room) {
       room.mediaPool = mediaPool;
+      // Reset used indices when media pool is set
+      room.usedMediaIndices = new Set();
       return true;
     }
     return false;
   }
 
-  /**
-   * Update current round
-   */
   setCurrentRound(pin, round) {
     const room = this.rooms.get(pin);
     if (room) {
       room.currentRound = round;
+      room.roundGuesses.clear(); // Clear guesses for new round
       return true;
     }
     return false;
   }
 
   /**
-   * Update player score
+   * Get a random unused media item for the current round
    */
-  updateScore(pin, socketId, roundScore, timeTaken, isCorrect) {
+  getRandomMedia(pin) {
+    const room = this.rooms.get(pin);
+    if (!room || room.mediaPool.length === 0) {
+      return null;
+    }
+
+    // If all media has been used, reset
+    if (room.usedMediaIndices.size >= room.mediaPool.length) {
+      room.usedMediaIndices.clear();
+    }
+
+    // Find unused media
+    let availableIndices = [];
+    for (let i = 0; i < room.mediaPool.length; i++) {
+      if (!room.usedMediaIndices.has(i)) {
+        availableIndices.push(i);
+      }
+    }
+
+    if (availableIndices.length === 0) {
+      return null;
+    }
+
+    // Pick random unused media
+    const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+    room.usedMediaIndices.add(randomIndex);
+    
+    const media = room.mediaPool[randomIndex];
+    
+    // Determine owner from media data (if stored) or assign randomly
+    // For now, we'll use a simple approach: media should have ownerId
+    return {
+      ...media,
+      index: randomIndex,
+    };
+  }
+
+  /**
+   * Submit a guess for the current round
+   */
+  submitGuess(pin, socketId, guessedPlayerId, timestamp, roundStartTime) {
     const room = this.rooms.get(pin);
     if (!room) return false;
 
-    const player = room.players.find((p) => p.socketId === socketId);
-    if (!player) return false;
-
-    if (!room.scores.has(socketId)) {
-      room.scores.set(socketId, {
-        totalScore: 0,
-        roundScore: 0,
-        timeTaken: null,
-      });
-    }
-
-    const scoreData = room.scores.get(socketId);
-    scoreData.roundScore = isCorrect ? roundScore : 0;
-    scoreData.totalScore += scoreData.roundScore;
-    scoreData.timeTaken = isCorrect ? timeTaken : null;
-    player.score = scoreData.totalScore;
+    const timeTaken = timestamp - roundStartTime;
+    
+    room.roundGuesses.set(socketId, {
+      guessedPlayerId,
+      timestamp,
+      timeTaken,
+    });
 
     return true;
   }
 
   /**
-   * Reset round scores
+   * Calculate scores for the current round and return results
    */
+  calculateRoundResults(pin, actualOwnerId, roundStartTime) {
+    const room = this.rooms.get(pin);
+    if (!room) return null;
+
+    const { calculateScore } = require("./utils/scoring");
+    const roundEndTime = Date.now();
+
+    // Process all guesses
+    const results = [];
+    room.roundGuesses.forEach((guess, socketId) => {
+      const player = room.players.find((p) => p.socketId === socketId);
+      if (!player) return;
+
+      const isCorrect = guess.guessedPlayerId === actualOwnerId;
+      const roundScore = isCorrect ? calculateScore(guess.timeTaken) : 0;
+
+      // Update scores
+      if (!room.scores.has(socketId)) {
+        room.scores.set(socketId, {
+          totalScore: 0,
+          roundScore: 0,
+          timeTaken: null,
+        });
+      }
+
+      const scoreData = room.scores.get(socketId);
+      scoreData.roundScore = roundScore;
+      scoreData.totalScore += roundScore;
+      scoreData.timeTaken = isCorrect ? guess.timeTaken : null;
+      player.score = scoreData.totalScore;
+
+      results.push({
+        playerId: socketId,
+        playerName: player.name,
+        guessedPlayerId: guess.guessedPlayerId,
+        isCorrect,
+        roundScore,
+        timeTaken: guess.timeTaken,
+        totalScore: scoreData.totalScore,
+      });
+    });
+
+    // Get leaderboard
+    const leaderboard = this.getPlayerScores(pin);
+
+    return {
+      actualOwnerId,
+      results,
+      leaderboard,
+    };
+  }
+
+  /**
+   * Check if all players have submitted guesses (or time expired)
+   */
+  allGuessesReceived(pin) {
+    const room = this.rooms.get(pin);
+    if (!room) return false;
+
+    // Count players who should guess (excluding the owner if it's their media)
+    const activePlayers = room.players.filter((p) => {
+      // Owner doesn't guess their own media, so we'd need to know the actual owner
+      // For now, count all players
+      return true;
+    });
+
+    return room.roundGuesses.size >= activePlayers.length;
+  }
+
   resetRoundScores(pin) {
     const room = this.rooms.get(pin);
     if (room) {
@@ -197,9 +271,6 @@ class GameManager {
     return false;
   }
 
-  /**
-   * Get all player scores for leaderboard
-   */
   getPlayerScores(pin) {
     const room = this.rooms.get(pin);
     if (!room) return [];
@@ -222,4 +293,3 @@ class GameManager {
 }
 
 module.exports = GameManager;
-

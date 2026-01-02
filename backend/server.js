@@ -7,38 +7,33 @@ const GameManager = require("./GameManager");
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS for Socket.io
 const io = new Server(server, {
     cors: {
-        origin: "*", // In production, specify your frontend URL
+        origin: "*",
         methods: ["GET", "POST"],
         credentials: true,
     },
 });
 
-// Configure CORS for Express
 app.use(cors());
 app.use(express.json());
 
-// Initialize Game Manager
 const gameManager = new GameManager();
 
-// Health check endpoint
+// Store round start times per room
+const roundStartTimes = new Map();
+
 app.get("/health", (req, res) => {
     res.json({ status: "ok", message: "PhotoRoulette Backend Server" });
 });
 
-// Socket.io connection handling
 io.on("connection", (socket) => {
     console.log(`Client connected: ${socket.id}`);
 
-    // Create a new game room
     socket.on("create-game", (data) => {
         try {
             const { hostName, settings } = data;
             const room = gameManager.createRoom(socket.id, hostName, settings);
-
-            // Join socket room
             socket.join(room.pin);
 
             socket.emit("game-created", {
@@ -58,7 +53,6 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Join an existing game
     socket.on("join-game", (data) => {
         try {
             const { pin, playerName } = data;
@@ -70,11 +64,8 @@ io.on("connection", (socket) => {
             }
 
             const room = result.room;
-
-            // Join socket room
             socket.join(pin);
 
-            // Notify the joining player
             socket.emit("joined-game", {
                 pin: room.pin,
                 room: {
@@ -85,7 +76,6 @@ io.on("connection", (socket) => {
                 },
             });
 
-            // Notify all other players in the room
             socket.to(pin).emit("player-joined", {
                 player: {
                     socketId: socket.id,
@@ -102,7 +92,6 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Start the game
     socket.on("start-game", (data) => {
         try {
             const { pin } = data;
@@ -126,11 +115,8 @@ io.on("connection", (socket) => {
             gameManager.updateGameState(pin, "playing");
             gameManager.setCurrentRound(pin, 1);
 
-            // Notify all players
-            io.to(pin).emit("game-started", {
-                currentRound: 1,
-                totalRounds: room.settings.rounds,
-            });
+            // Start first round
+            startNewRound(pin, io, gameManager, roundStartTimes);
 
             console.log(`Game ${pin} started`);
         } catch (error) {
@@ -139,7 +125,6 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Set media pool
     socket.on("set-media-pool", (data) => {
         try {
             const { pin, mediaPool } = data;
@@ -158,10 +143,9 @@ io.on("connection", (socket) => {
         }
     });
 
-    // Player makes a guess
-    socket.on("player-guess", (data) => {
+    socket.on("submit-guess", (data) => {
         try {
-            const { pin, guessedPlayerId, timeTaken } = data;
+            const { pin, targetUser, timestamp } = data;
             const room = gameManager.getRoom(pin);
 
             if (!room) {
@@ -169,33 +153,93 @@ io.on("connection", (socket) => {
                 return;
             }
 
-            // Calculate score (this would use the scoring formula)
-            // For now, we'll just store the guess
+            if (room.gameState !== "playing") {
+                socket.emit("error", { message: "Game not in progress" });
+                return;
+            }
+
+            const roundStartTime = roundStartTimes.get(pin);
+            if (!roundStartTime) {
+                socket.emit("error", { message: "Round not started" });
+                return;
+            }
+
+            // Submit guess
+            gameManager.submitGuess(pin, socket.id, targetUser, timestamp, roundStartTime);
+
             socket.emit("guess-received", { success: true });
 
-            // Notify other players (if needed)
-            socket.to(pin).emit("player-guessed", {
-                playerId: socket.id,
-            });
+            // Check if all players have guessed (or we can wait for timer)
+            // For now, we'll process when owner continues or timer expires
         } catch (error) {
-            socket.emit("error", { message: "Failed to process guess" });
-            console.error("Error processing guess:", error);
+            socket.emit("error", { message: "Failed to submit guess" });
+            console.error("Error submitting guess:", error);
         }
     });
 
-    // Disconnect handling
+    socket.on("continue-game", (data) => {
+        try {
+            const { pin } = data;
+            const room = gameManager.getRoom(pin);
+
+            if (!room) {
+                socket.emit("error", { message: "Room not found" });
+                return;
+            }
+
+            if (room.hostSocketId !== socket.id) {
+                socket.emit("error", { message: "Only host can continue" });
+                return;
+            }
+
+            if (room.gameState !== "playing") {
+                socket.emit("error", { message: "Game not in progress" });
+                return;
+            }
+
+            // Get the actual owner from the stored current media
+            const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
+
+            const roundStartTime = roundStartTimes.get(pin) || Date.now();
+            const roundResults = gameManager.calculateRoundResults(
+                pin,
+                actualOwnerId,
+                roundStartTime
+            );
+
+            // Emit round result
+            io.to(pin).emit("round-result", roundResults);
+
+            // Check if game is finished
+            if (room.currentRound >= room.settings.rounds) {
+                gameManager.updateGameState(pin, "finished");
+                io.to(pin).emit("game-finished", {
+                    leaderboard: gameManager.getPlayerScores(pin),
+                });
+            } else {
+                // Start next round after a delay
+                setTimeout(() => {
+                    gameManager.setCurrentRound(pin, room.currentRound + 1);
+                    startNewRound(pin, io, gameManager, roundStartTimes);
+                }, 3000); // 3 second delay between rounds
+            }
+        } catch (error) {
+            socket.emit("error", { message: "Failed to continue game" });
+            console.error("Error continuing game:", error);
+        }
+    });
+
     socket.on("disconnect", () => {
         console.log(`Client disconnected: ${socket.id}`);
         const result = gameManager.removePlayer(socket.id);
 
         if (result) {
             if (result.roomDeleted) {
-                // Notify all players in the room that it was deleted
+                roundStartTimes.delete(result.pin);
                 io.to(result.pin).emit("room-deleted", {
                     message: "Host left the game",
                 });
             } else {
-                // Notify remaining players
                 io.to(result.pin).emit("player-left", {
                     socketId: socket.id,
                     players: result.room.players,
@@ -205,10 +249,53 @@ io.on("connection", (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3001;
+/**
+ * Start a new round - pick media and broadcast to all players
+ */
+function startNewRound(pin, io, gameManager, roundStartTimes) {
+    const room = gameManager.getRoom(pin);
+    if (!room) return;
+
+    const media = gameManager.getRandomMedia(pin);
+    if (!media) {
+        io.to(pin).emit("error", { message: "No media available" });
+        return;
+    }
+
+    const roundStartTime = Date.now();
+    roundStartTimes.set(pin, roundStartTime);
+
+    // Store current media owner for this round
+    room.currentMediaIndex = media.index;
+    room.currentMediaOwnerId = media.ownerId;
+
+    // Get player options (all players)
+    const options = room.players.map((p) => ({
+        id: p.socketId,
+        name: p.name,
+    }));
+
+    // Broadcast new round to all players
+    io.to(pin).emit("new-round", {
+        round: room.currentRound,
+        totalRounds: room.settings.rounds,
+        mediaData: {
+            id: media.id,
+            uri: media.uri || media.base64,
+            base64: media.base64,
+            mediaType: media.mediaType,
+        },
+        duration: room.settings.timer,
+        options,
+        roundStartTime,
+    });
+
+    console.log(`Round ${room.currentRound} started for game ${pin}`);
+}
+
+const PORT = process.env.PORT || 6969;
 
 server.listen(PORT, () => {
     console.log(`🚀 PhotoRoulette Backend Server running on port ${PORT}`);
     console.log(`📡 Socket.io server ready for connections`);
 });
-

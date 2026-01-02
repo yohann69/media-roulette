@@ -41,7 +41,7 @@ export function LobbyScreen() {
 
     onGameStarted((data) => {
       console.log("Game started:", data);
-      router.push("/game");
+      router.push({ pathname: "/game", params: { pin, isHost: isHost ? "true" : "false" } });
     });
 
     onRoomDeleted((data) => {

@@ -10,7 +10,8 @@ interface Player {
 
 interface MediaItem {
   id: string;
-  uri: string;
+  uri?: string;
+  base64?: string;
   mediaType: "photo" | "video";
 }
 
@@ -19,7 +20,7 @@ interface RevealViewProps {
   totalRounds: number;
   timerDuration: number;
   timerActive: boolean;
-  currentMedia: MediaItem | undefined;
+  currentMedia: MediaItem | null;
   players: Player[];
   selectedPlayer: string | null;
   disabled: boolean;
@@ -67,4 +68,3 @@ export function RevealView({
     </View>
   );
 }
-

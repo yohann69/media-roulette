@@ -29,9 +29,14 @@ interface SocketState {
   joinGame: (pin: string, playerName: string) => Promise<boolean>;
   setMediaPool: (pin: string, mediaPool: any[]) => Promise<boolean>;
   startGame: (pin: string) => Promise<boolean>;
+  submitGuess: (pin: string, targetUser: string, timestamp: number) => Promise<boolean>;
+  continueGame: (pin: string) => Promise<boolean>;
   onPlayerJoined: (callback: (data: any) => void) => void;
   onPlayerLeft: (callback: (data: any) => void) => void;
   onGameStarted: (callback: (data: any) => void) => void;
+  onNewRound: (callback: (data: any) => void) => void;
+  onRoundResult: (callback: (data: any) => void) => void;
+  onGameFinished: (callback: (data: any) => void) => void;
   onRoomDeleted: (callback: (data: any) => void) => void;
   cleanup: () => void;
 }
@@ -129,6 +134,30 @@ function createGameHandlers(get: any, set: any) {
         setTimeout(() => resolve(false), 5000);
       });
     },
+
+    submitGuess: async (pin: string, targetUser: string, timestamp: number): Promise<boolean> => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+
+      return new Promise((resolve) => {
+        socket.emit("submit-guess", { pin, targetUser, timestamp });
+        socket.once("guess-received", (data: { success: boolean }) => resolve(data.success));
+        socket.once("error", () => resolve(false));
+        setTimeout(() => resolve(false), 5000);
+      });
+    },
+
+    continueGame: async (pin: string): Promise<boolean> => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+
+      return new Promise((resolve) => {
+        socket.emit("continue-game", { pin });
+        socket.once("error", () => resolve(false));
+        // continue-game doesn't emit a response, it triggers round-result
+        setTimeout(() => resolve(true), 1000);
+      });
+    },
   };
 }
 
@@ -154,6 +183,18 @@ function createEventHandlers(get: any, set: any) {
 
     onGameStarted: (callback: (data: any) => void) => {
       get().socket?.on("game-started", callback);
+    },
+
+    onNewRound: (callback: (data: any) => void) => {
+      get().socket?.on("new-round", callback);
+    },
+
+    onRoundResult: (callback: (data: any) => void) => {
+      get().socket?.on("round-result", callback);
+    },
+
+    onGameFinished: (callback: (data: any) => void) => {
+      get().socket?.on("game-finished", callback);
     },
 
     onRoomDeleted: (callback: (data: any) => void) => {

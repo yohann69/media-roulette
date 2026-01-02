@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { RevealView } from "../../components/organisms/RevealView";
@@ -6,9 +6,8 @@ import { ResultView } from "../../components/organisms/ResultView";
 import { InterimLeaderboard } from "../../components/molecules/InterimLeaderboard";
 import { Podium } from "../../components/molecules/Podium";
 import { Button } from "../../components/atoms/Button";
-import { useGameSettings } from "../../hooks/useGameSettings";
-import { useUsername } from "../../hooks/useUsername";
-import { useGameScores } from "../../hooks/useGameScores";
+import { useSocket } from "../../stores/useSocket";
+import { useGameEvents } from "../../hooks/useGameEvents";
 
 interface Player {
   id: string;
@@ -17,110 +16,84 @@ interface Player {
 
 interface MediaItem {
   id: string;
-  uri: string;
+  uri?: string;
+  base64?: string;
   mediaType: "photo" | "video";
-  ownerId: string;
 }
 
 type GameState = "reveal" | "result" | "leaderboard" | "podium";
 
-function generateMockMedia(players: Player[], count: number): MediaItem[] {
-  const media: MediaItem[] = [];
-  for (let i = 0; i < count; i++) {
-    const randomPlayer = players[Math.floor(Math.random() * players.length)];
-    media.push({
-      id: `media-${i}`,
-      uri: `https://picsum.photos/seed/${i}/800/600`,
-      mediaType: "photo",
-      ownerId: randomPlayer.id,
-    });
-  }
-  return media;
-}
-
 export function GameScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ isHost?: string }>();
-  const { settings } = useGameSettings();
-  const { username } = useUsername();
+  const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
+  const {
+    room,
+    currentPlayerId,
+    submitGuess,
+    continueGame,
+  } = useSocket();
+
   const [gameState, setGameState] = useState<GameState>("reveal");
-  const [currentRound, setCurrentRound] = useState(1);
+  const [currentRound, setCurrentRound] = useState(0);
+  const [totalRounds, setTotalRounds] = useState(0);
+  const [currentMedia, setCurrentMedia] = useState<MediaItem | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [timeExpired, setTimeExpired] = useState(false);
-  const [timerActive, setTimerActive] = useState(true);
-  const [roundStartTime, setRoundStartTime] = useState<number>(Date.now());
+  const [timerActive, setTimerActive] = useState(false);
+  const [roundStartTime, setRoundStartTime] = useState<number>(0);
+  const [timerDuration, setTimerDuration] = useState(5);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const players: Player[] = [
-    { id: "current", name: username || "You" },
-    { id: "bot1", name: "Bot Alice" },
-    { id: "bot2", name: "Bot Bob" },
-  ];
+  const [roundResults, setRoundResults] = useState<any>(null);
+  const [finalLeaderboard, setFinalLeaderboard] = useState<any[]>([]);
+  const [actualOwnerId, setActualOwnerId] = useState<string | null>(null);
 
-  const {
-    resetRoundScores,
-    updatePlayerScore,
-    simulateBotScores,
-    getPlayerScoresArray,
-  } = useGameScores(players);
+  const pin = params.pin || room?.pin || "";
+  const isHost = params.isHost === "true" || room?.players.find((p) => p.socketId === currentPlayerId)?.isHost || false;
 
-  const mediaPool = useRef<MediaItem[]>(
-    generateMockMedia(players, settings.rounds * players.length)
-  ).current;
+  useGameEvents({
+    onNewRound: (data) => {
+      setCurrentRound(data.round);
+      setTotalRounds(data.totalRounds);
+      setCurrentMedia(data.mediaData);
+      setTimerDuration(data.duration);
+      setRoundStartTime(data.roundStartTime);
+      setPlayers(data.options);
+      setSelectedPlayer(null);
+      setTimeExpired(false);
+      setTimerActive(true);
+      setGameState("reveal");
+      setRoundResults(null);
+    },
+    onRoundResult: (data) => {
+      setActualOwnerId(data.actualOwnerId);
+      setRoundResults(data);
+      setTimerActive(false);
+      setGameState("result");
+    },
+    onGameFinished: (data) => {
+      setFinalLeaderboard(data.leaderboard);
+      setGameState("podium");
+    },
+  });
 
-  const currentMedia = mediaPool[currentRound - 1];
-  const correctPlayerId = currentMedia?.ownerId || players[0].id;
-  const isOwner = correctPlayerId === "current";
+  const handlePlayerSelect = async (playerId: string) => {
+    if (timeExpired || selectedPlayer || !pin) return;
 
-  useEffect(() => {
-    setGameState("reveal");
-    setSelectedPlayer(null);
-    setTimeExpired(false);
-    setTimerActive(true);
-    setRoundStartTime(Date.now());
-    setShowLeaderboard(false);
-    resetRoundScores();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentRound]);
-
-  const handlePlayerSelect = (playerId: string) => {
-    if (timeExpired || selectedPlayer) return;
-
-    const timeTaken = Date.now() - roundStartTime;
-    const isCorrect = playerId === correctPlayerId;
-
+    const timestamp = Date.now();
     setSelectedPlayer(playerId);
     setTimerActive(false);
-    updatePlayerScore("current", timeTaken, isCorrect);
-
-    setTimeout(() => {
-      setGameState("result");
-    }, 500);
+    await submitGuess(pin, playerId, timestamp);
   };
 
   const handleTimeExpired = () => {
     setTimeExpired(true);
     setTimerActive(false);
-
-    if (!selectedPlayer) {
-      setTimeout(() => {
-        setGameState("result");
-      }, 500);
-    }
   };
 
-  const handleShowLeaderboard = () => {
-    simulateBotScores(correctPlayerId, settings.timer, players);
-    setShowLeaderboard(true);
-    setGameState("leaderboard");
-  };
-
-  const handleContinueFromLeaderboard = () => {
-    setShowLeaderboard(false);
-    if (currentRound < settings.rounds) {
-      setCurrentRound(currentRound + 1);
-    } else {
-      setGameState("podium");
-    }
+  const handleContinue = async () => {
+    if (!pin) return;
+    await continueGame(pin);
   };
 
   const handleShowAgain = () => {
@@ -128,20 +101,29 @@ export function GameScreen() {
     setSelectedPlayer(null);
     setTimeExpired(false);
     setTimerActive(true);
-    setRoundStartTime(Date.now());
+  };
+
+  const handleShowLeaderboard = () => {
+    setShowLeaderboard(true);
+    setGameState("leaderboard");
+  };
+
+  const handleContinueFromLeaderboard = () => {
+    setShowLeaderboard(false);
   };
 
   const handlePlayAgain = () => {
     router.push("/lobby");
   };
 
-  const playerScoresArray = getPlayerScoresArray();
   const isDisabled = timeExpired || selectedPlayer !== null;
+  const correctPlayerId = actualOwnerId || players[0]?.id;
+  const isOwner = actualOwnerId === currentPlayerId;
 
   if (gameState === "podium") {
     return (
       <View className="flex-1 bg-black">
-        <Podium players={playerScoresArray} />
+        <Podium players={finalLeaderboard} />
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
           <Button
             title="Play Again"
@@ -153,24 +135,24 @@ export function GameScreen() {
     );
   }
 
-  if (gameState === "leaderboard") {
+  if (gameState === "leaderboard" && roundResults) {
     return (
       <View className="flex-1 bg-black">
         <InterimLeaderboard
           visible={showLeaderboard}
-          players={playerScoresArray}
+          players={roundResults.leaderboard}
           onContinue={handleContinueFromLeaderboard}
         />
       </View>
     );
   }
 
-  if (gameState === "reveal") {
+  if (gameState === "reveal" && currentMedia) {
     return (
       <RevealView
         currentRound={currentRound}
-        totalRounds={settings.rounds}
-        timerDuration={settings.timer}
+        totalRounds={totalRounds}
+        timerDuration={timerDuration}
         timerActive={timerActive}
         currentMedia={currentMedia}
         players={players}
@@ -182,17 +164,34 @@ export function GameScreen() {
     );
   }
 
+  if (gameState === "result" && currentMedia && roundResults) {
+    const userResult = roundResults.results.find(
+      (r: any) => r.playerId === currentPlayerId
+    );
+
+    return (
+      <ResultView
+        currentRound={currentRound}
+        totalRounds={totalRounds}
+        currentMedia={currentMedia}
+        selectedPlayer={userResult?.guessedPlayerId || null}
+        correctPlayerId={actualOwnerId || ""}
+        players={players}
+        isOwner={isOwner}
+        onShowAgain={handleShowAgain}
+        onContinue={handleContinue}
+      />
+    );
+  }
+
   return (
-    <ResultView
-      currentRound={currentRound}
-      totalRounds={settings.rounds}
-      currentMedia={currentMedia}
-      selectedPlayer={selectedPlayer}
-      correctPlayerId={correctPlayerId}
-      players={players}
-      isOwner={isOwner}
-      onShowAgain={handleShowAgain}
-      onContinue={handleShowLeaderboard}
-    />
+    <View className="flex-1 bg-black items-center justify-center">
+      <Button
+        title="Waiting for round to start..."
+        onPress={() => {}}
+        variant="secondary"
+        disabled
+      />
+    </View>
   );
 }

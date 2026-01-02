@@ -10,14 +10,15 @@ interface Player {
 
 interface MediaItem {
   id: string;
-  uri: string;
+  uri?: string;
+  base64?: string;
   mediaType: "photo" | "video";
 }
 
 interface ResultViewProps {
   currentRound: number;
   totalRounds: number;
-  currentMedia: MediaItem | undefined;
+  currentMedia: MediaItem | null;
   selectedPlayer: string | null;
   correctPlayerId: string;
   players: Player[];
@@ -77,4 +78,3 @@ export function ResultView({
     </View>
   );
 }
-

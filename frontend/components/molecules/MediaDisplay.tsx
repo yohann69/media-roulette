@@ -2,7 +2,8 @@ import { View, Image } from "react-native";
 
 interface MediaItem {
   id: string;
-  uri: string;
+  uri?: string;
+  base64?: string;
   mediaType: "photo" | "video";
 }
 
@@ -11,15 +12,24 @@ interface MediaDisplayProps {
 }
 
 export function MediaDisplay({ media }: MediaDisplayProps) {
+  // Determine image source - prefer base64 if available, otherwise use URI
+  const imageSource = media.base64
+    ? { uri: `data:image/jpeg;base64,${media.base64}` }
+    : media.uri
+    ? { uri: media.uri }
+    : null;
+
   return (
     <View className="mb-6">
       {media.mediaType === "photo" ? (
         <View className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-900 mb-4">
-          <Image
-            source={{ uri: media.uri }}
-            className="w-full h-full"
-            resizeMode="cover"
-          />
+          {imageSource && (
+            <Image
+              source={imageSource}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          )}
         </View>
       ) : (
         <View className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-900 items-center justify-center mb-4">
@@ -31,4 +41,3 @@ export function MediaDisplay({ media }: MediaDisplayProps) {
     </View>
   );
 }
-
