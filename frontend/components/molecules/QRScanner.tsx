@@ -1,6 +1,22 @@
 import { useState, useEffect } from "react";
-import { View, Text, Modal, TouchableOpacity, ActivityIndicator } from "react-native";
-import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
+import { View, Text, Modal, TouchableOpacity } from "react-native";
+
+// Try to import expo-camera, but handle gracefully if it's not available (e.g., in Expo Go)
+let CameraView: any = null;
+let CameraType: any = null;
+let useCameraPermissions: any = null;
+let cameraAvailable = false;
+
+try {
+  const expoCamera = require("expo-camera");
+  CameraView = expoCamera.CameraView;
+  CameraType = expoCamera.CameraType;
+  useCameraPermissions = expoCamera.useCameraPermissions;
+  cameraAvailable = true;
+} catch (e) {
+  // expo-camera not available (likely running in Expo Go)
+  cameraAvailable = false;
+}
 
 interface QRScannerProps {
   visible: boolean;
@@ -9,7 +25,9 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission] = cameraAvailable && useCameraPermissions 
+    ? useCameraPermissions() 
+    : [null, () => Promise.resolve({ granted: false })];
   const [scanned, setScanned] = useState(false);
 
   useEffect(() => {
@@ -53,6 +71,33 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
   };
 
   if (!visible) return null;
+
+  // Show message if camera is not available (Expo Go)
+  if (!cameraAvailable) {
+    return (
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-5">
+          <View className="bg-gray-800 rounded-3xl p-6 w-full max-w-md">
+            <Text className="text-white text-2xl font-bold mb-4 text-center">
+              QR Scanner Unavailable
+            </Text>
+            <Text className="text-gray-400 text-center mb-6">
+              QR code scanning requires a development build. Please enter the PIN manually or build the app with EAS Build.
+            </Text>
+            <Text className="text-gray-500 text-sm text-center mb-6">
+              The camera module is not available in Expo Go. You can still join by entering the 6-digit PIN.
+            </Text>
+            <TouchableOpacity
+              onPress={onClose}
+              className="bg-primary py-4 px-6 rounded-xl items-center"
+            >
+              <Text className="text-white text-lg font-bold">Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   if (!permission) {
     return (
@@ -108,6 +153,10 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
     );
   }
 
+  if (!CameraView) {
+    return null;
+  }
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View className="flex-1 bg-black">
@@ -157,4 +206,3 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
     </Modal>
   );
 }
-
