@@ -130,16 +130,30 @@ io.on("connection", (socket) => {
             const { pin, mediaPool } = data;
             const room = gameManager.getRoom(pin);
 
-            if (!room || room.hostSocketId !== socket.id) {
-                socket.emit("error", { message: "Unauthorized" });
+            if (!room) {
+                socket.emit("error", { message: "Room not found" });
+                console.error(`Room ${pin} not found for socket ${socket.id}`);
                 return;
             }
 
+            // Check if user is host (by socket ID or by checking if they're in the players list as host)
+            const isHost = room.hostSocketId === socket.id ||
+                room.players.some(p => p.socketId === socket.id && p.isHost);
+
+            if (!isHost) {
+                socket.emit("error", { message: "Unauthorized - only host can set media pool" });
+                console.error(`Socket ${socket.id} attempted to set media pool but is not host. Host: ${room.hostSocketId}`);
+                return;
+            }
+
+            console.log(`Setting media pool for room ${pin} with ${mediaPool.length} items`);
             gameManager.setMediaPool(pin, mediaPool);
             socket.emit("media-pool-set", { success: true });
+            console.log(`Media pool set successfully for room ${pin}`);
         } catch (error) {
             socket.emit("error", { message: "Failed to set media pool" });
             console.error("Error setting media pool:", error);
+            console.error("Error details:", error.stack);
         }
     });
 

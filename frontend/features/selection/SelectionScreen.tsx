@@ -48,23 +48,35 @@ export function SelectionScreen() {
       return;
     }
 
-    setIsUploading(true);
-
-    if (isHost) {
-      const success = await setMediaPool(pin, media);
-      if (!success) {
-        console.error("Failed to upload media pool");
-        setIsUploading(false);
-        return;
-      }
+    if (media.length === 0) {
+      console.error("No media to upload");
+      return;
     }
 
-    setIsUploading(false);
+    setIsUploading(true);
 
-    if (isHost) {
-      router.push({ pathname: "/lobby", params: { isHost: "true", pin } });
-    } else {
-      router.push({ pathname: "/lobby", params: { isHost: "false", pin } });
+    try {
+      if (isHost) {
+        console.log(`Uploading ${media.length} media items for PIN ${pin}`);
+        const success = await setMediaPool(pin, media);
+        if (!success) {
+          console.error("Failed to upload media pool");
+          setIsUploading(false);
+          return;
+        }
+        console.log("Media pool uploaded successfully");
+      }
+
+      setIsUploading(false);
+
+      if (isHost) {
+        router.push({ pathname: "/lobby", params: { isHost: "true", pin } });
+      } else {
+        router.push({ pathname: "/lobby", params: { isHost: "false", pin } });
+      }
+    } catch (error) {
+      console.error("Error in handleReady:", error);
+      setIsUploading(false);
     }
   };
 
