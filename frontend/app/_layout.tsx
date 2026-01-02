@@ -46,6 +46,14 @@ export default function RootLayout() {
             headerBackTitle: "Back",
           }}
         />
+        <Stack.Screen
+          name="game"
+          options={{
+            title: "Game",
+            headerBackTitle: "Back",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </>
   );

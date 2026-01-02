@@ -56,15 +56,15 @@ export function LobbyScreen() {
     if (!canStartGame) {
       setShowWarningModal(true);
     } else {
-      // Navigate to game screen (placeholder for now)
-      router.push("/lobby");
+      // Navigate to game screen
+      router.push("/game");
     }
   };
 
   const handleProceedAnyway = () => {
     setShowWarningModal(false);
     // Navigate to game with reduced rounds
-    router.push("/lobby");
+    router.push("/game");
   };
 
   return (
