@@ -16,7 +16,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "PhotoRoulette needs access to your photos to play the game.",
-        "NSPhotoLibraryAddUsageDescription": "PhotoRoulette needs access to save photos."
+        "NSPhotoLibraryAddUsageDescription": "PhotoRoulette needs access to save photos.",
+        "NSCameraUsageDescription": "PhotoRoulette needs access to your camera to scan QR codes."
       },
       "bundleIdentifier": "com.yohann69.mediaroulette"
     },
@@ -30,7 +31,8 @@
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO"
+        "READ_MEDIA_VIDEO",
+        "CAMERA"
       ],
       "package": "com.yohann69.mediaroulette"
     },

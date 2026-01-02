@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, Text, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { GamePIN } from "../../components/molecules/GamePIN";
 import { PlayerList } from "../../components/molecules/PlayerList";
 import { GameSettingsDisplay } from "../../components/molecules/GameSettingsDisplay";
@@ -23,18 +23,28 @@ function generateGamePIN(): string {
 
 export function LobbyScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { username } = useUsername();
   const { settings } = useGameSettings();
   const { media } = useMediaFetcher(20, "mixed");
   const [gamePIN, setGamePIN] = useState("");
   const [showWarningModal, setShowWarningModal] = useState(false);
 
+  const isHost = params.isHost === "true";
+  const joinedPin = params.pin || "";
+
   useEffect(() => {
-    setGamePIN(generateGamePIN());
-  }, []);
+    if (isHost) {
+      // Host generates a new PIN
+      setGamePIN(generateGamePIN());
+    } else if (joinedPin) {
+      // Joiner uses the PIN they entered
+      setGamePIN(joinedPin);
+    }
+  }, [isHost, joinedPin]);
 
   const players: Player[] = [
-    { id: "current", name: username || "You", isHost: true },
+    { id: "current", name: username || "You", isHost: isHost },
     { id: "bot1", name: "Bot Alice" },
     { id: "bot2", name: "Bot Bob" },
   ];
@@ -64,7 +74,7 @@ export function LobbyScreen() {
           Game Lobby
         </Text>
 
-        <GamePIN pin={gamePIN} />
+        {isHost && <GamePIN pin={gamePIN} />}
 
         <View className="mb-8">
           <Text className="text-white text-xl font-semibold mb-4">
@@ -81,13 +91,15 @@ export function LobbyScreen() {
         />
       </ScrollView>
 
-      <View className="px-6 py-4 border-t border-gray-800 bg-black">
-        <Button
-          title="Start Game"
-          onPress={handleStartGame}
-          variant="primary"
-        />
-      </View>
+      {isHost && (
+        <View className="px-6 py-4 border-t border-gray-800 bg-black">
+          <Button
+            title="Start Game"
+            onPress={handleStartGame}
+            variant="primary"
+          />
+        </View>
+      )}
 
       <WarningModal
         visible={showWarningModal}

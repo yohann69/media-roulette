@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect } from "react";
 import { useMediaFetcher } from "../../hooks/useMediaFetcher";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
@@ -7,6 +7,7 @@ import { Button } from "../../components/atoms/Button";
 
 export function SelectionScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const {
     media,
     loading,
@@ -16,6 +17,9 @@ export function SelectionScreen() {
     fetchMedia,
     reroll,
   } = useMediaFetcher(20, "mixed");
+
+  const isHost = params.isHost === "true";
+  const pin = params.pin || "";
 
   useEffect(() => {
     const initializeMedia = async () => {
@@ -36,8 +40,12 @@ export function SelectionScreen() {
   }, []);
 
   const handleReady = () => {
-    // Navigate to lobby with selected media
-    router.push("/lobby");
+    // Navigate to lobby with host/joiner status
+    if (isHost) {
+      router.push({ pathname: "/lobby", params: { isHost: "true" } });
+    } else {
+      router.push({ pathname: "/lobby", params: { isHost: "false", pin } });
+    }
   };
 
   const handleReroll = async () => {
@@ -67,11 +75,13 @@ export function SelectionScreen() {
           onPress={requestPermission}
           variant="primary"
         />
-        <Button
-          title="Go Back"
-          onPress={() => router.back()}
-          variant="secondary"
-        />
+        <View className="mt-3">
+          <Button
+            title="Go Back"
+            onPress={() => router.back()}
+            variant="secondary"
+          />
+        </View>
       </View>
     );
   }
@@ -86,11 +96,13 @@ export function SelectionScreen() {
           onPress={handleReroll}
           variant="primary"
         />
-        <Button
-          title="Go Back"
-          onPress={() => router.back()}
-          variant="secondary"
-        />
+        <View className="mt-3">
+          <Button
+            title="Go Back"
+            onPress={() => router.back()}
+            variant="secondary"
+          />
+        </View>
       </View>
     );
   }
@@ -140,4 +152,3 @@ export function SelectionScreen() {
     </View>
   );
 }
-

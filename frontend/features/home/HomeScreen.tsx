@@ -128,7 +128,8 @@ export function HomeScreen() {
 
     const handleSettingsConfirm = (settings: GameSettings) => {
         saveSettings(settings);
-        router.push("/selection");
+        // Navigate to selection as host
+        router.push({ pathname: "/selection", params: { isHost: "true" } });
     };
 
     const handleJoinGame = () => {
