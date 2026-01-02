@@ -7,7 +7,7 @@ export async function convertImageToBase64(uri: string): Promise<string> {
   try {
     // Use expo-file-system to read file as base64
     const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: "base64",
     });
     return base64;
   } catch (error) {

@@ -24,7 +24,8 @@ interface ResultViewProps {
   correctPlayerId: string;
   players: Player[];
   isOwner: boolean;
-  onShowAgain: () => void;
+  onShowAgainStart?: () => void;
+  onShowAgainEnd?: () => void;
   onContinue: () => void;
 }
 
@@ -36,7 +37,8 @@ export function ResultView({
   correctPlayerId,
   players,
   isOwner,
-  onShowAgain,
+  onShowAgainStart,
+  onShowAgainEnd,
   onContinue,
 }: ResultViewProps) {
   const { t } = useTranslation();
@@ -65,7 +67,8 @@ export function ResultView({
           <View className="gap-3">
             <Button
               title={t("result.showAgain")}
-              onPress={onShowAgain}
+              onPressIn={onShowAgainStart}
+              onPressOut={onShowAgainEnd}
               variant="secondary"
             />
             <Button title={t("common.continue")} onPress={onContinue} variant="primary" />

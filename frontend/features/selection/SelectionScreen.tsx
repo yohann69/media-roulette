@@ -1,115 +1,25 @@
 import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
-import { useMediaFetcher } from "../../hooks/useMediaFetcher";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
-import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
+import { useSelectionScreenLogic } from "./useSelectionScreenLogic";
 
 export function SelectionScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
-  const { setMediaPool, room } = useSocket();
-  
-  // Get game mode from room settings
-  // Wait for room to be available before determining media type
-  const gameMode = room?.settings?.mode || "Photo";
-  // Map "Photo" -> "photo", "Video" -> "video", "Mix" -> "mixed"
-  const mediaType = gameMode === "Photo" ? "photo" : gameMode === "Video" ? "video" : "mixed";
-  // For mixed mode, we need 40 items (20 photos + 20 videos), otherwise 20
-  const mediaCount = mediaType === "mixed" ? 40 : 20;
+  const params = useLocalSearchParams<{ isHost?: string; pin?: string; playAgain?: string }>();
   
   const {
     media,
     loading,
     error,
     permissionGranted,
+    isUploading,
+    handleReady,
+    handleReroll,
     requestPermission,
-    fetchMedia,
-    reroll,
-  } = useMediaFetcher(mediaCount, mediaType);
-  
-  // Refetch media when room settings change
-  useEffect(() => {
-    if (room?.settings?.mode && permissionGranted && !loading) {
-      // Media will be refetched with new type when reroll is called or component remounts
-      console.log("Room settings updated, media type:", mediaType);
-    }
-  }, [room?.settings?.mode, mediaType, permissionGranted, loading]);
-
-  const isHost = params.isHost === "true";
-  const pin = params.pin || "";
-  const playAgain = params.playAgain === "true";
-  const [isUploading, setIsUploading] = useState(false);
-
-  useEffect(() => {
-    const initializeMedia = async () => {
-      // Wait for room to be available if we're joining
-      if (!isHost && !room) {
-        // Wait a bit for room to load
-        return;
-      }
-      
-      if (permissionGranted && media.length === 0 && !loading) {
-        await fetchMedia(mediaCount, mediaType);
-      } else if (!permissionGranted && !loading) {
-        const granted = await requestPermission();
-        if (granted) {
-          await fetchMedia(mediaCount, mediaType);
-        }
-      }
-    };
-
-    initializeMedia();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room, isHost, mediaType, mediaCount]);
-
-  const handleReady = async () => {
-    if (!pin) {
-      console.error("No PIN available");
-      return;
-    }
-
-    if (media.length === 0) {
-      console.error("No media to upload");
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      // In play again mode, anyone can set media pool (first to validate becomes host)
-      // Otherwise, only host can set media pool
-      if (isHost || playAgain) {
-        console.log(`Uploading ${media.length} media items for PIN ${pin}${playAgain ? " (play again)" : ""}`);
-        const success = await setMediaPool(pin, media, playAgain);
-        if (!success) {
-          console.error("Failed to upload media pool");
-          setIsUploading(false);
-          return;
-        }
-        console.log("Media pool uploaded successfully");
-      }
-
-      setIsUploading(false);
-
-      // After play again, check if we're now the host
-      const updatedIsHost = playAgain ? true : isHost;
-      router.push({ 
-        pathname: "/lobby", 
-        params: { isHost: updatedIsHost ? "true" : "false", pin } 
-      });
-    } catch (error) {
-      console.error("Error in handleReady:", error);
-      setIsUploading(false);
-    }
-  };
-
-  const handleReroll = async () => {
-    await fetchMedia(mediaCount, mediaType);
-  };
+  } = useSelectionScreenLogic(params);
 
   if (loading && media.length === 0) {
     return (

@@ -8,7 +8,9 @@ import { useEffect, useRef } from "react";
 
 interface ButtonProps {
     title: string;
-    onPress: () => void;
+    onPress?: () => void;
+    onPressIn?: () => void;
+    onPressOut?: () => void;
     disabled?: boolean;
     variant?: "primary" | "secondary";
     loading?: boolean;
@@ -17,6 +19,8 @@ interface ButtonProps {
 export function Button({
     title,
     onPress,
+    onPressIn,
+    onPressOut,
     disabled = false,
     variant = "primary",
     loading = false,
@@ -39,6 +43,8 @@ export function Button({
             tension: 300,
             friction: 20,
         }).start();
+        
+        if (onPressIn) onPressIn();
     };
 
     const handlePressOut = () => {
@@ -48,6 +54,8 @@ export function Button({
             tension: 300,
             friction: 20,
         }).start();
+
+        if (onPressOut) onPressOut();
     };
 
     const animatedStyle = {

@@ -1,4 +1,4 @@
-import { View, Image, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Image, ActivityIndicator, TouchableOpacity, DimensionValue } from "react-native";
 import { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 
@@ -19,7 +19,7 @@ export function MediaGrid({
   columns = 4,
   onItemPress,
 }: MediaGridProps) {
-  const itemSize = `${100 / columns}%`;
+  const itemSize = `${100 / columns}%` as DimensionValue;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {

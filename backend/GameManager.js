@@ -110,24 +110,29 @@ class GameManager {
 
   /**
    * Reset game for play again - reset scores, rounds, and game state
+   * Only resets if game is finished, to avoid race conditions with multiple players
    */
   resetGame(pin) {
     const room = this.rooms.get(pin);
     if (!room) return false;
 
-    room.gameState = "lobby";
-    room.currentRound = 0;
-    room.scores.clear();
-    room.roundGuesses.clear();
-    room.usedMediaIndices.clear();
-    room.mediaPool = [];
+    // Only reset if not already in lobby (avoid clearing media pool if someone else reset)
+    if (room.gameState !== "lobby") {
+        room.gameState = "lobby";
+        room.currentRound = 0;
+        room.scores.clear();
+        room.roundGuesses.clear();
+        room.usedMediaIndices.clear();
+        room.mediaPool = [];
+        
+        // Reset all player scores
+        room.players.forEach((player) => {
+          player.score = 0;
+        });
+        return true;
+    }
     
-    // Reset all player scores
-    room.players.forEach((player) => {
-      player.score = 0;
-    });
-
-    return true;
+    return false;
   }
 
   /**

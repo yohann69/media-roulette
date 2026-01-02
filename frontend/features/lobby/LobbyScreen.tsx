@@ -115,7 +115,8 @@ export function LobbyScreen() {
     if (!pin) return;
 
     setIsStarting(true);
-    const success = await startGame(pin);
+    // Proceed with reduced rounds
+    const success = await startGame(pin, { ...settings, rounds: totalMedia });
     setIsStarting(false);
 
     if (!success) {
