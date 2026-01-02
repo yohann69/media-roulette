@@ -68,7 +68,7 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
           {
             fieldName: "media",
             httpMethod: "POST",
-            uploadType: FileSystem.UploadType.MULTIPART,
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
           }
         );
 

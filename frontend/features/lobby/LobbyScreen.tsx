@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { GamePIN } from "../../components/molecules/GamePIN";
 import { PlayerList } from "../../components/molecules/PlayerList";
 import { GameSettingsDisplay } from "../../components/molecules/GameSettingsDisplay";
