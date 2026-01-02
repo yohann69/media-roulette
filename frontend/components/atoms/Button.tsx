@@ -55,26 +55,25 @@ export function Button({
         opacity,
     };
 
-    const bgColor = variant === "primary" ? "bg-blue-600" : "bg-purple-600";
+    const bgColor = variant === "primary" ? "bg-primary" : "bg-secondary";
     const textColor = "text-white";
 
     return (
-        <Animated.View style={animatedStyle}>
+        <Animated.View style={animatedStyle} className="w-full">
             <TouchableOpacity
                 onPress={onPress}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 disabled={disabled || loading}
-                className={`${bgColor} py-4 px-8 rounded-2xl items-center justify-center min-w-[200px]`}
+                className={`${bgColor} py-6 px-8 rounded-2xl items-center justify-center ${disabled ? "opacity-50" : ""}`}
                 activeOpacity={0.8}
             >
                 {loading ? (
                     <ActivityIndicator color="white" />
                 ) : (
-                    <Text className={`${textColor} text-lg font-bold`}>{title}</Text>
+                    <Text className={`${textColor} text-xl font-bold`}>{title}</Text>
                 )}
             </TouchableOpacity>
         </Animated.View>
     );
 }
-

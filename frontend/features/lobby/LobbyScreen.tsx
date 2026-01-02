@@ -58,50 +58,36 @@ export function LobbyScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: "#000000" }}
-      contentContainerStyle={{ padding: 24 }}
-    >
-      <Text
-        style={{
-          color: "#ffffff",
-          fontSize: 32,
-          fontWeight: "bold",
-          marginBottom: 8,
-          textAlign: "center",
-        }}
-      >
-        Game Lobby
-      </Text>
-
-      <GamePIN pin={gamePIN} />
-
-      <View style={{ marginBottom: 32 }}>
-        <Text
-          style={{
-            color: "#ffffff",
-            fontSize: 20,
-            fontWeight: "600",
-            marginBottom: 16,
-          }}
-        >
-          Players ({players.length})
+    <View className="flex-1 bg-black">
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
+        <Text className="text-white text-4xl font-bold mb-2 text-center">
+          Game Lobby
         </Text>
-        <PlayerList players={players} currentUserId="current" />
+
+        <GamePIN pin={gamePIN} />
+
+        <View className="mb-8">
+          <Text className="text-white text-xl font-semibold mb-4">
+            Players ({players.length})
+          </Text>
+          <PlayerList players={players} currentUserId="current" />
+        </View>
+
+        <GameSettingsDisplay settings={settings} />
+
+        <WarningBanner
+          totalMedia={totalMedia}
+          requiredRounds={settings.rounds}
+        />
+      </ScrollView>
+
+      <View className="px-6 py-4 border-t border-gray-800 bg-black">
+        <Button
+          title="Start Game"
+          onPress={handleStartGame}
+          variant="primary"
+        />
       </View>
-
-      <GameSettingsDisplay settings={settings} />
-
-      <WarningBanner
-        totalMedia={totalMedia}
-        requiredRounds={settings.rounds}
-      />
-
-      <Button
-        title="Start Game"
-        onPress={handleStartGame}
-        variant="primary"
-      />
 
       <WarningModal
         visible={showWarningModal}
@@ -111,7 +97,6 @@ export function LobbyScreen() {
         totalMedia={totalMedia}
         requiredRounds={settings.rounds}
       />
-    </ScrollView>
+    </View>
   );
 }
-

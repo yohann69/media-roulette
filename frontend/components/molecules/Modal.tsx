@@ -22,45 +22,13 @@ export function CustomModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 20,
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: "#111827",
-            borderRadius: 20,
-            padding: 24,
-            width: "100%",
-            maxWidth: 400,
-            maxHeight: "80%",
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 20,
-            }}
-          >
-            <Text
-              style={{
-                color: "#ffffff",
-                fontSize: 24,
-                fontWeight: "bold",
-              }}
-            >
-              {title}
-            </Text>
+      <View className="flex-1 bg-black/80 justify-center items-center p-5">
+        <View className="bg-gray-800 rounded-3xl p-6 w-full max-w-md max-h-[80%]">
+          <View className="flex-row justify-between items-center mb-5">
+            <Text className="text-white text-2xl font-bold">{title}</Text>
             {showCloseButton && (
               <TouchableOpacity onPress={onClose}>
-                <Text style={{ color: "#9ca3af", fontSize: 24 }}>×</Text>
+                <Text className="text-gray-400 text-3xl">×</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -72,4 +40,3 @@ export function CustomModal({
     </Modal>
   );
 }
-

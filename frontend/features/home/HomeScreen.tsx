@@ -1,4 +1,4 @@
-import { View, Text, Animated } from "react-native";
+import { View, Text, Animated, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Input } from "../../components/atoms/Input";
@@ -146,41 +146,44 @@ export function HomeScreen() {
     }
 
     return (
-        <View className="flex-1 bg-black px-6 py-12">
-            <Animated.View style={titleStyle} className="mb-12 items-center">
-                <Text className="text-white text-4xl font-bold mb-2">
-                    PhotoRoulette
-                </Text>
-                <Text className="text-gray-400 text-lg">Let's play together!</Text>
-            </Animated.View>
+        <View className="flex-1 bg-black">
+            <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 48 }}>
+                <Animated.View style={titleStyle} className="mb-12 items-center">
+                    <Text className="text-white text-4xl font-bold mb-2">
+                        PhotoRoulette
+                    </Text>
+                    <Text className="text-gray-400 text-lg">Let's play together!</Text>
+                </Animated.View>
 
-            <Animated.View style={inputStyle} className="mb-8">
-                <Input
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder="Enter your username"
-                    label="Username"
-                    autoFocus={!username}
-                />
-            </Animated.View>
+                <Animated.View style={inputStyle} className="mb-8">
+                    <Input
+                        value={username}
+                        onChangeText={setUsername}
+                        placeholder="Enter your username"
+                        label="Username"
+                        autoFocus={!username}
+                    />
+                </Animated.View>
+            </ScrollView>
 
-            <Animated.View style={button1Style} className="mb-4 items-center">
-                <Button
-                    title="Create Game"
-                    onPress={handleCreateGame}
-                    disabled={!isUsernameValid}
-                    variant="primary"
-                />
-            </Animated.View>
-
-            <Animated.View style={button2Style} className="items-center">
-                <Button
-                    title="Join Game"
-                    onPress={handleJoinGame}
-                    disabled={!isUsernameValid}
-                    variant="secondary"
-                />
-            </Animated.View>
+            <View className="px-6 py-4 border-t border-gray-800 bg-black">
+                <Animated.View style={button1Style} className="mb-3">
+                    <Button
+                        title="Create Game"
+                        onPress={handleCreateGame}
+                        disabled={!isUsernameValid}
+                        variant="primary"
+                    />
+                </Animated.View>
+                <Animated.View style={button2Style}>
+                    <Button
+                        title="Join Game"
+                        onPress={handleJoinGame}
+                        disabled={!isUsernameValid}
+                        variant="secondary"
+                    />
+                </Animated.View>
+            </View>
 
             <GameSettingsModal
                 visible={showSettingsModal}
@@ -190,4 +193,3 @@ export function HomeScreen() {
         </View>
     );
 }
-

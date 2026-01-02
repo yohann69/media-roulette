@@ -1,5 +1,5 @@
-import { View, Text, TouchableOpacity, PanResponder } from "react-native";
-import { useRef, useState } from "react";
+import { View, Text, TouchableOpacity } from "react-native";
+import { useState } from "react";
 
 interface SliderProps {
   label: string;
@@ -48,90 +48,42 @@ export function CustomSlider({
   };
 
   return (
-    <View style={{ marginBottom: 24 }}>
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 8,
-        }}
-      >
-        <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "600" }}>
-          {label}
-        </Text>
-        <Text style={{ color: "#9ca3af", fontSize: 16, fontWeight: "500" }}>
-          {value}
-        </Text>
+    <View className="mb-6">
+      <View className="flex-row justify-between items-center mb-2">
+        <Text className="text-white text-base font-semibold">{label}</Text>
+        <Text className="text-gray-400 text-base font-medium">{value}</Text>
       </View>
       <TouchableOpacity
         activeOpacity={1}
         onLayout={handleLayout}
         onPress={handlePress}
-        style={{
-          width: "100%",
-          height: 40,
-          justifyContent: "center",
-        }}
+        className="w-full h-10 justify-center"
       >
-        <View
-          style={{
-            height: 4,
-            backgroundColor: "#374151",
-            borderRadius: 2,
-            position: "relative",
-          }}
-        >
+        <View className="h-1 bg-gray-700 rounded-sm relative">
           <View
-            style={{
-              position: "absolute",
-              left: 0,
-              width: `${getPercentage()}%`,
-              height: 4,
-              backgroundColor: "#3b82f6",
-              borderRadius: 2,
-            }}
+            className="absolute left-0 h-1 bg-primary rounded-sm"
+            style={{ width: `${getPercentage()}%` }}
           />
           <View
-            style={{
-              position: "absolute",
-              left: `${getPercentage()}%`,
-              marginLeft: -8,
-              width: 16,
-              height: 16,
-              borderRadius: 8,
-              backgroundColor: "#3b82f6",
-              top: -6,
-            }}
+            className="absolute w-4 h-4 bg-primary rounded-full -top-1.5"
+            style={{ left: `${getPercentage()}%`, marginLeft: -8 }}
           />
         </View>
       </TouchableOpacity>
       {options && (
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginTop: 8,
-          }}
-        >
+        <View className="flex-row justify-between mt-2">
           {options.map((option) => (
             <TouchableOpacity
               key={option}
               onPress={() => onValueChange(option)}
-              style={{
-                paddingVertical: 4,
-                paddingHorizontal: 8,
-                borderRadius: 4,
-                backgroundColor:
-                  value === option ? "rgba(59, 130, 246, 0.2)" : "transparent",
-              }}
+              className={`py-1 px-2 rounded ${
+                value === option ? "bg-primary/20" : "bg-transparent"
+              }`}
             >
               <Text
-                style={{
-                  color: value === option ? "#3b82f6" : "#6b7280",
-                  fontSize: 12,
-                  fontWeight: value === option ? "600" : "400",
-                }}
+                className={`${
+                  value === option ? "text-primary" : "text-gray-500"
+                } text-xs ${value === option ? "font-semibold" : "font-normal"}`}
               >
                 {option}
               </Text>

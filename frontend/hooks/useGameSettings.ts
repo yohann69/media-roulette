@@ -13,7 +13,7 @@ export function useGameSettings() {
   const [settings, setSettings] = useState<GameSettings>({
     rounds: 25,
     timer: 5,
-    mode: "Mix",
+    mode: "Photo",
   });
 
   const saveSettings = async (newSettings: GameSettings) => {
@@ -33,4 +33,3 @@ export function useGameSettings() {
     saveSettings,
   };
 }
-

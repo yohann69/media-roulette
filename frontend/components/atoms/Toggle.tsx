@@ -9,37 +9,21 @@ interface ToggleProps {
 
 export function Toggle({ label, options, value, onValueChange }: ToggleProps) {
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "600", marginBottom: 12 }}>
-        {label}
-      </Text>
-      <View
-        style={{
-          flexDirection: "row",
-          backgroundColor: "#1f2937",
-          borderRadius: 12,
-          padding: 4,
-        }}
-      >
+    <View className="mb-6">
+      <Text className="text-white text-base font-semibold mb-3">{label}</Text>
+      <View className="flex-row bg-gray-700 rounded-xl p-1">
         {options.map((option) => (
           <TouchableOpacity
             key={option}
             onPress={() => onValueChange(option)}
-            style={{
-              flex: 1,
-              paddingVertical: 12,
-              paddingHorizontal: 16,
-              borderRadius: 8,
-              backgroundColor: value === option ? "#3b82f6" : "transparent",
-              alignItems: "center",
-            }}
+            className={`flex-1 py-3 px-4 rounded-lg ${
+              value === option ? "bg-primary" : "bg-transparent"
+            } items-center`}
           >
             <Text
-              style={{
-                color: value === option ? "#ffffff" : "#9ca3af",
-                fontSize: 14,
-                fontWeight: value === option ? "600" : "400",
-              }}
+              className={`${
+                value === option ? "text-white" : "text-gray-400"
+              } text-sm ${value === option ? "font-semibold" : "font-normal"}`}
             >
               {option}
             </Text>
@@ -49,4 +33,3 @@ export function Toggle({ label, options, value, onValueChange }: ToggleProps) {
     </View>
   );
 }
-

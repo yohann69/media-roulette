@@ -6,35 +6,26 @@ interface GameSettingsDisplayProps {
 }
 
 export function GameSettingsDisplay({ settings }: GameSettingsDisplayProps) {
+  const getModeEmoji = (mode: string) => {
+    if (mode === "Photo") return "📸";
+    if (mode === "Video") return "🎞️";
+    return "🎉";
+  };
+
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Text
-        style={{
-          color: "#9ca3af",
-          fontSize: 14,
-          marginBottom: 8,
-        }}
-      >
-        Game Settings
-      </Text>
-      <View
-        style={{
-          backgroundColor: "#1f2937",
-          borderRadius: 12,
-          padding: 16,
-        }}
-      >
-        <Text style={{ color: "#ffffff", fontSize: 14, marginBottom: 4 }}>
+    <View className="mb-4">
+      <Text className="text-gray-400 text-sm mb-2">Game Settings</Text>
+      <View className="bg-gray-800 rounded-xl p-4">
+        <Text className="text-white text-sm mb-1">
           Rounds: {settings.rounds}
         </Text>
-        <Text style={{ color: "#ffffff", fontSize: 14, marginBottom: 4 }}>
+        <Text className="text-white text-sm mb-1">
           Timer: {settings.timer}s
         </Text>
-        <Text style={{ color: "#ffffff", fontSize: 14 }}>
-          Mode: {settings.mode}
+        <Text className="text-white text-sm">
+          Mode: {getModeEmoji(settings.mode)} {settings.mode}
         </Text>
       </View>
     </View>
   );
 }
-

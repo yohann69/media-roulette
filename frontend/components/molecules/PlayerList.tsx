@@ -13,49 +13,25 @@ interface PlayerListProps {
 
 export function PlayerList({ players, currentUserId }: PlayerListProps) {
   return (
-    <ScrollView style={{ maxHeight: 200 }}>
+    <ScrollView className="max-h-48">
       {players.map((player) => (
         <View
           key={player.id}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingVertical: 12,
-            paddingHorizontal: 16,
-            backgroundColor: "#1f2937",
-            borderRadius: 8,
-            marginBottom: 8,
-          }}
+          className="flex-row items-center py-3 px-4 bg-gray-800 rounded-lg mb-2"
         >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: "#3b82f6",
-              alignItems: "center",
-              justifyContent: "center",
-              marginRight: 12,
-            }}
-          >
-            <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "600" }}>
+          <View className="w-10 h-10 rounded-full bg-primary items-center justify-center mr-3">
+            <Text className="text-white text-base font-semibold">
               {player.name.charAt(0).toUpperCase()}
             </Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: "#ffffff",
-                fontSize: 16,
-                fontWeight: "500",
-              }}
-            >
+          <View className="flex-1">
+            <Text className="text-white text-base font-medium">
               {player.name}
               {player.isHost && (
-                <Text style={{ color: "#9ca3af", fontSize: 12 }}> (Host)</Text>
+                <Text className="text-gray-400 text-xs"> (Host)</Text>
               )}
               {player.id === currentUserId && (
-                <Text style={{ color: "#3b82f6", fontSize: 12 }}> (You)</Text>
+                <Text className="text-primary text-xs"> (You)</Text>
               )}
             </Text>
           </View>
@@ -64,4 +40,3 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
     </ScrollView>
   );
 }
-

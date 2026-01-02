@@ -9,30 +9,14 @@ export function GamePIN({ pin }: GamePINProps) {
   const qrValue = `photoroulette://join?pin=${pin}`;
 
   return (
-    <View style={{ alignItems: "center", marginBottom: 32 }}>
-      <Text
-        style={{
-          color: "#9ca3af",
-          fontSize: 16,
-          marginBottom: 16,
-          textAlign: "center",
-        }}
-      >
+    <View className="items-center mb-8">
+      <Text className="text-gray-400 text-base mb-4 text-center">
         Share this PIN or scan the QR code
       </Text>
-      <Text
-        style={{
-          color: "#3b82f6",
-          fontSize: 48,
-          fontWeight: "bold",
-          letterSpacing: 8,
-          marginBottom: 24,
-        }}
-      >
+      <Text className="text-primary text-5xl font-bold tracking-wider mb-6">
         {pin}
       </Text>
       <QRCode value={qrValue} size={180} />
     </View>
   );
 }
-

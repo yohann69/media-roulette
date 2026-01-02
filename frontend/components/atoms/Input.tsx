@@ -34,7 +34,7 @@ export function Input({
         onBlur={() => setIsFocused(false)}
         autoFocus={autoFocus}
         className={`bg-gray-800 text-white px-4 py-3 rounded-xl border-2 ${
-          isFocused ? "border-blue-500" : "border-gray-700"
+          isFocused ? "border-primary" : "border-gray-700"
         } ${error ? "border-red-500" : ""}`}
         style={{ fontSize: 16 }}
       />
@@ -42,5 +42,3 @@ export function Input({
     </View>
   );
 }
-
-

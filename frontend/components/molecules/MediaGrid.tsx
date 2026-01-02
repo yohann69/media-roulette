@@ -38,7 +38,7 @@ export function MediaGrid({
               />
             ) : (
               <View className="w-full h-full items-center justify-center bg-gray-900">
-                <View className="w-12 h-12 rounded-full bg-purple-600 items-center justify-center">
+                <View className="w-12 h-12 rounded-full bg-secondary items-center justify-center">
                   <View className="w-0 h-0 border-l-[12px] border-l-white border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent ml-1" />
                 </View>
               </View>
@@ -49,5 +49,3 @@ export function MediaGrid({
     </View>
   );
 }
-
-

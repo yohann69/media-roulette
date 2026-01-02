@@ -26,28 +26,14 @@ export function WarningModal({
       title="Insufficient Media"
       showCloseButton={true}
     >
-      <Text
-        style={{
-          color: "#ffffff",
-          fontSize: 16,
-          marginBottom: 24,
-          textAlign: "center",
-        }}
-      >
+      <Text className="text-white text-base mb-6 text-center">
         You don't have enough media for {requiredRounds} rounds.
       </Text>
-      <Text
-        style={{
-          color: "#9ca3af",
-          fontSize: 14,
-          marginBottom: 24,
-          textAlign: "center",
-        }}
-      >
+      <Text className="text-gray-400 text-sm mb-6 text-center">
         Available: {totalMedia} media items {"\n"}
         Required: {requiredRounds} rounds
       </Text>
-      <View style={{ gap: 12 }}>
+      <View className="gap-3">
         <Button
           title="Wait for More Players"
           onPress={onWait}
@@ -62,4 +48,3 @@ export function WarningModal({
     </CustomModal>
   );
 }
-

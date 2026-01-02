@@ -14,19 +14,11 @@ export function WarningBanner({
   }
 
   return (
-    <View
-      style={{
-        backgroundColor: "#7c2d12",
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 16,
-      }}
-    >
-      <Text style={{ color: "#fca5a5", fontSize: 14, textAlign: "center" }}>
+    <View className="bg-orange-900 rounded-xl p-3 mb-4">
+      <Text className="text-orange-200 text-sm text-center">
         ⚠️ Not enough media: {totalMedia} available, {requiredRounds} rounds
         needed
       </Text>
     </View>
   );
 }
-
