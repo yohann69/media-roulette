@@ -71,12 +71,21 @@ export function LobbyScreen() {
       return;
     }
 
+    console.log(`Attempting to start game with PIN ${pin}`);
     setIsStarting(true);
-    const success = await startGame(pin);
-    setIsStarting(false);
+    
+    try {
+      const success = await startGame(pin);
+      setIsStarting(false);
 
-    if (!success) {
-      console.error("Failed to start game");
+      if (!success) {
+        console.error("Failed to start game - promise returned false");
+      } else {
+        console.log("Game started successfully");
+      }
+    } catch (error) {
+      console.error("Error in handleStartGame:", error);
+      setIsStarting(false);
     }
   };
 

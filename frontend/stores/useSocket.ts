@@ -154,13 +154,33 @@ function createGameHandlers(get: any, set: any) {
 
         startGame: async (pin: string): Promise<boolean> => {
             const { socket } = get();
-            if (!socket?.connected) return false;
+            if (!socket?.connected) {
+                console.error("Socket not connected when trying to start game");
+                return false;
+            }
+
+            console.log(`Starting game for PIN ${pin}`);
 
             return new Promise((resolve) => {
+                const timeout = setTimeout(() => {
+                    console.error("Timeout waiting for game-started response");
+                    resolve(false);
+                }, 10000); // Increased timeout to 10 seconds
+
                 socket.emit("start-game", { pin });
-                socket.once("game-started", () => resolve(true));
-                socket.once("error", () => resolve(false));
-                setTimeout(() => resolve(false), 5000);
+                console.log("Emitted start-game event");
+
+                socket.once("game-started", (data: any) => {
+                    clearTimeout(timeout);
+                    console.log("Game started event received:", data);
+                    resolve(true);
+                });
+
+                socket.once("error", (error: any) => {
+                    clearTimeout(timeout);
+                    console.error("Error starting game:", error);
+                    resolve(false);
+                });
             });
         },
 

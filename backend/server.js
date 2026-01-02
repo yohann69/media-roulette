@@ -99,29 +99,45 @@ io.on("connection", (socket) => {
 
             if (!room) {
                 socket.emit("error", { message: "Room not found" });
+                console.error(`Room ${pin} not found for socket ${socket.id}`);
                 return;
             }
 
-            if (room.hostSocketId !== socket.id) {
+            // Check if user is host (by socket ID or by checking if they're in the players list as host)
+            const isHost = room.hostSocketId === socket.id ||
+                room.players.some(p => p.socketId === socket.id && p.isHost);
+
+            if (!isHost) {
                 socket.emit("error", { message: "Only host can start the game" });
+                console.error(`Socket ${socket.id} attempted to start game but is not host. Host: ${room.hostSocketId}`);
                 return;
             }
 
             if (room.gameState !== "lobby") {
                 socket.emit("error", { message: "Game already started" });
+                console.error(`Game ${pin} already in state: ${room.gameState}`);
                 return;
             }
 
+            console.log(`Starting game ${pin} for host ${socket.id}`);
             gameManager.updateGameState(pin, "playing");
             gameManager.setCurrentRound(pin, 1);
+
+            // Emit game-started event to all players in the room
+            io.to(pin).emit("game-started", {
+                currentRound: 1,
+                totalRounds: room.settings.rounds,
+            });
+            console.log(`Emitted game-started event to room ${pin}`);
 
             // Start first round
             startNewRound(pin, io, gameManager, roundStartTimes);
 
-            console.log(`Game ${pin} started`);
+            console.log(`Game ${pin} started successfully`);
         } catch (error) {
             socket.emit("error", { message: "Failed to start game" });
             console.error("Error starting game:", error);
+            console.error("Error stack:", error.stack);
         }
     });
 
