@@ -1,13 +1,15 @@
 import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMediaFetcher } from "../../hooks/useMediaFetcher";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
+import { useSocket } from "../../stores/useSocket";
 
 export function SelectionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
+  const { setMediaPool } = useSocket();
   const {
     media,
     loading,
@@ -20,14 +22,13 @@ export function SelectionScreen() {
 
   const isHost = params.isHost === "true";
   const pin = params.pin || "";
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const initializeMedia = async () => {
       if (permissionGranted && media.length === 0 && !loading) {
-        // Auto-fetch on mount if permission is already granted
         await fetchMedia();
       } else if (!permissionGranted && !loading) {
-        // Request permission on mount
         const granted = await requestPermission();
         if (granted) {
           await fetchMedia();
@@ -39,10 +40,29 @@ export function SelectionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleReady = () => {
+  const handleReady = async () => {
+    if (!pin) {
+      console.error("No PIN available");
+      return;
+    }
+
+    setIsUploading(true);
+
+    // Upload media pool to server (only for host)
+    if (isHost) {
+      const success = await setMediaPool(pin, media);
+      if (!success) {
+        console.error("Failed to upload media pool");
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    setIsUploading(false);
+
     // Navigate to lobby with host/joiner status
     if (isHost) {
-      router.push({ pathname: "/lobby", params: { isHost: "true" } });
+      router.push({ pathname: "/lobby", params: { isHost: "true", pin } });
     } else {
       router.push({ pathname: "/lobby", params: { isHost: "false", pin } });
     }
@@ -136,15 +156,15 @@ export function SelectionScreen() {
               title="Reroll"
               onPress={handleReroll}
               variant="secondary"
-              disabled={loading}
+              disabled={loading || isUploading}
             />
           </View>
           <View className="flex-1">
             <Button
-              title="Ready"
+              title={isUploading ? "Uploading..." : "Ready"}
               onPress={handleReady}
               variant="primary"
-              disabled={loading || media.length === 0}
+              disabled={loading || media.length === 0 || isUploading}
             />
           </View>
         </View>

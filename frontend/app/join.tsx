@@ -1,22 +1,42 @@
 import { View, Text, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "../components/atoms/Input";
 import { Button } from "../components/atoms/Button";
 import { QRScanner } from "../components/molecules/QRScanner";
+import { useSocket } from "../stores/useSocket";
+import { useUsername } from "../hooks/useUsername";
 
 export default function JoinScreen() {
   const router = useRouter();
+  const { username } = useUsername();
+  const { connect, joinGame, isConnected } = useSocket();
   const [pin, setPin] = useState("");
   const [showScanner, setShowScanner] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
 
-  const handleJoin = () => {
+  useEffect(() => {
+    connect();
+  }, [connect]);
+
+  const handleJoin = async () => {
     if (pin.trim().length === 6 && /^\d{6}$/.test(pin)) {
-      // Navigate to selection screen as joiner with PIN
-      router.push({ 
-        pathname: "/selection", 
-        params: { isHost: "false", pin: pin.trim() } 
-      });
+      setIsJoining(true);
+      setJoinError("");
+
+      const success = await joinGame(pin.trim(), username || "Player");
+      
+      if (success) {
+        // Navigate to selection screen as joiner with PIN
+        router.push({ 
+          pathname: "/selection", 
+          params: { isHost: "false", pin: pin.trim() } 
+        });
+      } else {
+        setIsJoining(false);
+        setJoinError("Failed to join game. Please check the PIN.");
+      }
     }
   };
 
@@ -37,12 +57,24 @@ export default function JoinScreen() {
           Enter the game PIN or scan the QR code
         </Text>
 
+        {!isConnected && (
+          <Text className="text-orange-400 text-sm text-center mb-4">
+            Connecting to server...
+          </Text>
+        )}
+
+        {joinError && (
+          <Text className="text-red-400 text-sm text-center mb-4">
+            {joinError}
+          </Text>
+        )}
+
         <Input
           value={pin}
           onChangeText={(text) => {
-            // Only allow digits and limit to 6 characters
             const digitsOnly = text.replace(/\D/g, "").slice(0, 6);
             setPin(digitsOnly);
+            setJoinError("");
           }}
           placeholder="000000"
           label="Game PIN (6 digits)"
@@ -54,15 +86,16 @@ export default function JoinScreen() {
             title="📷 Scan QR Code"
             onPress={() => setShowScanner(true)}
             variant="secondary"
+            disabled={!isConnected}
           />
         </View>
       </ScrollView>
 
       <View className="px-6 py-4 border-t border-gray-800 bg-black">
         <Button
-          title="Join"
+          title={isJoining ? "Joining..." : "Join"}
           onPress={handleJoin}
-          disabled={!isValidPIN}
+          disabled={!isValidPIN || isJoining || !isConnected}
           variant="primary"
         />
         <View className="mt-3">

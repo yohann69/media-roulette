@@ -6,12 +6,23 @@ import { Button } from "../../components/atoms/Button";
 import { useUsername } from "../../hooks/useUsername";
 import { GameSettingsModal } from "../game-settings/GameSettingsModal";
 import { useGameSettings, GameSettings } from "../../hooks/useGameSettings";
+import { useSocket } from "../../stores/useSocket";
 
 export function HomeScreen() {
     const router = useRouter();
     const { username, setUsername, isLoading } = useUsername();
     const { saveSettings } = useGameSettings();
+    const { connect, createGame, isConnected } = useSocket();
     const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [isCreatingGame, setIsCreatingGame] = useState(false);
+
+    // Connect socket on mount
+    useEffect(() => {
+        connect();
+        return () => {
+            // Cleanup on unmount if needed
+        };
+    }, [connect]);
 
     // Animation values
     const titleOpacity = useRef(new Animated.Value(0)).current;
@@ -25,7 +36,6 @@ export function HomeScreen() {
 
     useEffect(() => {
         if (!isLoading) {
-            // Animate title with delay
             setTimeout(() => {
                 Animated.parallel([
                     Animated.spring(titleOpacity, {
@@ -43,7 +53,6 @@ export function HomeScreen() {
                 ]).start();
             }, 100);
 
-            // Animate input with delay
             setTimeout(() => {
                 Animated.parallel([
                     Animated.spring(inputOpacity, {
@@ -61,7 +70,6 @@ export function HomeScreen() {
                 ]).start();
             }, 200);
 
-            // Animate buttons with delay
             setTimeout(() => {
                 Animated.parallel([
                     Animated.spring(button1Opacity, {
@@ -126,10 +134,24 @@ export function HomeScreen() {
         }
     };
 
-    const handleSettingsConfirm = (settings: GameSettings) => {
+    const handleSettingsConfirm = async (settings: GameSettings) => {
         saveSettings(settings);
-        // Navigate to selection as host
-        router.push({ pathname: "/selection", params: { isHost: "true" } });
+        setIsCreatingGame(true);
+
+        // Create game via socket
+        const pin = await createGame(username || "Player", settings);
+        
+        if (pin) {
+            // Navigate to selection as host with PIN
+            router.push({ 
+                pathname: "/selection", 
+                params: { isHost: "true", pin } 
+            });
+        } else {
+            setIsCreatingGame(false);
+            // Show error (could add error state here)
+            console.error("Failed to create game");
+        }
     };
 
     const handleJoinGame = () => {
@@ -154,6 +176,11 @@ export function HomeScreen() {
                         PhotoRoulette
                     </Text>
                     <Text className="text-gray-400 text-lg">Let's play together!</Text>
+                    {!isConnected && (
+                        <Text className="text-orange-400 text-sm mt-2">
+                            Connecting to server...
+                        </Text>
+                    )}
                 </Animated.View>
 
                 <Animated.View style={inputStyle} className="mb-8">
@@ -170,9 +197,9 @@ export function HomeScreen() {
             <View className="px-6 py-4 border-t border-gray-800 bg-black">
                 <Animated.View style={button1Style} className="mb-3">
                     <Button
-                        title="Create Game"
+                        title={isCreatingGame ? "Creating..." : "Create Game"}
                         onPress={handleCreateGame}
-                        disabled={!isUsernameValid}
+                        disabled={!isUsernameValid || isCreatingGame || !isConnected}
                         variant="primary"
                     />
                 </Animated.View>
@@ -180,7 +207,7 @@ export function HomeScreen() {
                     <Button
                         title="Join Game"
                         onPress={handleJoinGame}
-                        disabled={!isUsernameValid}
+                        disabled={!isUsernameValid || !isConnected}
                         variant="secondary"
                     />
                 </Animated.View>

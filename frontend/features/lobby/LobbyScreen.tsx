@@ -9,7 +9,7 @@ import { WarningModal } from "../../components/molecules/WarningModal";
 import { Button } from "../../components/atoms/Button";
 import { useUsername } from "../../hooks/useUsername";
 import { useGameSettings } from "../../hooks/useGameSettings";
-import { useMediaFetcher } from "../../hooks/useMediaFetcher";
+import { useSocket } from "../../stores/useSocket";
 
 interface Player {
   id: string;
@@ -17,54 +17,80 @@ interface Player {
   isHost?: boolean;
 }
 
-function generateGamePIN(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 export function LobbyScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { username } = useUsername();
   const { settings } = useGameSettings();
-  const { media } = useMediaFetcher(20, "mixed");
-  const [gamePIN, setGamePIN] = useState("");
+  const { room, startGame, onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted } = useSocket();
   const [showWarningModal, setShowWarningModal] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
   const isHost = params.isHost === "true";
-  const joinedPin = params.pin || "";
+  const pin = params.pin || room?.pin || "";
 
+  // Set up socket event listeners
   useEffect(() => {
-    if (isHost) {
-      // Host generates a new PIN
-      setGamePIN(generateGamePIN());
-    } else if (joinedPin) {
-      // Joiner uses the PIN they entered
-      setGamePIN(joinedPin);
-    }
-  }, [isHost, joinedPin]);
+    onPlayerJoined((data) => {
+      console.log("Player joined:", data);
+    });
 
-  const players: Player[] = [
-    { id: "current", name: username || "You", isHost: isHost },
-    { id: "bot1", name: "Bot Alice" },
-    { id: "bot2", name: "Bot Bob" },
-  ];
+    onPlayerLeft((data) => {
+      console.log("Player left:", data);
+    });
+
+    onGameStarted((data) => {
+      console.log("Game started:", data);
+      router.push("/game");
+    });
+
+    onRoomDeleted((data) => {
+      console.log("Room deleted:", data);
+      router.push("/");
+    });
+  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, router]);
+
+  // Convert socket players to UI format
+  const players: Player[] = room?.players.map((p) => ({
+    id: p.socketId,
+    name: p.name,
+    isHost: p.isHost,
+  })) || [];
 
   const totalMedia = players.length * 20;
   const canStartGame = totalMedia >= settings.rounds;
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     if (!canStartGame) {
       setShowWarningModal(true);
-    } else {
-      // Navigate to game screen
-      router.push("/game");
+      return;
+    }
+
+    if (!pin) {
+      console.error("No PIN available");
+      return;
+    }
+
+    setIsStarting(true);
+    const success = await startGame(pin);
+    setIsStarting(false);
+
+    if (!success) {
+      console.error("Failed to start game");
     }
   };
 
-  const handleProceedAnyway = () => {
+  const handleProceedAnyway = async () => {
     setShowWarningModal(false);
-    // Navigate to game with reduced rounds
-    router.push("/game");
+    if (!pin) return;
+
+    setIsStarting(true);
+    const success = await startGame(pin);
+    setIsStarting(false);
+
+    if (!success) {
+      console.error("Failed to start game");
+    }
   };
 
   return (
@@ -74,13 +100,16 @@ export function LobbyScreen() {
           Game Lobby
         </Text>
 
-        {isHost && <GamePIN pin={gamePIN} />}
+        {isHost && pin && <GamePIN pin={pin} />}
 
         <View className="mb-8">
           <Text className="text-white text-xl font-semibold mb-4">
             Players ({players.length})
           </Text>
-          <PlayerList players={players} currentUserId="current" />
+          <PlayerList 
+            players={players} 
+            currentUserId={room?.players.find(p => p.name === username)?.socketId || ""} 
+          />
         </View>
 
         <GameSettingsDisplay settings={settings} />
@@ -94,9 +123,10 @@ export function LobbyScreen() {
       {isHost && (
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
           <Button
-            title="Start Game"
+            title={isStarting ? "Starting..." : "Start Game"}
             onPress={handleStartGame}
             variant="primary"
+            disabled={isStarting}
           />
         </View>
       )}
