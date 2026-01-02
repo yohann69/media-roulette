@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { CountdownTimer } from "../../components/molecules/CountdownTimer";
-import { MediaDisplay } from "../../components/molecules/MediaDisplay";
-import { PlayerSelection } from "../../components/molecules/PlayerSelection";
-import { ResultDisplay } from "../../components/molecules/ResultDisplay";
+import { RevealView } from "../../components/organisms/RevealView";
+import { ResultView } from "../../components/organisms/ResultView";
+import { InterimLeaderboard } from "../../components/molecules/InterimLeaderboard";
+import { Podium } from "../../components/molecules/Podium";
 import { Button } from "../../components/atoms/Button";
 import { useGameSettings } from "../../hooks/useGameSettings";
 import { useUsername } from "../../hooks/useUsername";
+import { useGameScores } from "../../hooks/useGameScores";
 
 interface Player {
   id: string;
@@ -21,9 +22,8 @@ interface MediaItem {
   ownerId: string;
 }
 
-type GameState = "reveal" | "result";
+type GameState = "reveal" | "result" | "leaderboard" | "podium";
 
-// Mock media pool - in production this would come from the actual selected media
 function generateMockMedia(players: Player[], count: number): MediaItem[] {
   const media: MediaItem[] = [];
   for (let i = 0; i < count; i++) {
@@ -48,37 +48,50 @@ export function GameScreen() {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [timeExpired, setTimeExpired] = useState(false);
   const [timerActive, setTimerActive] = useState(true);
-
-  // Mock players
+  const [roundStartTime, setRoundStartTime] = useState<number>(Date.now());
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const players: Player[] = [
     { id: "current", name: username || "You" },
     { id: "bot1", name: "Bot Alice" },
     { id: "bot2", name: "Bot Bob" },
   ];
 
-  // Generate mock media pool
+  const {
+    resetRoundScores,
+    updatePlayerScore,
+    simulateBotScores,
+    getPlayerScoresArray,
+  } = useGameScores(players);
+
   const mediaPool = useRef<MediaItem[]>(
     generateMockMedia(players, settings.rounds * players.length)
   ).current;
 
-  // Get current media for this round
   const currentMedia = mediaPool[currentRound - 1];
   const correctPlayerId = currentMedia?.ownerId || players[0].id;
+  const isOwner = correctPlayerId === "current";
 
   useEffect(() => {
-    // Reset state for new round
     setGameState("reveal");
     setSelectedPlayer(null);
     setTimeExpired(false);
     setTimerActive(true);
+    setRoundStartTime(Date.now());
+    setShowLeaderboard(false);
+    resetRoundScores();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRound]);
 
   const handlePlayerSelect = (playerId: string) => {
     if (timeExpired || selectedPlayer) return;
+
+    const timeTaken = Date.now() - roundStartTime;
+    const isCorrect = playerId === correctPlayerId;
+
     setSelectedPlayer(playerId);
     setTimerActive(false);
+    updatePlayerScore("current", timeTaken, isCorrect);
 
-    // Transition to result after a brief delay
     setTimeout(() => {
       setGameState("result");
     }, 500);
@@ -88,7 +101,6 @@ export function GameScreen() {
     setTimeExpired(true);
     setTimerActive(false);
 
-    // If no selection was made, transition to result
     if (!selectedPlayer) {
       setTimeout(() => {
         setGameState("result");
@@ -96,76 +108,91 @@ export function GameScreen() {
     }
   };
 
-  const handleNextRound = () => {
+  const handleShowLeaderboard = () => {
+    simulateBotScores(correctPlayerId, settings.timer, players);
+    setShowLeaderboard(true);
+    setGameState("leaderboard");
+  };
+
+  const handleContinueFromLeaderboard = () => {
+    setShowLeaderboard(false);
     if (currentRound < settings.rounds) {
       setCurrentRound(currentRound + 1);
     } else {
-      // Game over - navigate back to lobby or show game over screen
-      router.back();
+      setGameState("podium");
     }
   };
 
+  const handleShowAgain = () => {
+    setGameState("reveal");
+    setSelectedPlayer(null);
+    setTimeExpired(false);
+    setTimerActive(true);
+    setRoundStartTime(Date.now());
+  };
+
+  const handlePlayAgain = () => {
+    router.push("/lobby");
+  };
+
+  const playerScoresArray = getPlayerScoresArray();
   const isDisabled = timeExpired || selectedPlayer !== null;
 
-  if (gameState === "reveal") {
+  if (gameState === "podium") {
     return (
       <View className="flex-1 bg-black">
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
-          <View className="items-center mb-6">
-            <Text className="text-white text-2xl font-bold mb-1">
-              Round {currentRound} of {settings.rounds}
-            </Text>
-            <Text className="text-gray-400 text-sm">Who took this photo?</Text>
-          </View>
-
-          <CountdownTimer
-            duration={settings.timer}
-            onComplete={handleTimeExpired}
-            isActive={timerActive}
+        <Podium players={playerScoresArray} />
+        <View className="px-6 py-4 border-t border-gray-800 bg-black">
+          <Button
+            title="Play Again"
+            onPress={handlePlayAgain}
+            variant="primary"
           />
-
-          {currentMedia && <MediaDisplay media={currentMedia} />}
-
-          <PlayerSelection
-            players={players}
-            selectedPlayer={selectedPlayer}
-            onSelect={handlePlayerSelect}
-            disabled={isDisabled}
-          />
-        </ScrollView>
+        </View>
       </View>
     );
   }
 
-  // Result state
-  return (
-    <View className="flex-1 bg-black">
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
-        <View className="items-center mb-6">
-          <Text className="text-white text-2xl font-bold mb-1">
-            Round {currentRound} of {settings.rounds}
-          </Text>
-          <Text className="text-gray-400 text-sm">Result</Text>
-        </View>
-
-        {currentMedia && <MediaDisplay media={currentMedia} />}
-
-        <ResultDisplay
-          selectedPlayer={selectedPlayer}
-          correctPlayerId={correctPlayerId}
-          players={players}
-        />
-      </ScrollView>
-
-      <View className="px-6 py-4 border-t border-gray-800 bg-black">
-        <Button
-          title={
-            currentRound < settings.rounds ? "Next Round" : "Game Over"
-          }
-          onPress={handleNextRound}
-          variant="primary"
+  if (gameState === "leaderboard") {
+    return (
+      <View className="flex-1 bg-black">
+        <InterimLeaderboard
+          visible={showLeaderboard}
+          players={playerScoresArray}
+          onContinue={handleContinueFromLeaderboard}
         />
       </View>
-    </View>
+    );
+  }
+
+  if (gameState === "reveal") {
+    return (
+      <RevealView
+        currentRound={currentRound}
+        totalRounds={settings.rounds}
+        timerDuration={settings.timer}
+        timerActive={timerActive}
+        currentMedia={currentMedia}
+        players={players}
+        selectedPlayer={selectedPlayer}
+        disabled={isDisabled}
+        onPlayerSelect={handlePlayerSelect}
+        onTimeExpired={handleTimeExpired}
+      />
+    );
+  }
+
+  return (
+    <ResultView
+      currentRound={currentRound}
+      totalRounds={settings.rounds}
+      currentMedia={currentMedia}
+      selectedPlayer={selectedPlayer}
+      correctPlayerId={correctPlayerId}
+      players={players}
+      isOwner={isOwner}
+      onShowAgain={handleShowAgain}
+      onContinue={handleShowLeaderboard}
+    />
   );
 }
