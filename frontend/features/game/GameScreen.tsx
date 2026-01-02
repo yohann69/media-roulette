@@ -130,7 +130,12 @@ export function GameScreen() {
   };
 
   const handlePlayAgain = () => {
-    router.push("/lobby");
+    // Navigate to selection screen to validate new media
+    // The first user to validate will become the new host
+    router.push({
+      pathname: "/selection",
+      params: { isHost: "false", pin, playAgain: "true" }
+    });
   };
 
   const isDisabled = timeExpired || selectedPlayer !== null;

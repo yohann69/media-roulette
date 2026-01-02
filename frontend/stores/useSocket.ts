@@ -27,7 +27,7 @@ interface SocketState {
     disconnect: () => void;
     createGame: (hostName: string, settings: any) => Promise<string | null>;
     joinGame: (pin: string, playerName: string) => Promise<boolean>;
-    setMediaPool: (pin: string, mediaPool: any[]) => Promise<boolean>;
+    setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
     startGame: (pin: string) => Promise<boolean>;
   submitGuess: (pin: string, targetUser: string, timestamp: number) => Promise<boolean>;
   continueGame: (pin: string) => Promise<boolean>;
@@ -35,11 +35,12 @@ interface SocketState {
   onPlayerJoined: (callback: (data: any) => void) => void;
     onPlayerLeft: (callback: (data: any) => void) => void;
     onGameStarted: (callback: (data: any) => void) => void;
-    onNewRound: (callback: (data: any) => void) => void;
-    onRoundResult: (callback: (data: any) => void) => void;
-    onGameFinished: (callback: (data: any) => void) => void;
-    onRoomDeleted: (callback: (data: any) => void) => void;
-    cleanup: () => void;
+           onNewRound: (callback: (data: any) => void) => void;
+           onRoundResult: (callback: (data: any) => void) => void;
+           onGameFinished: (callback: (data: any) => void) => void;
+           onRoomDeleted: (callback: (data: any) => void) => void;
+           onRoomUpdate: (callback: (data: any) => void) => void;
+           cleanup: () => void;
 }
 
 const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";
@@ -110,7 +111,7 @@ function createGameHandlers(get: any, set: any) {
             });
         },
 
-        setMediaPool: async (pin: string, mediaPool: any[]): Promise<boolean> => {
+        setMediaPool: async (pin: string, mediaPool: any[], playAgain?: boolean): Promise<boolean> => {
             const { socket } = get();
             if (!socket?.connected) {
                 console.error("Socket not connected when trying to set media pool");
@@ -127,7 +128,7 @@ function createGameHandlers(get: any, set: any) {
                 return false;
             }
 
-            console.log(`Setting media pool for PIN ${pin} with ${mediaPool.length} items`);
+            console.log(`Setting media pool for PIN ${pin} with ${mediaPool.length} items${playAgain ? " (play again)" : ""}`);
             const processedMedia = await processMediaPool(mediaPool);
             console.log(`Processed ${processedMedia.length} media items`);
 
@@ -137,11 +138,18 @@ function createGameHandlers(get: any, set: any) {
                     resolve(false);
                 }, 15000);
 
-                socket.emit("set-media-pool", { pin, mediaPool: processedMedia });
+                socket.emit("set-media-pool", { pin, mediaPool: processedMedia, playAgain: !!playAgain });
 
                 socket.once("media-pool-set", (data: { success: boolean }) => {
                     clearTimeout(timeout);
                     console.log("Media pool set successfully:", data);
+                    // Update room state if play again
+                    if (playAgain) {
+                        const { room } = get();
+                        if (room) {
+                            // Room will be updated via room-update event
+                        }
+                    }
                     resolve(data.success);
                 });
 
@@ -257,6 +265,14 @@ function createEventHandlers(get: any, set: any) {
             const { socket } = get();
             socket?.on("room-deleted", (data: any) => {
                 set({ room: null });
+                callback(data);
+            });
+        },
+
+        onRoomUpdate: (callback: (data: any) => void) => {
+            const { socket } = get();
+            socket?.on("room-update", (data: Room) => {
+                set({ room: data });
                 callback(data);
             });
         },

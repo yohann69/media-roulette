@@ -108,6 +108,51 @@ class GameManager {
     return false;
   }
 
+  /**
+   * Reset game for play again - reset scores, rounds, and game state
+   */
+  resetGame(pin) {
+    const room = this.rooms.get(pin);
+    if (!room) return false;
+
+    room.gameState = "lobby";
+    room.currentRound = 0;
+    room.scores.clear();
+    room.roundGuesses.clear();
+    room.usedMediaIndices.clear();
+    room.mediaPool = [];
+    
+    // Reset all player scores
+    room.players.forEach((player) => {
+      player.score = 0;
+    });
+
+    return true;
+  }
+
+  /**
+   * Make a player the new host (for play again - first to validate becomes host)
+   */
+  setNewHost(pin, socketId) {
+    const room = this.rooms.get(pin);
+    if (!room) return false;
+
+    // Remove host status from all players
+    room.players.forEach((player) => {
+      player.isHost = false;
+    });
+
+    // Set new host
+    const newHost = room.players.find((p) => p.socketId === socketId);
+    if (newHost) {
+      newHost.isHost = true;
+      room.hostSocketId = socketId;
+      return true;
+    }
+
+    return false;
+  }
+
   setMediaPool(pin, mediaPool) {
     const room = this.rooms.get(pin);
     if (room) {

@@ -26,7 +26,7 @@ export function GameSettingsModal({
   onConfirm,
 }: GameSettingsModalProps) {
   const { t } = useTranslation();
-  const [rounds, setRounds] = useState(25);
+  const [rounds, setRounds] = useState(10);
   const [timer, setTimer] = useState(5);
   const [mode, setMode] = useState<"Photo" | "Video" | "Mix">("Photo");
 

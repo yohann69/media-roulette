@@ -143,7 +143,7 @@ io.on("connection", (socket) => {
 
     socket.on("set-media-pool", (data) => {
         try {
-            const { pin, mediaPool } = data;
+            const { pin, mediaPool, playAgain } = data;
             const room = gameManager.getRoom(pin);
 
             if (!room) {
@@ -152,18 +152,30 @@ io.on("connection", (socket) => {
                 return;
             }
 
-            // Check if user is host (by socket ID or by checking if they're in the players list as host)
-            const isHost = room.hostSocketId === socket.id ||
-                room.players.some(p => p.socketId === socket.id && p.isHost);
+            // If play again, reset game and make this player the new host
+            if (playAgain) {
+                if (room.gameState === "finished" || room.gameState === "lobby") {
+                    gameManager.resetGame(pin);
+                    gameManager.setNewHost(pin, socket.id);
+                    console.log(`Game reset for play again. New host: ${socket.id}`);
+                }
+            } else {
+                // Check if user is host (by socket ID or by checking if they're in the players list as host)
+                const isHost = room.hostSocketId === socket.id ||
+                    room.players.some(p => p.socketId === socket.id && p.isHost);
 
-            if (!isHost) {
-                socket.emit("error", { message: "Unauthorized - only host can set media pool" });
-                console.error(`Socket ${socket.id} attempted to set media pool but is not host. Host: ${room.hostSocketId}`);
-                return;
+                if (!isHost) {
+                    socket.emit("error", { message: "Unauthorized - only host can set media pool" });
+                    console.error(`Socket ${socket.id} attempted to set media pool but is not host. Host: ${room.hostSocketId}`);
+                    return;
+                }
             }
 
             console.log(`Setting media pool for room ${pin} with ${mediaPool.length} items`);
             gameManager.setMediaPool(pin, mediaPool);
+            
+            // Emit room update to all players
+            io.to(pin).emit("room-update", room);
             socket.emit("media-pool-set", { success: true });
             console.log(`Media pool set successfully for room ${pin}`);
         } catch (error) {

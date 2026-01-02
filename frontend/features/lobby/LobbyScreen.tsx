@@ -22,7 +22,7 @@ export function LobbyScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { username } = useUsername();
-  const { room, startGame, onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted } = useSocket();
+  const { room, startGame, onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, onRoomUpdate } = useSocket();
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
 
@@ -47,7 +47,12 @@ export function LobbyScreen() {
       console.log("Room deleted:", data);
       router.push("/");
     });
-  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, router, pin, isHost]);
+
+    onRoomUpdate((data) => {
+      console.log("Room updated:", data);
+      // Room state is automatically updated in the store
+    });
+  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, onRoomUpdate, router, pin, isHost]);
 
   const players: Player[] = room?.players.map((p) => ({
     id: p.socketId,

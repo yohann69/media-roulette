@@ -41,6 +41,7 @@ export function SelectionScreen() {
 
   const isHost = params.isHost === "true";
   const pin = params.pin || "";
+  const playAgain = params.playAgain === "true";
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
@@ -79,9 +80,11 @@ export function SelectionScreen() {
     setIsUploading(true);
 
     try {
-      if (isHost) {
-        console.log(`Uploading ${media.length} media items for PIN ${pin}`);
-        const success = await setMediaPool(pin, media);
+      // In play again mode, anyone can set media pool (first to validate becomes host)
+      // Otherwise, only host can set media pool
+      if (isHost || playAgain) {
+        console.log(`Uploading ${media.length} media items for PIN ${pin}${playAgain ? " (play again)" : ""}`);
+        const success = await setMediaPool(pin, media, playAgain);
         if (!success) {
           console.error("Failed to upload media pool");
           setIsUploading(false);
@@ -92,11 +95,12 @@ export function SelectionScreen() {
 
       setIsUploading(false);
 
-      if (isHost) {
-        router.push({ pathname: "/lobby", params: { isHost: "true", pin } });
-      } else {
-        router.push({ pathname: "/lobby", params: { isHost: "false", pin } });
-      }
+      // After play again, check if we're now the host
+      const updatedIsHost = playAgain ? true : isHost;
+      router.push({ 
+        pathname: "/lobby", 
+        params: { isHost: updatedIsHost ? "true" : "false", pin } 
+      });
     } catch (error) {
       console.error("Error in handleReady:", error);
       setIsUploading(false);
