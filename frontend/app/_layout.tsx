@@ -39,6 +39,13 @@ export default function RootLayout() {
             headerBackTitle: "Back",
           }}
         />
+        <Stack.Screen
+          name="selection"
+          options={{
+            title: "Select Media",
+            headerBackTitle: "Back",
+          }}
+        />
       </Stack>
     </>
   );

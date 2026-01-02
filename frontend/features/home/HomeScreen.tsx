@@ -118,7 +118,7 @@ export function HomeScreen() {
 
     const handleCreateGame = () => {
         if (isUsernameValid) {
-            router.push("/lobby");
+            router.push("/selection");
         }
     };
 
