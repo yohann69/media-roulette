@@ -1,4 +1,5 @@
 import { View, Text, ScrollView } from "react-native";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface PlayerScore {
   playerId: string;
@@ -13,6 +14,7 @@ interface PodiumProps {
 }
 
 export function Podium({ players }: PodiumProps) {
+  const { t } = useTranslation();
   const sortedPlayers = [...players].sort(
     (a, b) => b.totalScore - a.totalScore
   );
@@ -20,8 +22,8 @@ export function Podium({ players }: PodiumProps) {
   return (
     <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
       <View className="items-center mb-8">
-        <Text className="text-white text-4xl font-bold mb-2">Game Over!</Text>
-        <Text className="text-gray-400 text-lg">Final Results</Text>
+        <Text className="text-white text-4xl font-bold mb-2">{t("leaderboard.gameOver")}</Text>
+        <Text className="text-gray-400 text-lg">{t("leaderboard.finalResults")}</Text>
       </View>
 
       <View className="gap-4 mb-8">
@@ -57,7 +59,7 @@ export function Podium({ players }: PodiumProps) {
                     {player.playerName}
                   </Text>
                   <Text className="text-gray-400 text-sm">
-                    {player.totalScore.toLocaleString()} points
+                    {player.totalScore.toLocaleString()} {t("common.pts")}
                   </Text>
                 </View>
               </View>
@@ -68,4 +70,3 @@ export function Podium({ players }: PodiumProps) {
     </ScrollView>
   );
 }
-

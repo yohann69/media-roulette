@@ -4,6 +4,7 @@ import { CustomModal } from "../../components/molecules/Modal";
 import { CustomSlider } from "../../components/atoms/Slider";
 import { Toggle } from "../../components/atoms/Toggle";
 import { Button } from "../../components/atoms/Button";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface GameSettings {
   rounds: number;
@@ -24,6 +25,7 @@ export function GameSettingsModal({
   onClose,
   onConfirm,
 }: GameSettingsModalProps) {
+  const { t } = useTranslation();
   const [rounds, setRounds] = useState(25);
   const [timer, setTimer] = useState(5);
   const [mode, setMode] = useState<"Photo" | "Video" | "Mix">("Photo");
@@ -33,7 +35,11 @@ export function GameSettingsModal({
     onClose();
   };
 
-  const modeOptions = ["📸 Photos", "🎞️ Videos", "🎉 Mix"];
+  const modeOptions = [
+    t("gameSettings.photo"),
+    t("gameSettings.video"),
+    t("gameSettings.mix"),
+  ];
   const modeValues: ("Photo" | "Video" | "Mix")[] = ["Photo", "Video", "Mix"];
 
   const getModeLabel = (modeValue: "Photo" | "Video" | "Mix") => {
@@ -45,10 +51,10 @@ export function GameSettingsModal({
     <CustomModal
       visible={visible}
       onClose={onClose}
-      title="Game Settings"
+      title={t("gameSettings.title")}
     >
       <View className="mb-6">
-        <Text className="text-white text-base font-semibold mb-3">Rounds</Text>
+        <Text className="text-white text-base font-semibold mb-3">{t("gameSettings.rounds")}</Text>
         <View className="flex-row flex-wrap gap-2">
           {ROUND_OPTIONS.map((option) => (
             <TouchableOpacity
@@ -71,7 +77,7 @@ export function GameSettingsModal({
       </View>
 
       <CustomSlider
-        label="Timer (seconds)"
+        label={t("gameSettings.timer")}
         value={timer}
         onValueChange={setTimer}
         minimumValue={1}
@@ -80,7 +86,7 @@ export function GameSettingsModal({
       />
 
       <Toggle
-        label="Mode"
+        label={t("gameSettings.mode")}
         options={modeOptions}
         value={getModeLabel(mode)}
         onValueChange={(value) => {
@@ -91,7 +97,7 @@ export function GameSettingsModal({
 
       <View className="mt-4">
         <Button
-          title="Continue"
+          title={t("common.continue")}
           onPress={handleConfirm}
           variant="primary"
         />

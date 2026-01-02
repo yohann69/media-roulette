@@ -1,6 +1,7 @@
 import { View, Text } from "react-native";
 import { CustomModal } from "./Modal";
 import { Button } from "../atoms/Button";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface WarningModalProps {
   visible: boolean;
@@ -19,28 +20,30 @@ export function WarningModal({
   totalMedia,
   requiredRounds,
 }: WarningModalProps) {
+  const { t } = useTranslation();
+
   return (
     <CustomModal
       visible={visible}
       onClose={onClose}
-      title="Insufficient Media"
+      title={t("warning.insufficientMedia")}
       showCloseButton={true}
     >
       <Text className="text-white text-base mb-6 text-center">
-        You don't have enough media for {requiredRounds} rounds.
+        {t("warning.notEnoughMedia", { rounds: requiredRounds })}
       </Text>
       <Text className="text-gray-400 text-sm mb-6 text-center">
-        Available: {totalMedia} media items {"\n"}
-        Required: {requiredRounds} rounds
+        {t("warning.available", { total: totalMedia })}{"\n"}
+        {t("warning.required", { rounds: requiredRounds })}
       </Text>
       <View className="gap-3">
         <Button
-          title="Wait for More Players"
+          title={t("warning.waitForMorePlayers")}
           onPress={onWait}
           variant="secondary"
         />
         <Button
-          title="Proceed (Reduce Rounds)"
+          title={t("warning.proceedReduceRounds")}
           onPress={onProceed}
           variant="primary"
         />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, Modal, TouchableOpacity } from "react-native";
+import { useTranslation } from "../../hooks/useTranslation";
 
-// Try to import expo-camera, but handle gracefully if it's not available (e.g., in Expo Go)
 let CameraView: any = null;
 let CameraType: any = null;
 let useCameraPermissions: any = null;
@@ -14,7 +14,6 @@ try {
   useCameraPermissions = expoCamera.useCameraPermissions;
   cameraAvailable = true;
 } catch (e) {
-  // expo-camera not available (likely running in Expo Go)
   cameraAvailable = false;
 }
 
@@ -25,6 +24,7 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
+  const { t } = useTranslation();
   const [permission, requestPermission] = cameraAvailable && useCameraPermissions 
     ? useCameraPermissions() 
     : [null, () => Promise.resolve({ granted: false })];
@@ -41,10 +41,8 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
     
     setScanned(true);
     
-    // Extract PIN from deep link format: photoroulette://join?pin=123456
     if (data.startsWith("photoroulette://")) {
       try {
-        // Replace custom protocol with http:// for URL parsing
         const httpUrl = data.replace("photoroulette://", "http://");
         const url = new URL(httpUrl);
         const pin = url.searchParams.get("pin");
@@ -54,11 +52,10 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
           return;
         }
       } catch (e) {
-        // Fall through to direct PIN extraction
+        // Fall through
       }
     }
     
-    // Fallback: try to extract 6-digit PIN directly
     const pinMatch = data.match(/\d{6}/);
     if (pinMatch && pinMatch[0].length === 6) {
       onScan(pinMatch[0]);
@@ -66,32 +63,30 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
       return;
     }
     
-    // If we get here, the QR code didn't contain a valid PIN
     setScanned(false);
   };
 
   if (!visible) return null;
 
-  // Show message if camera is not available (Expo Go)
   if (!cameraAvailable) {
     return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
         <View className="flex-1 bg-black/80 justify-center items-center p-5">
           <View className="bg-gray-800 rounded-3xl p-6 w-full max-w-md">
             <Text className="text-white text-2xl font-bold mb-4 text-center">
-              QR Scanner Unavailable
+              {t("qrScanner.notAvailable")}
             </Text>
             <Text className="text-gray-400 text-center mb-6">
-              QR code scanning requires a development build. Please enter the PIN manually or build the app with EAS Build.
+              {t("qrScanner.notAvailableMessage")}
             </Text>
             <Text className="text-gray-500 text-sm text-center mb-6">
-              The camera module is not available in Expo Go. You can still join by entering the 6-digit PIN.
+              {t("qrScanner.notAvailableMessage2")}
             </Text>
             <TouchableOpacity
               onPress={onClose}
               className="bg-primary py-4 px-6 rounded-xl items-center"
             >
-              <Text className="text-white text-lg font-bold">Close</Text>
+              <Text className="text-white text-lg font-bold">{t("common.close")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -105,16 +100,16 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
         <View className="flex-1 bg-black/80 justify-center items-center p-5">
           <View className="bg-gray-800 rounded-3xl p-6 w-full max-w-md">
             <Text className="text-white text-xl font-bold mb-4 text-center">
-              Camera Permission
+              {t("qrScanner.cameraPermission")}
             </Text>
             <Text className="text-gray-400 text-center mb-6">
-              We need access to your camera to scan QR codes.
+              {t("qrScanner.cameraPermissionMessage")}
             </Text>
             <TouchableOpacity
               onPress={onClose}
               className="bg-primary py-4 px-6 rounded-xl items-center"
             >
-              <Text className="text-white text-lg font-bold">Close</Text>
+              <Text className="text-white text-lg font-bold">{t("common.close")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -128,23 +123,23 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
         <View className="flex-1 bg-black/80 justify-center items-center p-5">
           <View className="bg-gray-800 rounded-3xl p-6 w-full max-w-md">
             <Text className="text-white text-xl font-bold mb-4 text-center">
-              Camera Permission Required
+              {t("qrScanner.cameraPermissionRequired")}
             </Text>
             <Text className="text-gray-400 text-center mb-6">
-              Please grant camera permission to scan QR codes.
+              {t("qrScanner.cameraPermissionMessage2")}
             </Text>
             <View className="gap-3">
               <TouchableOpacity
                 onPress={requestPermission}
                 className="bg-primary py-4 px-6 rounded-xl items-center"
               >
-                <Text className="text-white text-lg font-bold">Grant Permission</Text>
+                <Text className="text-white text-lg font-bold">{t("qrScanner.grantPermission")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={onClose}
                 className="bg-gray-700 py-4 px-6 rounded-xl items-center"
               >
-                <Text className="text-white text-lg font-bold">Cancel</Text>
+                <Text className="text-white text-lg font-bold">{t("common.cancel")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -172,10 +167,10 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
             <View className="flex-1 justify-between p-6">
               <View className="items-center pt-12">
                 <Text className="text-white text-2xl font-bold mb-2">
-                  Scan QR Code
+                  {t("qrScanner.title")}
                 </Text>
                 <Text className="text-gray-300 text-center">
-                  Point your camera at the QR code
+                  {t("qrScanner.description")}
                 </Text>
               </View>
 
@@ -184,7 +179,7 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
                   {scanned && (
                     <View className="bg-primary/20 rounded-xl p-4">
                       <Text className="text-white text-center font-semibold">
-                        QR Code Scanned!
+                        {t("qrScanner.scanned")}
                       </Text>
                     </View>
                   )}
@@ -196,7 +191,7 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
                   onPress={onClose}
                   className="bg-gray-800 py-4 px-6 rounded-xl items-center"
                 >
-                  <Text className="text-white text-lg font-bold">Cancel</Text>
+                  <Text className="text-white text-lg font-bold">{t("common.cancel")}</Text>
                 </TouchableOpacity>
               </View>
             </View>

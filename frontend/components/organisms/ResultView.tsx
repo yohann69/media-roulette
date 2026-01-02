@@ -2,6 +2,7 @@ import { View, Text, ScrollView } from "react-native";
 import { MediaDisplay } from "../molecules/MediaDisplay";
 import { ResultDisplay } from "../molecules/ResultDisplay";
 import { Button } from "../atoms/Button";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface Player {
   id: string;
@@ -38,14 +39,16 @@ export function ResultView({
   onShowAgain,
   onContinue,
 }: ResultViewProps) {
+  const { t } = useTranslation();
+
   return (
     <View className="flex-1 bg-black">
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
         <View className="items-center mb-6">
           <Text className="text-white text-2xl font-bold mb-1">
-            Round {currentRound} of {totalRounds}
+            {t("game.round", { current: currentRound, total: totalRounds })}
           </Text>
-          <Text className="text-gray-400 text-sm">Result</Text>
+          <Text className="text-gray-400 text-sm">{t("game.result")}</Text>
         </View>
 
         {currentMedia && <MediaDisplay media={currentMedia} />}
@@ -61,15 +64,15 @@ export function ResultView({
         {isOwner ? (
           <View className="gap-3">
             <Button
-              title="Show Again"
+              title={t("result.showAgain")}
               onPress={onShowAgain}
               variant="secondary"
             />
-            <Button title="Continue" onPress={onContinue} variant="primary" />
+            <Button title={t("common.continue")} onPress={onContinue} variant="primary" />
           </View>
         ) : (
           <Button
-            title={currentRound < totalRounds ? "Continue" : "View Results"}
+            title={currentRound < totalRounds ? t("common.continue") : t("leaderboard.finalResults")}
             onPress={onContinue}
             variant="primary"
           />

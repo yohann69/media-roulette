@@ -8,6 +8,7 @@ import { Podium } from "../../components/molecules/Podium";
 import { Button } from "../../components/atoms/Button";
 import { useSocket } from "../../stores/useSocket";
 import { useGameEvents } from "../../hooks/useGameEvents";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface Player {
   id: string;
@@ -25,6 +26,7 @@ type GameState = "reveal" | "result" | "leaderboard" | "podium";
 
 export function GameScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const {
     room,
@@ -126,7 +128,7 @@ export function GameScreen() {
         <Podium players={finalLeaderboard} />
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
           <Button
-            title="Play Again"
+            title={t("game.playAgain")}
             onPress={handlePlayAgain}
             variant="primary"
           />
@@ -187,7 +189,7 @@ export function GameScreen() {
   return (
     <View className="flex-1 bg-black items-center justify-center">
       <Button
-        title="Waiting for round to start..."
+        title={t("game.waitingRound")}
         onPress={() => {}}
         variant="secondary"
         disabled

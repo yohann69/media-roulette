@@ -1,0 +1,125 @@
+{
+  "app": {
+    "name": "PhotoRoulette",
+    "tagline": "Let's play together!"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "continue": "Continue",
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "save": "Save",
+    "retry": "Try Again",
+    "goBack": "Go Back",
+    "waiting": "Waiting...",
+    "connecting": "Connecting to server...",
+    "pts": "pts"
+  },
+  "home": {
+    "username": "Username",
+    "usernamePlaceholder": "Enter your username",
+    "createGame": "Create Game",
+    "creating": "Creating...",
+    "joinGame": "Join Game"
+  },
+  "join": {
+    "title": "Join Game",
+    "description": "Enter the game PIN or scan the QR code",
+    "pinLabel": "Game PIN (6 digits)",
+    "pinPlaceholder": "000000",
+    "scanQR": "📷 Scan QR Code",
+    "joining": "Joining...",
+    "join": "Join",
+    "backToHome": "Back to Home",
+    "error": "Failed to join game. Please check the PIN."
+  },
+  "selection": {
+    "title": "Your Random Media",
+    "description": "{count} random items from your gallery. Tap \"Reroll\" to get new random items.",
+    "loadingMedia": "Loading your media...",
+    "requestingPermission": "Requesting permission...",
+    "loadingNewItems": "Loading new items...",
+    "permissionRequired": "Permission Required",
+    "permissionMessage": "We need access to your photos and videos to play PhotoRoulette.",
+    "grantPermission": "Grant Permission",
+    "reroll": "Reroll",
+    "ready": "Ready",
+    "uploading": "Uploading..."
+  },
+  "lobby": {
+    "title": "Game Lobby",
+    "players": "Players",
+    "startGame": "Start Game",
+    "starting": "Starting..."
+  },
+  "gameSettings": {
+    "title": "Game Settings",
+    "rounds": "Rounds",
+    "timer": "Timer (seconds)",
+    "mode": "Mode",
+    "photo": "📸 Photos",
+    "video": "🎞️ Videos",
+    "mix": "🎉 Mix"
+  },
+  "game": {
+    "round": "Round {current} of {total}",
+    "whoTookPhoto": "Who took this photo?",
+    "result": "Result",
+    "waitingRound": "Waiting for round to start...",
+    "timeRemaining": "Time remaining",
+    "playAgain": "Play Again"
+  },
+  "result": {
+    "greatGuess": "🎉 Great guess!",
+    "betterLuck": "Better luck next time!",
+    "timesUp": "Time's up!",
+    "photoTakenBy": "The photo was taken by:",
+    "yourGuess": "Your guess:",
+    "showAgain": "Show Again",
+    "correctAnswer": "Correct answer:",
+    "incorrect": "❌ Incorrect",
+    "correct": "✅ Correct",
+    "noSelection": "You didn't select anyone"
+  },
+  "leaderboard": {
+    "roundResults": "Round Results",
+    "fastest": "⚡ Fastest",
+    "gameOver": "Game Over!",
+    "finalResults": "Final Results",
+    "leaderboard": "Leaderboard"
+  },
+  "warning": {
+    "waitForPlayers": "Wait for players",
+    "proceed": "Proceed (Round count will reduce)",
+    "insufficientMedia": "Insufficient Media",
+    "notEnoughMedia": "You don't have enough media for {rounds} rounds.",
+    "available": "Available: {total} media items",
+    "required": "Required: {rounds} rounds",
+    "notEnoughMediaBanner": "⚠️ Not enough media: {total} available, {rounds} rounds needed",
+    "waitForMorePlayers": "Wait for More Players",
+    "proceedReduceRounds": "Proceed (Reduce Rounds)"
+  },
+  "qrScanner": {
+    "title": "Scan QR Code",
+    "description": "Point your camera at the QR code",
+    "notAvailable": "QR Scanner Unavailable",
+    "notAvailableMessage": "QR code scanning requires a development build. Please enter the PIN manually or build the app with EAS Build.",
+    "notAvailableMessage2": "The camera module is not available in Expo Go. You can still join by entering the 6-digit PIN.",
+    "cameraPermission": "Camera Permission",
+    "cameraPermissionMessage": "We need access to your camera to scan QR codes.",
+    "cameraPermissionRequired": "Camera Permission Required",
+    "cameraPermissionMessage2": "Please grant camera permission to scan QR codes.",
+    "grantPermission": "Grant Permission",
+    "scanned": "QR Code Scanned!"
+  },
+  "gameSettingsDisplay": {
+    "title": "Game Settings",
+    "rounds": "Rounds: {count}",
+    "timer": "Timer: {seconds}s",
+    "mode": "Mode: {emoji} {mode}"
+  }
+}
+

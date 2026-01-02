@@ -1,0 +1,105 @@
+{
+  "app": {
+    "name": "PhotoRoulette",
+    "tagline": "让我们一起玩吧！"
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "continue": "继续",
+    "back": "返回",
+    "cancel": "取消",
+    "close": "关闭",
+    "confirm": "确认",
+    "save": "保存",
+    "retry": "重试",
+    "goBack": "返回",
+    "waiting": "等待中...",
+    "connecting": "正在连接到服务器...",
+    "pts": "分"
+  },
+  "home": {
+    "username": "用户名",
+    "usernamePlaceholder": "输入您的用户名",
+    "createGame": "创建游戏",
+    "creating": "创建中...",
+    "joinGame": "加入游戏"
+  },
+  "join": {
+    "title": "加入游戏",
+    "description": "输入游戏PIN码或扫描二维码",
+    "pinLabel": "游戏PIN码（6位数字）",
+    "pinPlaceholder": "000000",
+    "scanQR": "📷 扫描二维码",
+    "joining": "加入中...",
+    "join": "加入",
+    "backToHome": "返回首页",
+    "error": "加入失败。请检查PIN码。"
+  },
+  "selection": {
+    "title": "您的随机媒体",
+    "description": "从您的图库中随机选择 {count} 个项目。点击\"重新选择\"以获取新的随机项目。",
+    "loadingMedia": "正在加载您的媒体...",
+    "requestingPermission": "正在请求权限...",
+    "loadingNewItems": "正在加载新项目...",
+    "permissionRequired": "需要权限",
+    "permissionMessage": "我们需要访问您的照片和视频才能玩PhotoRoulette。",
+    "grantPermission": "授予权限",
+    "reroll": "重新选择",
+    "ready": "准备就绪",
+    "uploading": "上传中..."
+  },
+  "lobby": {
+    "title": "游戏大厅",
+    "players": "玩家",
+    "startGame": "开始游戏",
+    "starting": "开始中..."
+  },
+  "gameSettings": {
+    "title": "游戏设置",
+    "rounds": "回合数",
+    "timer": "计时器（秒）",
+    "mode": "模式",
+    "photo": "📸 照片",
+    "video": "🎞️ 视频",
+    "mix": "🎉 混合"
+  },
+  "game": {
+    "round": "第 {current} 回合，共 {total} 回合",
+    "whoTookPhoto": "谁拍了这张照片？",
+    "result": "结果",
+    "waitingRound": "等待回合开始...",
+    "timeRemaining": "剩余时间",
+    "playAgain": "再玩一次"
+  },
+  "result": {
+    "greatGuess": "🎉 猜对了！",
+    "betterLuck": "下次好运！",
+    "timesUp": "时间到了！",
+    "photoTakenBy": "这张照片是由以下人员拍摄的：",
+    "yourGuess": "您的猜测："
+  },
+  "leaderboard": {
+    "roundResults": "回合结果",
+    "fastest": "⚡ 最快",
+    "gameOver": "游戏结束！",
+    "finalResults": "最终结果",
+    "leaderboard": "排行榜"
+  },
+  "warning": {
+    "waitForPlayers": "等待玩家",
+    "proceed": "继续（回合数将减少）"
+  },
+  "qrScanner": {
+    "title": "扫描二维码",
+    "description": "将相机对准二维码",
+    "notAvailable": "二维码扫描不可用",
+    "notAvailableMessage": "扫描二维码需要应用的开发版本。请手动输入PIN码。",
+    "cameraPermission": "相机权限",
+    "cameraPermissionMessage": "我们需要访问您的相机以扫描二维码。",
+    "cameraPermissionRequired": "需要相机权限",
+    "cameraPermissionMessage2": "请授予相机权限以扫描二维码。",
+    "grantPermission": "授予权限"
+  }
+}
+

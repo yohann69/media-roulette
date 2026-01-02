@@ -1,0 +1,105 @@
+{
+  "app": {
+    "name": "PhotoRoulette",
+    "tagline": "Давайте играть вместе!"
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "continue": "Продолжить",
+    "back": "Назад",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "confirm": "Подтвердить",
+    "save": "Сохранить",
+    "retry": "Попробовать снова",
+    "goBack": "Вернуться",
+    "waiting": "Ожидание...",
+    "connecting": "Подключение к серверу...",
+    "pts": "очков"
+  },
+  "home": {
+    "username": "Имя пользователя",
+    "usernamePlaceholder": "Введите ваше имя пользователя",
+    "createGame": "Создать игру",
+    "creating": "Создание...",
+    "joinGame": "Присоединиться к игре"
+  },
+  "join": {
+    "title": "Присоединиться к игре",
+    "description": "Введите PIN-код игры или отсканируйте QR-код",
+    "pinLabel": "PIN-код игры (6 цифр)",
+    "pinPlaceholder": "000000",
+    "scanQR": "📷 Сканировать QR-код",
+    "joining": "Присоединение...",
+    "join": "Присоединиться",
+    "backToHome": "Вернуться на главную",
+    "error": "Не удалось присоединиться. Проверьте PIN-код."
+  },
+  "selection": {
+    "title": "Ваши случайные медиа",
+    "description": "{count} случайных элементов из вашей галереи. Нажмите \"Перебросить\", чтобы получить новые случайные элементы.",
+    "loadingMedia": "Загрузка ваших медиа...",
+    "requestingPermission": "Запрос разрешения...",
+    "loadingNewItems": "Загрузка новых элементов...",
+    "permissionRequired": "Требуется разрешение",
+    "permissionMessage": "Нам нужен доступ к вашим фотографиям и видео для игры в PhotoRoulette.",
+    "grantPermission": "Предоставить разрешение",
+    "reroll": "Перебросить",
+    "ready": "Готово",
+    "uploading": "Загрузка..."
+  },
+  "lobby": {
+    "title": "Игровой лобби",
+    "players": "Игроки",
+    "startGame": "Начать игру",
+    "starting": "Запуск..."
+  },
+  "gameSettings": {
+    "title": "Настройки игры",
+    "rounds": "Раунды",
+    "timer": "Таймер (секунды)",
+    "mode": "Режим",
+    "photo": "📸 Фото",
+    "video": "🎞️ Видео",
+    "mix": "🎉 Микс"
+  },
+  "game": {
+    "round": "Раунд {current} из {total}",
+    "whoTookPhoto": "Кто сделал это фото?",
+    "result": "Результат",
+    "waitingRound": "Ожидание начала раунда...",
+    "timeRemaining": "Оставшееся время",
+    "playAgain": "Играть снова"
+  },
+  "result": {
+    "greatGuess": "🎉 Отличная догадка!",
+    "betterLuck": "Удачи в следующий раз!",
+    "timesUp": "Время вышло!",
+    "photoTakenBy": "Фото было сделано:",
+    "yourGuess": "Ваша догадка:"
+  },
+  "leaderboard": {
+    "roundResults": "Результаты раунда",
+    "fastest": "⚡ Самый быстрый",
+    "gameOver": "Игра окончена!",
+    "finalResults": "Финальные результаты",
+    "leaderboard": "Таблица лидеров"
+  },
+  "warning": {
+    "waitForPlayers": "Ждать игроков",
+    "proceed": "Продолжить (Количество раундов будет уменьшено)"
+  },
+  "qrScanner": {
+    "title": "Сканировать QR-код",
+    "description": "Наведите камеру на QR-код",
+    "notAvailable": "Сканирование QR недоступно",
+    "notAvailableMessage": "Сканирование QR-кодов требует версию приложения для разработки. Введите PIN-код вручную.",
+    "cameraPermission": "Разрешение камеры",
+    "cameraPermissionMessage": "Нам нужен доступ к вашей камере для сканирования QR-кодов.",
+    "cameraPermissionRequired": "Требуется разрешение камеры",
+    "cameraPermissionMessage2": "Предоставьте разрешение камеры для сканирования QR-кодов.",
+    "grantPermission": "Предоставить разрешение"
+  }
+}
+

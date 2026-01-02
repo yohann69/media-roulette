@@ -1,4 +1,6 @@
 import { View, Image, ActivityIndicator, TouchableOpacity } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated } from "react-native";
 
 interface MediaItem {
   id: string;
@@ -18,10 +20,19 @@ export function MediaGrid({
   onItemPress,
 }: MediaGridProps) {
   const itemSize = `${100 / columns}%`;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [items.length, fadeAnim]);
 
   return (
-    <View className="flex-row flex-wrap">
-      {items.map((item) => (
+    <Animated.View style={{ opacity: fadeAnim }} className="flex-row flex-wrap">
+      {items.map((item, index) => (
         <TouchableOpacity
           key={item.id}
           onPress={() => onItemPress?.(item)}
@@ -46,6 +57,6 @@ export function MediaGrid({
           </View>
         </TouchableOpacity>
       ))}
-    </View>
+    </Animated.View>
   );
 }

@@ -1,0 +1,105 @@
+{
+  "app": {
+    "name": "PhotoRoulette",
+    "tagline": "Giochiamo insieme!"
+  },
+  "common": {
+    "loading": "Caricamento...",
+    "error": "Errore",
+    "continue": "Continua",
+    "back": "Indietro",
+    "cancel": "Annulla",
+    "close": "Chiudi",
+    "confirm": "Conferma",
+    "save": "Salva",
+    "retry": "Riprova",
+    "goBack": "Torna indietro",
+    "waiting": "In attesa...",
+    "connecting": "Connessione al server...",
+    "pts": "pts"
+  },
+  "home": {
+    "username": "Nome utente",
+    "usernamePlaceholder": "Inserisci il tuo nome utente",
+    "createGame": "Crea partita",
+    "creating": "Creazione...",
+    "joinGame": "Unisciti a partita"
+  },
+  "join": {
+    "title": "Unisciti a partita",
+    "description": "Inserisci il PIN del gioco o scansiona il codice QR",
+    "pinLabel": "PIN del gioco (6 cifre)",
+    "pinPlaceholder": "000000",
+    "scanQR": "📷 Scansiona codice QR",
+    "joining": "Unione in corso...",
+    "join": "Unisciti",
+    "backToHome": "Torna alla home",
+    "error": "Impossibile unirsi. Controlla il PIN."
+  },
+  "selection": {
+    "title": "I tuoi media casuali",
+    "description": "{count} elementi casuali dalla tua galleria. Tocca \"Rilancia\" per ottenere nuovi elementi casuali.",
+    "loadingMedia": "Caricamento dei tuoi media...",
+    "requestingPermission": "Richiesta autorizzazione...",
+    "loadingNewItems": "Caricamento nuovi elementi...",
+    "permissionRequired": "Autorizzazione richiesta",
+    "permissionMessage": "Abbiamo bisogno dell'accesso alle tue foto e video per giocare a PhotoRoulette.",
+    "grantPermission": "Concedi autorizzazione",
+    "reroll": "Rilancia",
+    "ready": "Pronto",
+    "uploading": "Caricamento..."
+  },
+  "lobby": {
+    "title": "Sala d'attesa",
+    "players": "Giocatori",
+    "startGame": "Inizia partita",
+    "starting": "Avvio..."
+  },
+  "gameSettings": {
+    "title": "Impostazioni gioco",
+    "rounds": "Round",
+    "timer": "Timer (secondi)",
+    "mode": "Modalità",
+    "photo": "📸 Foto",
+    "video": "🎞️ Video",
+    "mix": "🎉 Mix"
+  },
+  "game": {
+    "round": "Round {current} di {total}",
+    "whoTookPhoto": "Chi ha scattato questa foto?",
+    "result": "Risultato",
+    "waitingRound": "In attesa dell'inizio del round...",
+    "timeRemaining": "Tempo rimanente",
+    "playAgain": "Gioca di nuovo"
+  },
+  "result": {
+    "greatGuess": "🎉 Ottima risposta!",
+    "betterLuck": "Meglio fortuna la prossima volta!",
+    "timesUp": "Tempo scaduto!",
+    "photoTakenBy": "La foto è stata scattata da:",
+    "yourGuess": "La tua risposta:"
+  },
+  "leaderboard": {
+    "roundResults": "Risultati del round",
+    "fastest": "⚡ Più veloce",
+    "gameOver": "Gioco finito!",
+    "finalResults": "Risultati finali",
+    "leaderboard": "Classifica"
+  },
+  "warning": {
+    "waitForPlayers": "Aspetta i giocatori",
+    "proceed": "Continua (Il numero di round sarà ridotto)"
+  },
+  "qrScanner": {
+    "title": "Scansiona codice QR",
+    "description": "Punta la fotocamera al codice QR",
+    "notAvailable": "Scansione QR non disponibile",
+    "notAvailableMessage": "La scansione di codici QR richiede una versione di sviluppo dell'app. Inserisci il PIN manualmente.",
+    "cameraPermission": "Autorizzazione fotocamera",
+    "cameraPermissionMessage": "Abbiamo bisogno dell'accesso alla fotocamera per scansionare codici QR.",
+    "cameraPermissionRequired": "Autorizzazione fotocamera richiesta",
+    "cameraPermissionMessage2": "Concedi l'autorizzazione della fotocamera per scansionare codici QR.",
+    "grantPermission": "Concedi autorizzazione"
+  }
+}
+

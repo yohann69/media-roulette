@@ -1,0 +1,105 @@
+{
+  "app": {
+    "name": "PhotoRoulette",
+    "tagline": "Lass uns zusammen spielen!"
+  },
+  "common": {
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "continue": "Weiter",
+    "back": "Zurück",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "confirm": "Bestätigen",
+    "save": "Speichern",
+    "retry": "Erneut versuchen",
+    "goBack": "Zurück",
+    "waiting": "Warten...",
+    "connecting": "Verbindung zum Server...",
+    "pts": "Pkt"
+  },
+  "home": {
+    "username": "Benutzername",
+    "usernamePlaceholder": "Geben Sie Ihren Benutzernamen ein",
+    "createGame": "Spiel erstellen",
+    "creating": "Wird erstellt...",
+    "joinGame": "Spiel beitreten"
+  },
+  "join": {
+    "title": "Spiel beitreten",
+    "description": "Geben Sie die Spiel-PIN ein oder scannen Sie den QR-Code",
+    "pinLabel": "Spiel-PIN (6 Ziffern)",
+    "pinPlaceholder": "000000",
+    "scanQR": "📷 QR-Code scannen",
+    "joining": "Wird beigetreten...",
+    "join": "Beitreten",
+    "backToHome": "Zurück zur Startseite",
+    "error": "Beitritt fehlgeschlagen. Bitte überprüfen Sie die PIN."
+  },
+  "selection": {
+    "title": "Ihre zufälligen Medien",
+    "description": "{count} zufällige Elemente aus Ihrer Galerie. Tippen Sie auf \"Neu würfeln\", um neue zufällige Elemente zu erhalten.",
+    "loadingMedia": "Ihre Medien werden geladen...",
+    "requestingPermission": "Berechtigung wird angefordert...",
+    "loadingNewItems": "Neue Elemente werden geladen...",
+    "permissionRequired": "Berechtigung erforderlich",
+    "permissionMessage": "Wir benötigen Zugriff auf Ihre Fotos und Videos, um PhotoRoulette zu spielen.",
+    "grantPermission": "Berechtigung erteilen",
+    "reroll": "Neu würfeln",
+    "ready": "Bereit",
+    "uploading": "Wird hochgeladen..."
+  },
+  "lobby": {
+    "title": "Spiel-Lobby",
+    "players": "Spieler",
+    "startGame": "Spiel starten",
+    "starting": "Wird gestartet..."
+  },
+  "gameSettings": {
+    "title": "Spieleinstellungen",
+    "rounds": "Runden",
+    "timer": "Timer (Sekunden)",
+    "mode": "Modus",
+    "photo": "📸 Fotos",
+    "video": "🎞️ Videos",
+    "mix": "🎉 Mix"
+  },
+  "game": {
+    "round": "Runde {current} von {total}",
+    "whoTookPhoto": "Wer hat dieses Foto gemacht?",
+    "result": "Ergebnis",
+    "waitingRound": "Warten auf Rundenstart...",
+    "timeRemaining": "Verbleibende Zeit",
+    "playAgain": "Erneut spielen"
+  },
+  "result": {
+    "greatGuess": "🎉 Gute Antwort!",
+    "betterLuck": "Viel Glück beim nächsten Mal!",
+    "timesUp": "Zeit abgelaufen!",
+    "photoTakenBy": "Das Foto wurde gemacht von:",
+    "yourGuess": "Ihre Antwort:"
+  },
+  "leaderboard": {
+    "roundResults": "Rundenergebnisse",
+    "fastest": "⚡ Schnellster",
+    "gameOver": "Spiel beendet!",
+    "finalResults": "Endergebnisse",
+    "leaderboard": "Bestenliste"
+  },
+  "warning": {
+    "waitForPlayers": "Auf Spieler warten",
+    "proceed": "Fortfahren (Die Anzahl der Runden wird reduziert)"
+  },
+  "qrScanner": {
+    "title": "QR-Code scannen",
+    "description": "Richten Sie Ihre Kamera auf den QR-Code",
+    "notAvailable": "QR-Scan nicht verfügbar",
+    "notAvailableMessage": "Das Scannen von QR-Codes erfordert eine Entwicklungsversion der App. Bitte geben Sie die PIN manuell ein.",
+    "cameraPermission": "Kameraberechtigung",
+    "cameraPermissionMessage": "Wir benötigen Zugriff auf Ihre Kamera, um QR-Codes zu scannen.",
+    "cameraPermissionRequired": "Kameraberechtigung erforderlich",
+    "cameraPermissionMessage2": "Bitte erteilen Sie die Kameraberechtigung, um QR-Codes zu scannen.",
+    "grantPermission": "Berechtigung erteilen"
+  }
+}
+

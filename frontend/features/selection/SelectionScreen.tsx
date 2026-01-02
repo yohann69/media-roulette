@@ -5,9 +5,11 @@ import { useMediaFetcher } from "../../hooks/useMediaFetcher";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
 import { useSocket } from "../../stores/useSocket";
+import { useTranslation } from "../../hooks/useTranslation";
 
 export function SelectionScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { setMediaPool } = useSocket();
   const {
@@ -48,7 +50,6 @@ export function SelectionScreen() {
 
     setIsUploading(true);
 
-    // Upload media pool to server (only for host)
     if (isHost) {
       const success = await setMediaPool(pin, media);
       if (!success) {
@@ -60,7 +61,6 @@ export function SelectionScreen() {
 
     setIsUploading(false);
 
-    // Navigate to lobby with host/joiner status
     if (isHost) {
       router.push({ pathname: "/lobby", params: { isHost: "true", pin } });
     } else {
@@ -77,7 +77,7 @@ export function SelectionScreen() {
       <View className="flex-1 bg-black items-center justify-center px-6">
         <ActivityIndicator size="large" color="#ffffff" />
         <Text className="text-white text-lg mt-4">
-          {permissionGranted ? "Loading your media..." : "Requesting permission..."}
+          {permissionGranted ? t("selection.loadingMedia") : t("selection.requestingPermission")}
         </Text>
       </View>
     );
@@ -86,18 +86,18 @@ export function SelectionScreen() {
   if (error && !permissionGranted) {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
-        <Text className="text-white text-xl font-bold mb-4">Permission Required</Text>
+        <Text className="text-white text-xl font-bold mb-4">{t("selection.permissionRequired")}</Text>
         <Text className="text-gray-400 text-center mb-8">
-          We need access to your photos and videos to play PhotoRoulette.
+          {t("selection.permissionMessage")}
         </Text>
         <Button
-          title="Grant Permission"
+          title={t("selection.grantPermission")}
           onPress={requestPermission}
           variant="primary"
         />
         <View className="mt-3">
           <Button
-            title="Go Back"
+            title={t("common.goBack")}
             onPress={() => router.back()}
             variant="secondary"
           />
@@ -109,16 +109,16 @@ export function SelectionScreen() {
   if (error) {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
-        <Text className="text-white text-xl font-bold mb-4">Error</Text>
+        <Text className="text-white text-xl font-bold mb-4">{t("common.error")}</Text>
         <Text className="text-gray-400 text-center mb-8">{error}</Text>
         <Button
-          title="Try Again"
+          title={t("common.retry")}
           onPress={handleReroll}
           variant="primary"
         />
         <View className="mt-3">
           <Button
-            title="Go Back"
+            title={t("common.goBack")}
             onPress={() => router.back()}
             variant="secondary"
           />
@@ -131,10 +131,10 @@ export function SelectionScreen() {
     <View className="flex-1 bg-black">
       <View className="px-6 pt-12 pb-4">
         <Text className="text-white text-3xl font-bold mb-2">
-          Your Random Media
+          {t("selection.title")}
         </Text>
         <Text className="text-gray-400 text-base">
-          {media.length} random items from your gallery. Tap "Reroll" to get new random items.
+          {t("selection.description", { count: media.length })}
         </Text>
       </View>
 
@@ -142,7 +142,7 @@ export function SelectionScreen() {
         {loading ? (
           <View className="py-20 items-center">
             <ActivityIndicator size="large" color="#ffffff" />
-            <Text className="text-white mt-4">Loading new items...</Text>
+            <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
           </View>
         ) : (
           <MediaGrid items={media} columns={4} />
@@ -153,7 +153,7 @@ export function SelectionScreen() {
         <View className="flex-row" style={{ gap: 16 }}>
           <View className="flex-1">
             <Button
-              title="Reroll"
+              title={t("selection.reroll")}
               onPress={handleReroll}
               variant="secondary"
               disabled={loading || isUploading}
@@ -161,7 +161,7 @@ export function SelectionScreen() {
           </View>
           <View className="flex-1">
             <Button
-              title={isUploading ? "Uploading..." : "Ready"}
+              title={isUploading ? t("selection.uploading") : t("selection.ready")}
               onPress={handleReady}
               variant="primary"
               disabled={loading || media.length === 0 || isUploading}

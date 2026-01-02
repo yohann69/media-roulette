@@ -1,7 +1,10 @@
 import { View, Text, ScrollView } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated } from "react-native";
 import { CountdownTimer } from "../molecules/CountdownTimer";
 import { MediaDisplay } from "../molecules/MediaDisplay";
 import { PlayerSelection } from "../molecules/PlayerSelection";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface Player {
   id: string;
@@ -40,31 +43,44 @@ export function RevealView({
   onPlayerSelect,
   onTimeExpired,
 }: RevealViewProps) {
+  const { t } = useTranslation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [currentMedia?.id, fadeAnim]);
+
   return (
     <View className="flex-1 bg-black">
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
-        <View className="items-center mb-6">
-          <Text className="text-white text-2xl font-bold mb-1">
-            Round {currentRound} of {totalRounds}
-          </Text>
-          <Text className="text-gray-400 text-sm">Who took this photo?</Text>
-        </View>
+      <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
+          <View className="items-center mb-6">
+            <Text className="text-white text-2xl font-bold mb-1">
+              {t("game.round", { current: currentRound, total: totalRounds })}
+            </Text>
+            <Text className="text-gray-400 text-sm">{t("game.whoTookPhoto")}</Text>
+          </View>
 
-        <CountdownTimer
-          duration={timerDuration}
-          onComplete={onTimeExpired}
-          isActive={timerActive}
-        />
+          <CountdownTimer
+            duration={timerDuration}
+            onComplete={onTimeExpired}
+            isActive={timerActive}
+          />
 
-        {currentMedia && <MediaDisplay media={currentMedia} />}
+          {currentMedia && <MediaDisplay media={currentMedia} />}
 
-        <PlayerSelection
-          players={players}
-          selectedPlayer={selectedPlayer}
-          onSelect={onPlayerSelect}
-          disabled={disabled}
-        />
-      </ScrollView>
+          <PlayerSelection
+            players={players}
+            selectedPlayer={selectedPlayer}
+            onSelect={onPlayerSelect}
+            disabled={disabled}
+          />
+        </ScrollView>
+      </Animated.View>
     </View>
   );
 }

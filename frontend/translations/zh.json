@@ -1,0 +1,105 @@
+{
+  "app": {
+    "name": "PhotoRoulette",
+    "tagline": "讓我們一起玩吧！"
+  },
+  "common": {
+    "loading": "載入中...",
+    "error": "錯誤",
+    "continue": "繼續",
+    "back": "返回",
+    "cancel": "取消",
+    "close": "關閉",
+    "confirm": "確認",
+    "save": "儲存",
+    "retry": "重試",
+    "goBack": "返回",
+    "waiting": "等待中...",
+    "connecting": "正在連接到伺服器...",
+    "pts": "分"
+  },
+  "home": {
+    "username": "用戶名",
+    "usernamePlaceholder": "輸入您的用戶名",
+    "createGame": "創建遊戲",
+    "creating": "創建中...",
+    "joinGame": "加入遊戲"
+  },
+  "join": {
+    "title": "加入遊戲",
+    "description": "輸入遊戲PIN碼或掃描二維碼",
+    "pinLabel": "遊戲PIN碼（6位數字）",
+    "pinPlaceholder": "000000",
+    "scanQR": "📷 掃描二維碼",
+    "joining": "加入中...",
+    "join": "加入",
+    "backToHome": "返回首頁",
+    "error": "加入失敗。請檢查PIN碼。"
+  },
+  "selection": {
+    "title": "您的隨機媒體",
+    "description": "從您的圖庫中隨機選擇 {count} 個項目。點擊「重新選擇」以獲取新的隨機項目。",
+    "loadingMedia": "正在載入您的媒體...",
+    "requestingPermission": "正在請求權限...",
+    "loadingNewItems": "正在載入新項目...",
+    "permissionRequired": "需要權限",
+    "permissionMessage": "我們需要訪問您的照片和視頻才能玩PhotoRoulette。",
+    "grantPermission": "授予權限",
+    "reroll": "重新選擇",
+    "ready": "準備就緒",
+    "uploading": "上傳中..."
+  },
+  "lobby": {
+    "title": "遊戲大廳",
+    "players": "玩家",
+    "startGame": "開始遊戲",
+    "starting": "開始中..."
+  },
+  "gameSettings": {
+    "title": "遊戲設置",
+    "rounds": "回合數",
+    "timer": "計時器（秒）",
+    "mode": "模式",
+    "photo": "📸 照片",
+    "video": "🎞️ 視頻",
+    "mix": "🎉 混合"
+  },
+  "game": {
+    "round": "第 {current} 回合，共 {total} 回合",
+    "whoTookPhoto": "誰拍了這張照片？",
+    "result": "結果",
+    "waitingRound": "等待回合開始...",
+    "timeRemaining": "剩餘時間",
+    "playAgain": "再玩一次"
+  },
+  "result": {
+    "greatGuess": "🎉 猜對了！",
+    "betterLuck": "下次好運！",
+    "timesUp": "時間到了！",
+    "photoTakenBy": "這張照片是由以下人員拍攝的：",
+    "yourGuess": "您的猜測："
+  },
+  "leaderboard": {
+    "roundResults": "回合結果",
+    "fastest": "⚡ 最快",
+    "gameOver": "遊戲結束！",
+    "finalResults": "最終結果",
+    "leaderboard": "排行榜"
+  },
+  "warning": {
+    "waitForPlayers": "等待玩家",
+    "proceed": "繼續（回合數將減少）"
+  },
+  "qrScanner": {
+    "title": "掃描二維碼",
+    "description": "將相機對準二維碼",
+    "notAvailable": "二維碼掃描不可用",
+    "notAvailableMessage": "掃描二維碼需要應用的開發版本。請手動輸入PIN碼。",
+    "cameraPermission": "相機權限",
+    "cameraPermissionMessage": "我們需要訪問您的相機以掃描二維碼。",
+    "cameraPermissionRequired": "需要相機權限",
+    "cameraPermissionMessage2": "請授予相機權限以掃描二維碼。",
+    "grantPermission": "授予權限"
+  }
+}
+

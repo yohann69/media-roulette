@@ -1,12 +1,13 @@
 import { View, Text, Animated, TouchableOpacity } from "react-native";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface PlayerScore {
   playerId: string;
   playerName: string;
   totalScore: number;
   roundScore: number;
-  timeTaken: number | null; // in ms, null if wrong/no answer
+  timeTaken: number | null;
 }
 
 interface InterimLeaderboardProps {
@@ -20,6 +21,7 @@ export function InterimLeaderboard({
   players,
   onContinue,
 }: InterimLeaderboardProps) {
+  const { t } = useTranslation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
@@ -44,12 +46,10 @@ export function InterimLeaderboard({
     }
   }, [visible, fadeAnim, slideAnim]);
 
-  // Sort players by total score (descending)
   const sortedPlayers = [...players].sort(
     (a, b) => b.totalScore - a.totalScore
   );
 
-  // Find fastest correct answer
   const fastestPlayer = sortedPlayers
     .filter((p) => p.timeTaken !== null && p.roundScore > 0)
     .sort((a, b) => (a.timeTaken || Infinity) - (b.timeTaken || Infinity))[0];
@@ -66,7 +66,7 @@ export function InterimLeaderboard({
     >
       <View className="bg-gray-800 rounded-3xl p-6 w-full max-w-md mx-4">
         <Text className="text-white text-3xl font-bold mb-6 text-center">
-          Round Results
+          {t("leaderboard.roundResults")}
         </Text>
 
         <View className="gap-3 mb-6">
@@ -108,12 +108,12 @@ export function InterimLeaderboard({
                       </Text>
                       {isFastest && (
                         <Text className="text-yellow-400 text-sm ml-2">
-                          ⚡ Fastest
+                          {t("leaderboard.fastest")}
                         </Text>
                       )}
                     </View>
                     <Text className="text-gray-400 text-sm">
-                      {player.totalScore.toLocaleString()} pts
+                      {player.totalScore.toLocaleString()} {t("common.pts")}
                     </Text>
                   </View>
                 </View>
@@ -130,7 +130,7 @@ export function InterimLeaderboard({
             className="bg-primary py-4 px-6 rounded-xl items-center"
             onPress={onContinue}
           >
-            <Text className="text-white text-lg font-bold">Continue</Text>
+            <Text className="text-white text-lg font-bold">{t("common.continue")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -179,4 +179,3 @@ function ScoreAnimation({ score }: { score: number }) {
     </Animated.View>
   );
 }
-

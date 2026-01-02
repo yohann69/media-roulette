@@ -1,4 +1,6 @@
 import { View, Image } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated } from "react-native";
 
 interface MediaItem {
   id: string;
@@ -12,7 +14,16 @@ interface MediaDisplayProps {
 }
 
 export function MediaDisplay({ media }: MediaDisplayProps) {
-  // Determine image source - prefer base64 if available, otherwise use URI
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [media.id, fadeAnim]);
+
   const imageSource = media.base64
     ? { uri: `data:image/jpeg;base64,${media.base64}` }
     : media.uri
@@ -20,7 +31,7 @@ export function MediaDisplay({ media }: MediaDisplayProps) {
     : null;
 
   return (
-    <View className="mb-6">
+    <Animated.View style={{ opacity: fadeAnim }} className="mb-6">
       {media.mediaType === "photo" ? (
         <View className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-900 mb-4">
           {imageSource && (
@@ -38,6 +49,6 @@ export function MediaDisplay({ media }: MediaDisplayProps) {
           </View>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }

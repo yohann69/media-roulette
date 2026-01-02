@@ -1,6 +1,7 @@
 import "../global.css";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import "../utils/i18n"; // Initialize i18n
 
 export default function RootLayout() {
   // Force dark mode - app is always in dark mode

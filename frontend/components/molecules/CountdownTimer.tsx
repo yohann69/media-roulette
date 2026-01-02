@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { View, Text } from "react-native";
 import { Animated } from "react-native";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface CountdownTimerProps {
-  duration: number; // in seconds
+  duration: number;
   onComplete: () => void;
   isActive: boolean;
 }
@@ -13,6 +14,7 @@ export function CountdownTimer({
   onComplete,
   isActive,
 }: CountdownTimerProps) {
+  const { t } = useTranslation();
   const progress = useRef(new Animated.Value(1)).current;
   const [timeLeft, setTimeLeft] = useState(duration);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -28,11 +30,9 @@ export function CountdownTimer({
       return;
     }
 
-    // Reset progress and time
     progress.setValue(1);
     setTimeLeft(duration);
 
-    // Start countdown animation
     const animation = Animated.timing(progress, {
       toValue: 0,
       duration: duration * 1000,
@@ -46,7 +46,6 @@ export function CountdownTimer({
       }
     });
 
-    // Update time left every second
     let currentTime = duration;
     intervalRef.current = setInterval(() => {
       currentTime = Math.max(0, currentTime - 1);
@@ -82,7 +81,7 @@ export function CountdownTimer({
         />
       </View>
       <View className="flex-row justify-between items-center mt-2">
-        <Text className="text-gray-400 text-sm">Time remaining</Text>
+        <Text className="text-gray-400 text-sm">{t("game.timeRemaining")}</Text>
         <Text className="text-white text-sm font-semibold">
           {timeLeft}s
         </Text>

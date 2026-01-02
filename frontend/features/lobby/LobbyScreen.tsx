@@ -10,6 +10,7 @@ import { Button } from "../../components/atoms/Button";
 import { useUsername } from "../../hooks/useUsername";
 import { useGameSettings } from "../../hooks/useGameSettings";
 import { useSocket } from "../../stores/useSocket";
+import { useTranslation } from "../../hooks/useTranslation";
 
 interface Player {
   id: string;
@@ -19,6 +20,7 @@ interface Player {
 
 export function LobbyScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { username } = useUsername();
   const { settings } = useGameSettings();
@@ -29,7 +31,6 @@ export function LobbyScreen() {
   const isHost = params.isHost === "true";
   const pin = params.pin || room?.pin || "";
 
-  // Set up socket event listeners
   useEffect(() => {
     onPlayerJoined((data) => {
       console.log("Player joined:", data);
@@ -48,9 +49,8 @@ export function LobbyScreen() {
       console.log("Room deleted:", data);
       router.push("/");
     });
-  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, router]);
+  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, router, pin, isHost]);
 
-  // Convert socket players to UI format
   const players: Player[] = room?.players.map((p) => ({
     id: p.socketId,
     name: p.name,
@@ -97,14 +97,14 @@ export function LobbyScreen() {
     <View className="flex-1 bg-black">
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
         <Text className="text-white text-4xl font-bold mb-2 text-center">
-          Game Lobby
+          {t("lobby.title")}
         </Text>
 
         {isHost && pin && <GamePIN pin={pin} />}
 
         <View className="mb-8">
           <Text className="text-white text-xl font-semibold mb-4">
-            Players ({players.length})
+            {t("lobby.players")} ({players.length})
           </Text>
           <PlayerList 
             players={players} 
@@ -123,7 +123,7 @@ export function LobbyScreen() {
       {isHost && (
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
           <Button
-            title={isStarting ? "Starting..." : "Start Game"}
+            title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
             onPress={handleStartGame}
             variant="primary"
             disabled={isStarting}
