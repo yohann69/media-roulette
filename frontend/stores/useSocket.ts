@@ -41,7 +41,7 @@ interface SocketState {
     cleanup: () => void;
 }
 
-const SOCKET_URL = "http://localhost:6969";
+const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";
 
 function createSocketHandlers(set: any, get: any) {
     return {
