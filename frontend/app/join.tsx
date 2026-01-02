@@ -1,6 +1,6 @@
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "../components/atoms/Input";
 import { Button } from "../components/atoms/Button";
 import { QRScanner } from "../components/molecules/QRScanner";
@@ -17,15 +17,17 @@ export default function JoinScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const hasAutoJoinedRef = useRef(false);
 
   useEffect(() => {
     connect();
   }, [connect]);
 
   const handleJoin = async () => {
-    if (pin.trim().length === 6 && /^\d{6}$/.test(pin)) {
+    if (pin.trim().length === 6 && /^\d{6}$/.test(pin) && !isJoining && isConnected) {
       setIsJoining(true);
       setJoinError("");
+      hasAutoJoinedRef.current = true;
 
       const success = await joinGame(pin.trim(), username || "Player");
 
@@ -37,6 +39,7 @@ export default function JoinScreen() {
       } else {
         setIsJoining(false);
         setJoinError(t("join.error"));
+        hasAutoJoinedRef.current = false;
       }
     }
   };
@@ -44,9 +47,28 @@ export default function JoinScreen() {
   const handleQRScan = (scannedPin: string) => {
     setPin(scannedPin);
     setShowScanner(false);
+    // Auto-join after scanning
+    if (scannedPin.length === 6 && /^\d{6}$/.test(scannedPin)) {
+      setTimeout(() => handleJoin(), 100);
+    }
   };
 
   const isValidPIN = pin.trim().length === 6 && /^\d{6}$/.test(pin);
+
+  // Auto-validate when 6 digits are entered
+  useEffect(() => {
+    if (isValidPIN && !isJoining && isConnected && pin.length === 6 && !hasAutoJoinedRef.current) {
+      const timer = setTimeout(() => {
+        handleJoin();
+      }, 500); // Small delay to avoid immediate trigger
+      return () => clearTimeout(timer);
+    }
+    // Reset the ref when PIN changes
+    if (pin.length < 6) {
+      hasAutoJoinedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, isConnected]); // Only trigger on pin or connection change
 
   return (
     <View className="flex-1 bg-black">
@@ -70,25 +92,27 @@ export default function JoinScreen() {
           </Text>
         )}
 
-        <Input
-          value={pin}
-          onChangeText={(text) => {
-            const digitsOnly = text.replace(/\D/g, "").slice(0, 6);
-            setPin(digitsOnly);
-            setJoinError("");
-          }}
-          placeholder={t("join.pinPlaceholder")}
-          label={t("join.pinLabel")}
-          autoFocus
-        />
-
-        <View className="mt-4">
-          <Button
-            title={t("join.scanQR")}
-            onPress={() => setShowScanner(true)}
-            variant="secondary"
-            disabled={!isConnected}
+        <View className="relative">
+          <Input
+            value={pin}
+            onChangeText={(text) => {
+              const digitsOnly = text.replace(/\D/g, "").slice(0, 6);
+              setPin(digitsOnly);
+              setJoinError("");
+            }}
+            placeholder={t("join.pinPlaceholder")}
+            label={t("join.pinLabel")}
+            autoFocus
+            keyboardType="number-pad"
           />
+          <TouchableOpacity
+            onPress={() => setShowScanner(true)}
+            disabled={!isConnected}
+            className="absolute right-3 top-10 p-2"
+            activeOpacity={0.7}
+          >
+            <Text className="text-2xl">📷</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 

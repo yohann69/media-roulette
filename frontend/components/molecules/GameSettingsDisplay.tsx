@@ -1,9 +1,12 @@
 import { View, Text } from "react-native";
-import { GameSettings } from "../../hooks/useGameSettings";
 import { useTranslation } from "../../hooks/useTranslation";
 
 interface GameSettingsDisplayProps {
-  settings: GameSettings;
+  settings: {
+    rounds: number;
+    timer: number;
+    mode: string;
+  };
 }
 
 export function GameSettingsDisplay({ settings }: GameSettingsDisplayProps) {

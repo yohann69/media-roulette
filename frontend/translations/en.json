@@ -53,7 +53,9 @@
     "title": "Game Lobby",
     "players": "Players",
     "startGame": "Start Game",
-    "starting": "Starting..."
+    "starting": "Starting...",
+    "waitingForHost": "Waiting for {hostName} to start the game",
+    "host": "Host"
   },
   "gameSettings": {
     "title": "Game Settings",

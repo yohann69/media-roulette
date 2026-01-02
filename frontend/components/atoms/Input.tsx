@@ -8,6 +8,7 @@ interface InputProps {
   label?: string;
   error?: string;
   autoFocus?: boolean;
+  keyboardType?: "default" | "numeric" | "email-address" | "phone-pad" | "number-pad";
 }
 
 export function Input({
@@ -17,6 +18,7 @@ export function Input({
   label,
   error,
   autoFocus = false,
+  keyboardType = "default",
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -33,6 +35,7 @@ export function Input({
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         autoFocus={autoFocus}
+        keyboardType={keyboardType}
         className={`bg-gray-800 text-white px-4 py-3 rounded-xl border-2 ${
           isFocused ? "border-primary" : "border-gray-700"
         } ${error ? "border-red-500" : ""}`}

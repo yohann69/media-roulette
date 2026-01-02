@@ -8,7 +8,6 @@ import { WarningBanner } from "../../components/molecules/WarningBanner";
 import { WarningModal } from "../../components/molecules/WarningModal";
 import { Button } from "../../components/atoms/Button";
 import { useUsername } from "../../hooks/useUsername";
-import { useGameSettings } from "../../hooks/useGameSettings";
 import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 
@@ -23,7 +22,6 @@ export function LobbyScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { username } = useUsername();
-  const { settings } = useGameSettings();
   const { room, startGame, onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted } = useSocket();
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -57,8 +55,26 @@ export function LobbyScreen() {
     isHost: p.isHost,
   })) || [];
 
+  // Use room settings if available, otherwise fallback to default
+  const settings = room?.settings || {
+    rounds: 25,
+    timer: 5,
+    mode: "Photo",
+  };
+
+  // Debug settings
+  useEffect(() => {
+    if (room?.settings) {
+      console.log("Lobby settings updated:", room.settings);
+    }
+  }, [room?.settings]);
+
   const totalMedia = players.length * 20;
   const canStartGame = totalMedia >= settings.rounds;
+
+  // Get host name
+  const hostPlayer = players.find((p) => p.isHost);
+  const hostName = hostPlayer?.name || t("lobby.host");
 
   const handleStartGame = async () => {
     if (!canStartGame) {
@@ -121,21 +137,32 @@ export function LobbyScreen() {
           />
         </View>
 
-        <GameSettingsDisplay settings={settings} />
+        {isHost && <GameSettingsDisplay settings={settings} />}
 
-        <WarningBanner
-          totalMedia={totalMedia}
-          requiredRounds={settings.rounds}
-        />
+        {isHost && (
+          <WarningBanner
+            totalMedia={totalMedia}
+            requiredRounds={settings.rounds}
+          />
+        )}
       </ScrollView>
 
-      {isHost && (
+      {isHost ? (
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
           <Button
             title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
             onPress={handleStartGame}
             variant="primary"
             disabled={isStarting}
+          />
+        </View>
+      ) : (
+        <View className="px-6 py-4 border-t border-gray-800 bg-black">
+          <Button
+            title={t("lobby.waitingForHost", { hostName })}
+            onPress={() => {}}
+            variant="secondary"
+            disabled
           />
         </View>
       )}
