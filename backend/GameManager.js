@@ -25,6 +25,7 @@ class GameManager {
           name: hostName,
           isHost: true,
           score: 0,
+          state: "selecting", // Host also needs to select media first
         },
       ],
       settings: {
@@ -59,6 +60,7 @@ class GameManager {
       name: playerName,
       isHost: false,
       score: 0,
+      state: "selecting", // New players start in selecting state
     });
 
     return { success: true, room };

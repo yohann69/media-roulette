@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import { useMediaFetcher } from "../../hooks/useMediaFetcher";
 import { useSocket, SOCKET_URL } from "../../stores/useSocket";
+import { compressMedia } from "../../utils/mediaCompression";
 
 export function useSelectionScreenLogic(params: { isHost?: string; pin?: string; playAgain?: string }) {
   const router = useRouter();
@@ -61,16 +62,28 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
       for (let i = 0; i < total; i++) {
         const item = media[i];
         
+        // Compress media before uploading (photos only, max 100kb)
+        const compressedUri = await compressMedia(item.uri, item.mediaType);
+        
         // Upload to backend
         const uploadResult = await FileSystem.uploadAsync(
           `${SOCKET_URL}/upload`,
-          item.uri,
+          compressedUri,
           {
             fieldName: "media",
             httpMethod: "POST",
             uploadType: FileSystem.FileSystemUploadType.MULTIPART,
           }
         );
+        
+        // Clean up compressed file if it's different from original
+        if (compressedUri !== item.uri) {
+          try {
+            await FileSystem.deleteAsync(compressedUri, { idempotent: true });
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }
 
         if (uploadResult.status !== 200) {
           console.error("Failed to upload file", uploadResult);

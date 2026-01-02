@@ -80,6 +80,12 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 // Store uploaded media info for this player
                 gameManager.setPlayerMedia(pin, socket.id, mediaPool);
                 
+                // Update player state to ready
+                const player = room.players.find(p => p.socketId === socket.id);
+                if (player) {
+                    player.state = "ready";
+                }
+                
                 io.to(pin).emit("room-update", room);
                 socket.emit("media-pool-set", { success: true });
             } catch (error) {

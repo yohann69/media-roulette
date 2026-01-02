@@ -9,6 +9,7 @@ interface Room {
         name: string;
         isHost: boolean;
         score: number;
+        state?: "selecting" | "ready";
     }>;
     settings: {
         rounds: number;
