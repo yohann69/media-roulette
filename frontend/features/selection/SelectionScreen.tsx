@@ -99,10 +99,10 @@ export function SelectionScreen() {
     <View className="flex-1 bg-black">
       <View className="px-6 pt-12 pb-4">
         <Text className="text-white text-3xl font-bold mb-2">
-          Select Your Media
+          Your Random Media
         </Text>
         <Text className="text-gray-400 text-base">
-          {media.length} items selected. Tap "Reroll" to get new random items.
+          {media.length} random items from your gallery. Tap "Reroll" to get new random items.
         </Text>
       </View>
 

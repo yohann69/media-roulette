@@ -30,7 +30,8 @@
         "READ_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES",
         "READ_MEDIA_VIDEO"
-      ]
+      ],
+      "package": "com.yohann69.mediaroulette"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,6 +39,12 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "photoroulette"
+    "scheme": "photoroulette",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2d124932-8151-4200-ad25-6fd6e1e8d05f"
+      }
+    }
   }
 }
