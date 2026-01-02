@@ -1,13 +1,17 @@
 import { View, Text, Animated } from "react-native";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "../../components/atoms/Input";
 import { Button } from "../../components/atoms/Button";
 import { useUsername } from "../../hooks/useUsername";
+import { GameSettingsModal } from "../game-settings/GameSettingsModal";
+import { useGameSettings, GameSettings } from "../../hooks/useGameSettings";
 
 export function HomeScreen() {
     const router = useRouter();
     const { username, setUsername, isLoading } = useUsername();
+    const { saveSettings } = useGameSettings();
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
 
     // Animation values
     const titleOpacity = useRef(new Animated.Value(0)).current;
@@ -118,8 +122,13 @@ export function HomeScreen() {
 
     const handleCreateGame = () => {
         if (isUsernameValid) {
-            router.push("/selection");
+            setShowSettingsModal(true);
         }
+    };
+
+    const handleSettingsConfirm = (settings: GameSettings) => {
+        saveSettings(settings);
+        router.push("/selection");
     };
 
     const handleJoinGame = () => {
@@ -172,6 +181,12 @@ export function HomeScreen() {
                     variant="secondary"
                 />
             </Animated.View>
+
+            <GameSettingsModal
+                visible={showSettingsModal}
+                onClose={() => setShowSettingsModal(false)}
+                onConfirm={handleSettingsConfirm}
+            />
         </View>
     );
 }
