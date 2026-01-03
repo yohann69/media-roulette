@@ -2,6 +2,15 @@ function calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes) {
     const room = gameManager.getRoom(pin);
     if (!room) return;
 
+    // Prevent duplicate calculations for the same round
+    if (room.roundResultsCalculated) {
+        console.log(`Round results already calculated for round ${room.currentRound} in game ${pin}`);
+        return;
+    }
+
+    // Mark as calculated before processing to prevent race conditions
+    room.roundResultsCalculated = true;
+
     const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
     const roundStartTime = roundStartTimes.get(pin) || Date.now();
     

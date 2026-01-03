@@ -41,6 +41,7 @@ class GameManager {
       roundGuesses: new Map(),
       usedMediaIndices: new Set(),
       readyPlayers: new Set(), // Players who have finished syncing
+      roundResultsCalculated: false, // Flag to prevent duplicate round result calculations
     };
 
     this.rooms.set(pin, room);
@@ -141,6 +142,7 @@ class GameManager {
     room.scores.clear();
     room.roundGuesses.clear();
     room.usedMediaIndices.clear();
+    room.roundResultsCalculated = false;
     room.uploadedMedia.clear();
     room.gameMedia = [];
     room.readyPlayers.clear();
@@ -219,6 +221,7 @@ class GameManager {
     if (room) {
       room.currentRound = round;
       room.roundGuesses.clear();
+      room.roundResultsCalculated = false; // Reset flag for new round
       return true;
     }
     return false;

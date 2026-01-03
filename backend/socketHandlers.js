@@ -187,17 +187,25 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
                 if (!room || room.gameState !== "playing") return;
 
+                // Don't process guesses if results have already been calculated
+                if (room.roundResultsCalculated) {
+                    socket.emit("guess-received", { success: false, message: "Round already ended" });
+                    return;
+                }
+
                 const roundStartTime = roundStartTimes.get(pin);
                 if (!roundStartTime) return;
 
                 gameManager.submitGuess(pin, socket.id, targetUser, timestamp, roundStartTime);
                 socket.emit("guess-received", { success: true });
 
+                // Check if all players have submitted their guesses
                 const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
                 const playersWhoShouldGuess = room.players.filter(p => p.socketId !== actualOwnerId);
                 const guessesReceived = room.roundGuesses.size;
 
-                if (guessesReceived >= playersWhoShouldGuess.length) {
+                // Only calculate results if all players have guessed AND results haven't been calculated yet
+                if (guessesReceived >= playersWhoShouldGuess.length && !room.roundResultsCalculated) {
                     calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
                 }
             } catch (error) {
@@ -210,7 +218,12 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const { pin } = data;
                 const room = gameManager.getRoom(pin);
                 if (!room || room.gameState !== "playing") return;
-                calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
+                
+                // Only calculate results if they haven't been calculated yet
+                // (in case all players guessed before timer expired)
+                if (!room.roundResultsCalculated) {
+                    calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
+                }
             } catch (error) { }
         });
 
