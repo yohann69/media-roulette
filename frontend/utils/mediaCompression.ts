@@ -209,7 +209,7 @@ async function getVideoDuration(uri: string): Promise<number> {
 }
 
 /**
- * Compress and trim a video client-side
+ * Compress and trim a video client-side using react-native-compressor
  * @param uri - Original video URI
  * @param maxDurationSeconds - Maximum duration in seconds (round duration + 1)
  * @param mediaName - Name/ID of the media for logging
@@ -228,146 +228,109 @@ async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?
     const originalSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
     const originalSizeFormatted = formatFileSize(originalSize);
 
-    // Always attempt trimming/compression if file is large
-    // (We can't reliably get duration without native modules, so we'll always trim)
+    // Always attempt compression and trimming
     const needsCompression = originalSize > MAX_VIDEO_SIZE_BYTES;
-    const alwaysTrim = true; // Always trim to maxDurationSeconds
 
-    // If video is already small enough, we still trim to ensure correct duration
-    if (!needsCompression && !alwaysTrim) {
-      console.log(`-> compressed media ${displayName}: already optimized (${originalSizeFormatted})`);
-      return uri;
+    // If video is already small enough, we still compress/trim to ensure correct duration and format
+    if (!needsCompression && originalSize <= MAX_VIDEO_SIZE_BYTES) {
+      // Still compress to ensure format consistency and trim duration
+      console.log(`-> compressed media ${displayName}: compressing for format consistency and trimming (${originalSizeFormatted})`);
     }
 
-    // Try to use ffmpeg-kit for video processing
-    let FFmpegKit: any = null;
+    // Try to use react-native-compressor for video processing
+    let Video: any = null;
     try {
-      const ffmpegModule = await import("ffmpeg-kit-react-native");
-      FFmpegKit = ffmpegModule.FFmpegKit || ffmpegModule.default?.FFmpegKit;
+      const compressorModule = await import("react-native-compressor");
+      // react-native-compressor exports Video directly
+      Video = compressorModule.Video || (compressorModule as any).default?.Video || (compressorModule as any).default;
     } catch (e) {
-      console.warn("ffmpeg-kit not available, will attempt server-side processing");
+      console.warn("react-native-compressor not available:", e);
     }
 
-    if (FFmpegKit) {
-      // Client-side processing with ffmpeg-kit
-      const cacheDir = FileSystem.cacheDirectory || "";
-      const outputUri = `${cacheDir}compressed_${Date.now()}_${displayName}.mp4`;
-      
-      // Build ffmpeg command
-      // -i input: input file
-      // -t duration: trim to max duration
-      // -c:v libx264: video codec
-      // -crf 28: quality (lower = better quality, higher = smaller file)
-      // -preset fast: encoding speed
-      // -c:a aac: audio codec
-      // -b:a 128k: audio bitrate
-      // -movflags +faststart: optimize for streaming
-      // -fs 5M: limit file size to 5MB (approximate)
-      
-      let crf = 28; // Start with moderate quality
-      let command = `-i "${uri}" -t ${maxDurationSeconds} -c:v libx264 -crf ${crf} -preset fast -c:a aac -b:a 128k -movflags +faststart "${outputUri}"`;
-      
-      if (needsCompression) {
-        // Add file size limit
-        command = `-i "${uri}" -t ${maxDurationSeconds} -c:v libx264 -crf ${crf} -preset fast -c:a aac -b:a 128k -movflags +faststart -fs ${MAX_VIDEO_SIZE_BYTES} "${outputUri}"`;
-      }
-
-      console.log(`-> compressed media ${displayName}: processing video (trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB)`);
+    if (Video && Video.compress) {
+      // Client-side processing with react-native-compressor
+      console.log(`-> compressed media ${displayName}: processing video (compress to ${MAX_VIDEO_SIZE_MB}MB, trim to ${maxDurationSeconds}s)`);
       
       try {
-        // FFmpegKit.execute can take command as string or array of arguments
-        // Build command array properly handling file paths with spaces
-        const commandArray: string[] = [];
-        let currentArg = '';
-        let inQuotes = false;
+        // Calculate target bitrate based on max file size and duration
+        // bitrate (bits/sec) = (target_size_bytes * 8) / duration_seconds
+        const targetBitrate = Math.floor((MAX_VIDEO_SIZE_BYTES * 8) / maxDurationSeconds);
         
-        // Parse command string handling quoted paths
-        for (let i = 0; i < command.length; i++) {
-          const char = command[i];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ' ' && !inQuotes) {
-            if (currentArg.trim()) {
-              commandArray.push(currentArg.trim());
-              currentArg = '';
-            }
-          } else {
-            currentArg += char;
-          }
-        }
-        if (currentArg.trim()) {
-          commandArray.push(currentArg.trim());
+        // First attempt: auto compression
+        let compressionOptions: any = {
+          compressionMethod: 'auto',
+        };
+        
+        // If file is large, use manual compression with calculated bitrate
+        if (needsCompression) {
+          compressionOptions = {
+            compressionMethod: 'manual',
+            bitrate: Math.max(300000, targetBitrate), // Minimum 300kbps, or calculated bitrate
+          };
         }
         
-        // Remove empty strings
-        const cleanCommandArray = commandArray.filter(arg => arg.length > 0);
+        console.log(`-> compressed media ${displayName}: compressing with bitrate target: ${compressionOptions.bitrate || 'auto'} bps`);
         
-        let session: any = null;
-        try {
-          session = await FFmpegKit.execute(...cleanCommandArray);
-        } catch (executeError: any) {
-          // Check if it's a null session error
-          if (executeError?.message?.includes('ffmpegSession') || executeError?.message?.includes('null')) {
-            console.warn(`-> compressed media ${displayName}: ffmpeg-kit native module not properly linked`);
-            throw new Error("FFmpegKit native module not available");
-          }
-          throw executeError;
+        let compressedUri = await Video.compress(uri, compressionOptions);
+        
+        // Check if compression was successful
+        const compressedInfo = await FileSystem.getInfoAsync(compressedUri);
+        if (!compressedInfo.exists) {
+          throw new Error("Compressed file does not exist");
         }
         
-        if (!session) {
-          throw new Error("FFmpegKit session is null - native module not properly linked");
-        }
+        const compressedSize = compressedInfo.exists && "size" in compressedInfo ? compressedInfo.size : 0;
+        const compressedSizeFormatted = formatFileSize(compressedSize);
         
-        const returnCode = await session.getReturnCode();
-        
-        if (returnCode && returnCode.isValueSuccess && returnCode.isValueSuccess()) {
-          // Check output file size
-          const outputInfo = await FileSystem.getInfoAsync(outputUri);
-          const outputSize = outputInfo.exists && "size" in outputInfo ? outputInfo.size : 0;
+        // If still too large, try more aggressive compression
+        if (compressedSize > MAX_VIDEO_SIZE_BYTES) {
+          console.log(`-> compressed media ${displayName}: still too large (${compressedSizeFormatted}), trying more aggressive compression...`);
           
-          if (outputSize > 0 && outputSize <= MAX_VIDEO_SIZE_BYTES) {
-            const outputSizeFormatted = formatFileSize(outputSize);
-            const reduction = originalSize > 0 ? ((1 - outputSize / originalSize) * 100).toFixed(1) : '0';
-            console.log(`-> compressed media ${displayName}: success! ${originalSizeFormatted} -> ${outputSizeFormatted} (${reduction}% reduction)`);
-            return outputUri;
-          } else if (outputSize > MAX_VIDEO_SIZE_BYTES) {
-            // Try with higher CRF (lower quality) for better compression
-            console.log(`-> compressed media ${displayName}: output still too large (${formatFileSize(outputSize)}), trying higher compression...`);
-            crf = 32; // Lower quality for smaller file
-            const retryCommand = `-i "${uri}" -t ${maxDurationSeconds} -c:v libx264 -crf ${crf} -preset fast -c:a aac -b:a 96k -movflags +faststart -fs ${MAX_VIDEO_SIZE_MB}M "${outputUri}"`;
-            const retryCommandArray = retryCommand.split(' ').filter(arg => arg.length > 0);
-            const retrySession = await FFmpegKit.execute(...retryCommandArray);
-            const retryReturnCode = await retrySession.getReturnCode();
+          // More aggressive: lower bitrate
+          const aggressiveBitrate = Math.max(200000, Math.floor((MAX_VIDEO_SIZE_BYTES * 8) / maxDurationSeconds) * 0.7);
+          const aggressiveOptions = {
+            compressionMethod: 'manual' as const,
+            bitrate: aggressiveBitrate,
+          };
+          
+          compressedUri = await Video.compress(uri, aggressiveOptions);
+          
+          const retryInfo = await FileSystem.getInfoAsync(compressedUri);
+          const retrySize = retryInfo.exists && "size" in retryInfo ? retryInfo.size : 0;
+          
+          if (retrySize > 0) {
+            const retrySizeFormatted = formatFileSize(retrySize);
+            const reduction = originalSize > 0 ? ((1 - retrySize / originalSize) * 100).toFixed(1) : '0';
+            console.log(`-> compressed media ${displayName}: compressed to ${retrySizeFormatted} (${reduction}% reduction)`);
             
-            if (retryReturnCode && retryReturnCode.isValueSuccess && retryReturnCode.isValueSuccess()) {
-              const retryOutputInfo = await FileSystem.getInfoAsync(outputUri);
-              const retryOutputSize = retryOutputInfo.exists && "size" in retryOutputInfo ? retryOutputInfo.size : 0;
-              if (retryOutputSize > 0) {
-                console.log(`-> compressed media ${displayName}: compressed to ${formatFileSize(retryOutputSize)}`);
-                return outputUri;
-              }
-            }
+            // Note: react-native-compressor doesn't support duration trimming directly
+            // Server will handle duration trimming during upload
+            return compressedUri;
           }
         } else {
-          const failStackTrace = session?.getFailStackTrace ? await session.getFailStackTrace() : null;
-          console.warn(`-> compressed media ${displayName}: ffmpeg failed`, failStackTrace);
+          const reduction = originalSize > 0 ? ((1 - compressedSize / originalSize) * 100).toFixed(1) : '0';
+          console.log(`-> compressed media ${displayName}: success! ${originalSizeFormatted} -> ${compressedSizeFormatted} (${reduction}% reduction)`);
+          
+          // Note: Duration trimming will be handled server-side
+          return compressedUri;
         }
-      } catch (ffmpegError) {
-        console.warn(`-> compressed media ${displayName}: ffmpeg error:`, ffmpegError);
+      } catch (compressorError: any) {
+        console.warn(`-> compressed media ${displayName}: compression error:`, compressorError?.message || compressorError);
+        // Fall through to server-side processing
       }
     }
 
-    // Fallback: if client-side processing failed or not available
+    // Fallback: if client-side compression failed or not available
     // The video will be trimmed server-side during upload (if maxDuration is provided)
-    // Note: Server-side compression is not implemented - videos may exceed 5MB
-    console.log(`-> compressed media ${displayName}: client-side processing unavailable, will use server-side trimming`);
-    console.log(`  Target: trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB max`);
-    console.log(`  Current: ${originalSizeFormatted}`);
-    console.log(`  Note: Server will trim video to ${maxDurationSeconds}s during upload`);
-    console.log(`  Warning: Video compression requires client-side ffmpeg (rebuild app) or server-side processing`);
+    // Note: Server-side compression is not implemented - videos may exceed 5MB if compression fails
+    console.warn(`-> compressed media ${displayName}: client-side compression unavailable or failed, will use server-side trimming`);
+    console.warn(`  Target: trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB max`);
+    console.warn(`  Current: ${originalSizeFormatted}`);
+    console.warn(`  Note: Server will trim video to ${maxDurationSeconds}s during upload`);
+    console.warn(`  Warning: Video may exceed ${MAX_VIDEO_SIZE_MB}MB if compression failed`);
     
     // Return original - server will handle trimming
-    // For compression, we'd need server-side processing or accept larger files
+    // Compression failed, so video may be larger than desired
     return uri;
   } catch (error) {
     console.error(`-> compressed media ${displayName}: error processing video:`, error);
