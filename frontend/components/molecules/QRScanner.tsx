@@ -3,19 +3,22 @@ import { View, Text, Modal, TouchableOpacity } from "react-native";
 import { useTranslation } from "../../hooks/useTranslation";
 
 let CameraView: any = null;
-let CameraType: any = null;
 let useCameraPermissions: any = null;
 let cameraAvailable = false;
 
 try {
   const expoCamera = require("expo-camera");
   CameraView = expoCamera.CameraView;
-  CameraType = expoCamera.CameraType;
   useCameraPermissions = expoCamera.useCameraPermissions;
   cameraAvailable = true;
 } catch (e) {
+  console.warn("expo-camera not available:", e);
   cameraAvailable = false;
 }
+
+// Use string literal for camera facing direction
+// In expo-camera v17+, the facing prop accepts "back" | "front" directly
+const CAMERA_FACING_BACK = "back" as const;
 
 interface QRScannerProps {
   visible: boolean;
@@ -149,7 +152,26 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
   }
 
   if (!CameraView) {
-    return null;
+    return (
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-5">
+          <View className="bg-gray-800 rounded-3xl p-6 w-full max-w-md">
+            <Text className="text-white text-2xl font-bold mb-4 text-center">
+              {t("qrScanner.notAvailable")}
+            </Text>
+            <Text className="text-gray-400 text-center mb-6">
+              {t("qrScanner.notAvailableMessage")}
+            </Text>
+            <TouchableOpacity
+              onPress={onClose}
+              className="bg-primary py-4 px-6 rounded-xl items-center"
+            >
+              <Text className="text-white text-lg font-bold">{t("common.close")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
   }
 
   return (
@@ -157,7 +179,7 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
       <View className="flex-1 bg-black">
         <CameraView
           style={{ flex: 1 }}
-          facing={CameraType.back}
+          facing={CAMERA_FACING_BACK}
           onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
           barcodeScannerSettings={{
             barcodeTypes: ["qr"],
