@@ -86,6 +86,7 @@ export function GameScreen() {
         isOwner={isOwner}
         onContinue={handleContinue}
         allPlayers={players}
+        currentMedia={currentMedia}
       />
     );
   }

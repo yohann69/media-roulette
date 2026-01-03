@@ -1,6 +1,7 @@
 import { View, Text, ScrollView } from "react-native";
 import { useTranslation } from "../../hooks/useTranslation";
 import { Button } from "../../components/atoms/Button";
+import { MediaDisplay } from "../../components/molecules/MediaDisplay";
 
 interface PlayerScore {
   playerId: string;
@@ -21,6 +22,15 @@ interface RoundResult {
   tooSlow?: boolean;
 }
 
+interface MediaItem {
+  id: string;
+  uri?: string;
+  base64?: string;
+  mediaType: "photo" | "video";
+  width?: number;
+  height?: number;
+}
+
 interface RoundResultsPageProps {
   currentRound: number;
   totalRounds: number;
@@ -33,6 +43,7 @@ interface RoundResultsPageProps {
   isOwner: boolean;
   onContinue: () => void;
   allPlayers: Array<{ id: string; name: string }>;
+  currentMedia?: MediaItem | null;
 }
 
 function formatTime(ms: number | null): string {
@@ -52,6 +63,7 @@ export function RoundResultsPage({
   isOwner,
   onContinue,
   allPlayers,
+  currentMedia,
 }: RoundResultsPageProps) {
   const { t } = useTranslation();
 
@@ -66,6 +78,9 @@ export function RoundResultsPage({
 
   return (
     <View className="flex-1 bg-black">
+      {/* Blurred background */}
+      {currentMedia && <MediaDisplay media={currentMedia} showAsBackground />}
+      
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
         <View className="items-center mb-6">
           <Text className="text-white text-3xl font-bold mb-2">

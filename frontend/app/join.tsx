@@ -108,10 +108,19 @@ export default function JoinScreen() {
           <TouchableOpacity
             onPress={() => setShowScanner(true)}
             disabled={!isConnected}
-            className="absolute right-3 top-10 p-2"
+            className="absolute right-3 top-10 p-2 items-center justify-center"
             activeOpacity={0.7}
           >
-            <Text className="text-2xl">📷</Text>
+            <View className="items-center justify-center">
+              {(() => {
+                try {
+                  const { Camera } = require("lucide-react-native");
+                  return <Camera size={24} color="#ffffff" />;
+                } catch {
+                  return <Text className="text-2xl">📷</Text>;
+                }
+              })()}
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>

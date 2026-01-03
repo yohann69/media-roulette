@@ -51,12 +51,20 @@ export function LobbyScreen() {
   const pin = params.pin || room?.pin || "";
 
   useEffect(() => {
+    // Auto-refresh player list via socket events
     onPlayerJoined((data) => {
       console.log("Player joined:", data);
+      // Room state is automatically updated via socket handler
     });
 
     onPlayerLeft((data) => {
       console.log("Player left:", data);
+      // Room state is automatically updated via socket handler
+    });
+
+    onRoomUpdate((data) => {
+      console.log("Room updated:", data);
+      // Room state is automatically updated via socket handler
     });
 
     onGameStarted((data) => {
@@ -67,10 +75,6 @@ export function LobbyScreen() {
     onRoomDeleted((data) => {
       console.log("Room deleted:", data);
       router.push("/");
-    });
-
-    onRoomUpdate((data) => {
-      console.log("Room updated:", data);
     });
 
     onSyncMedia(async (data) => {
@@ -176,7 +180,7 @@ export function LobbyScreen() {
           {t("lobby.title")}
         </Text>
 
-        {isHost && pin && <GamePIN pin={pin} />}
+        {pin && <GamePIN pin={pin} />}
 
         <View className="mb-8">
           <Text className="text-white text-xl font-semibold mb-4">
