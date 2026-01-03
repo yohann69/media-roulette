@@ -199,18 +199,13 @@ export async function compressImage(uri: string, mediaName?: string): Promise<st
 }
 
 /**
- * Get video duration using expo-av
- * Returns 0 if duration cannot be determined (will still attempt trimming)
+ * Get video duration - not critical, we always trim to maxDurationSeconds anyway
+ * Returns 0 to skip duration check
  */
 async function getVideoDuration(uri: string): Promise<number> {
-  try {
-    const AV = await import("expo-av");
-    // expo-av Video API - we'll attempt to get duration but it's not critical
-    // If we can't get it, we'll still trim/compress based on maxDurationSeconds
-    return 0; // Duration check is optional - we always trim to maxDurationSeconds anyway
-  } catch (error) {
-    return 0;
-  }
+  // Skip duration check - we'll always trim to maxDurationSeconds
+  // Getting duration requires native modules which may not be available
+  return 0;
 }
 
 /**
@@ -233,14 +228,14 @@ async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?
     const originalSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
     const originalSizeFormatted = formatFileSize(originalSize);
 
-    // Get video duration
-    const videoDuration = await getVideoDuration(uri);
-    const needsTrimming = videoDuration > maxDurationSeconds;
+    // Always attempt trimming/compression if file is large
+    // (We can't reliably get duration without native modules, so we'll always trim)
     const needsCompression = originalSize > MAX_VIDEO_SIZE_BYTES;
+    const alwaysTrim = true; // Always trim to maxDurationSeconds
 
-    // If video is already small enough and doesn't need trimming, return original
-    if (!needsCompression && !needsTrimming) {
-      console.log(`-> compressed media ${displayName}: already optimized (${originalSizeFormatted}, ${videoDuration.toFixed(1)}s)`);
+    // If video is already small enough, we still trim to ensure correct duration
+    if (!needsCompression && !alwaysTrim) {
+      console.log(`-> compressed media ${displayName}: already optimized (${originalSizeFormatted})`);
       return uri;
     }
 
@@ -281,9 +276,48 @@ async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?
       
       try {
         // FFmpegKit.execute can take command as string or array of arguments
-        // Using array format is more reliable
-        const commandArray = command.split(' ').filter(arg => arg.length > 0);
-        const session = await FFmpegKit.execute(...commandArray);
+        // Build command array properly handling file paths with spaces
+        const commandArray: string[] = [];
+        let currentArg = '';
+        let inQuotes = false;
+        
+        // Parse command string handling quoted paths
+        for (let i = 0; i < command.length; i++) {
+          const char = command[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ' ' && !inQuotes) {
+            if (currentArg.trim()) {
+              commandArray.push(currentArg.trim());
+              currentArg = '';
+            }
+          } else {
+            currentArg += char;
+          }
+        }
+        if (currentArg.trim()) {
+          commandArray.push(currentArg.trim());
+        }
+        
+        // Remove empty strings
+        const cleanCommandArray = commandArray.filter(arg => arg.length > 0);
+        
+        let session: any = null;
+        try {
+          session = await FFmpegKit.execute(...cleanCommandArray);
+        } catch (executeError: any) {
+          // Check if it's a null session error
+          if (executeError?.message?.includes('ffmpegSession') || executeError?.message?.includes('null')) {
+            console.warn(`-> compressed media ${displayName}: ffmpeg-kit native module not properly linked`);
+            throw new Error("FFmpegKit native module not available");
+          }
+          throw executeError;
+        }
+        
+        if (!session) {
+          throw new Error("FFmpegKit session is null - native module not properly linked");
+        }
+        
         const returnCode = await session.getReturnCode();
         
         if (returnCode && returnCode.isValueSuccess && returnCode.isValueSuccess()) {
@@ -323,12 +357,17 @@ async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?
       }
     }
 
-    // Fallback: if client-side processing failed or not available, return original
-    // Server-side processing can be implemented as a fallback
-    console.warn(`-> compressed media ${displayName}: client-side processing unavailable or failed, using original`);
-    console.warn(`  Target: trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB max`);
-    console.warn(`  Current: ${originalSizeFormatted}, duration: ${videoDuration.toFixed(1)}s`);
+    // Fallback: if client-side processing failed or not available
+    // The video will be trimmed server-side during upload (if maxDuration is provided)
+    // Note: Server-side compression is not implemented - videos may exceed 5MB
+    console.log(`-> compressed media ${displayName}: client-side processing unavailable, will use server-side trimming`);
+    console.log(`  Target: trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB max`);
+    console.log(`  Current: ${originalSizeFormatted}`);
+    console.log(`  Note: Server will trim video to ${maxDurationSeconds}s during upload`);
+    console.log(`  Warning: Video compression requires client-side ffmpeg (rebuild app) or server-side processing`);
     
+    // Return original - server will handle trimming
+    // For compression, we'd need server-side processing or accept larger files
     return uri;
   } catch (error) {
     console.error(`-> compressed media ${displayName}: error processing video:`, error);

@@ -72,28 +72,52 @@ app.post("/upload", upload.single("media"), async (req, res) => {
             const trimmedFilename = `trimmed_${req.file.filename}`;
             const outputPath = path.join(UPLOADS_DIR, trimmedFilename);
             
+            console.log(`Trimming video server-side: ${req.file.filename} to ${maxDuration}s`);
+            
             // Use fluent-ffmpeg to trim video
             await new Promise((resolve, reject) => {
-                ffmpeg(inputPath)
+                const ffmpegProcess = ffmpeg(inputPath)
                     .setDuration(maxDuration) // Trim to max duration
                     .output(outputPath)
+                    .on("start", (commandLine) => {
+                        console.log(`FFmpeg command: ${commandLine}`);
+                    })
                     .on("end", () => {
                         // Check if trimmed file was created
                         if (fs.existsSync(outputPath)) {
+                            const originalSize = fs.statSync(inputPath).size;
+                            const trimmedSize = fs.statSync(outputPath).size;
                             // Delete original and use trimmed version
                             fs.unlinkSync(inputPath);
                             finalFilename = trimmedFilename;
                             finalPath = `/uploads/${trimmedFilename}`;
-                            console.log(`Video trimmed server-side: ${req.file.filename} -> ${trimmedFilename} (${maxDuration}s)`);
+                            console.log(`Video trimmed server-side: ${req.file.filename} -> ${trimmedFilename} (${maxDuration}s, ${(originalSize/1024/1024).toFixed(2)}MB -> ${(trimmedSize/1024/1024).toFixed(2)}MB)`);
+                        } else {
+                            console.warn("Trimmed video file was not created");
                         }
                         resolve();
                     })
                     .on("error", (err) => {
                         // FFmpeg not available or failed - use original
                         console.warn("Server-side video trimming failed:", err.message);
+                        console.warn("Using original video file");
                         resolve(); // Don't reject - continue with original file
                     })
-                    .run();
+                    .on("stderr", (stderrLine) => {
+                        // Log ffmpeg stderr for debugging
+                        if (stderrLine.includes("error") || stderrLine.includes("Error")) {
+                            console.warn("FFmpeg stderr:", stderrLine);
+                        }
+                    });
+                
+                // Set timeout for video processing (30 seconds)
+                setTimeout(() => {
+                    ffmpegProcess.kill('SIGKILL');
+                    console.warn("Video trimming timed out");
+                    resolve();
+                }, 30000);
+                
+                ffmpegProcess.run();
             });
         } catch (error) {
             console.warn("Error in server-side video trimming:", error);
