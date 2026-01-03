@@ -114,7 +114,7 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     // All players can select anyone, including themselves
     const timestamp = Date.now();
     setSelectedPlayer(playerId);
-    setTimerActive(false); // Stop local timer for this player
+    // Don't stop the timer - it should continue until the round ends
     await submitGuess(pin, playerId, timestamp);
   };
 

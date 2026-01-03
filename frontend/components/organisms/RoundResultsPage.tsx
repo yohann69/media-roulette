@@ -76,6 +76,14 @@ export function RoundResultsPage({
     return roundResults.results.find((r) => r.playerId === playerId);
   };
 
+  // Check if nobody guessed correctly OR if nobody answered in time
+  const hasCorrectGuess = roundResults.results.some((r) => r.isCorrect);
+  const hasAnyGuess = roundResults.results.some((r) => !r.tooSlow && r.guessedPlayerId !== null);
+  const shouldShowCorrectAnswer = !hasCorrectGuess || !hasAnyGuess;
+  
+  // Find the correct owner name
+  const correctOwner = allPlayers.find((p) => p.id === roundResults.actualOwnerId);
+
   return (
     <View className="flex-1 bg-black">
       {/* Blurred background */}
@@ -90,6 +98,18 @@ export function RoundResultsPage({
             {t("game.round", { current: currentRound, total: totalRounds })}
           </Text>
         </View>
+
+        {/* Show correct answer if nobody guessed correctly OR if nobody answered */}
+        {shouldShowCorrectAnswer && correctOwner && (
+          <View className="w-full bg-primary/20 border-2 border-primary rounded-xl p-4 mb-6">
+            <Text className="text-white text-lg font-semibold text-center mb-1">
+              {t("leaderboard.correctAnswer")}
+            </Text>
+            <Text className="text-primary text-2xl font-bold text-center">
+              {correctOwner.name}
+            </Text>
+          </View>
+        )}
 
         <View className="gap-3 mb-6">
           {sortedPlayers.map((player, index) => {

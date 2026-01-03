@@ -100,7 +100,8 @@
     "tooSlow": "Too slow",
     "total": "Total",
     "responseTime": "Response time",
-    "waitingForOwner": "Waiting for {ownerName} to continue"
+    "waitingForOwner": "Waiting for {ownerName} to continue",
+    "correctAnswer": "The correct answer was:"
   },
   "warning": {
     "waitForPlayers": "Wait for players",
