@@ -3,6 +3,8 @@ import { useRouter } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "../components/atoms/Input";
 import { Button } from "../components/atoms/Button";
+import { BackButton } from "../components/atoms/BackButton";
+import { BackgroundSlideshow } from "../components/molecules/BackgroundSlideshow";
 import { QRScanner } from "../components/molecules/QRScanner";
 import { useSocket } from "../stores/useSocket";
 import { useUsername } from "../hooks/useUsername";
@@ -72,7 +74,12 @@ export default function JoinScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
+      <BackgroundSlideshow />
+      <View className="flex-1" style={{ zIndex: 1 }}>
+        <View className="pt-5 px-4">
+          <BackButton onPress={() => router.push("/")} />
+        </View>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 8 }}>
         <Text className="text-white text-3xl font-bold mb-2 text-center">
           {t("join.title")}
         </Text>
@@ -123,21 +130,22 @@ export default function JoinScreen() {
             </View>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </ScrollView>
 
-      <View className="px-6 py-4 border-t border-gray-800 bg-black">
-        <Button
-          title={isJoining ? t("join.joining") : t("join.join")}
-          onPress={handleJoin}
-          disabled={!isValidPIN || isJoining || !isConnected}
-          variant="primary"
-        />
-        <View className="mt-3">
+        <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
           <Button
-            title={t("join.backToHome")}
-            onPress={() => router.back()}
-            variant="secondary"
+            title={isJoining ? t("join.joining") : t("join.join")}
+            onPress={handleJoin}
+            disabled={!isValidPIN || isJoining || !isConnected}
+            variant="primary"
           />
+          <View className="mt-3">
+            <Button
+              title={t("join.backToHome")}
+              onPress={() => router.back()}
+              variant="secondary"
+            />
+          </View>
         </View>
       </View>
 

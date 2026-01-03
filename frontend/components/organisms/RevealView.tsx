@@ -64,9 +64,9 @@ export function RevealView({
       {currentMedia && <MediaDisplay media={currentMedia} showAsBackground />}
       
       <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-        <View className="flex-1 justify-between p-6">
+        <View className="flex-1 justify-between p-6 pt-16">
           {/* Top section: Round info and timer */}
-          <View className="items-center pt-4">
+          <View className="items-center">
             <Text className="text-white text-2xl font-bold mb-1">
               {t("game.round", { current: currentRound, total: totalRounds })}
             </Text>

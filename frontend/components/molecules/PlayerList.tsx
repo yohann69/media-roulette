@@ -89,7 +89,38 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
 
   return (
     <View className="flex-row flex-wrap gap-2">
-      {Array.from(animatedPlayersRef.current.values()).map(({ player, scale, opacity }) => {
+      {players.map((player) => {
+        const animated = animatedPlayersRef.current.get(player.id);
+        if (!animated) {
+          // If player doesn't have animation yet, create it immediately
+          const scale = new Animated.Value(1);
+          const opacity = new Animated.Value(1);
+          animatedPlayersRef.current.set(player.id, { player, scale, opacity });
+          return (
+            <View
+              key={player.id}
+              className="px-3 py-2 bg-gray-800 rounded-lg flex-row items-center gap-1"
+            >
+              <Text className={`${player.state === "selecting" ? "text-gray-400" : "text-white"} text-sm`}>
+                {player.name}
+              </Text>
+              {player.state === "selecting" && Clock ? (
+                <Clock size={12} color="#9ca3af" />
+              ) : player.state === "selecting" ? (
+                <Text className="text-gray-400 text-xs">⏳</Text>
+              ) : null}
+              {player.isHost && Crown ? (
+                <Crown size={12} color="#fbbf24" />
+              ) : player.isHost ? (
+                <Text className="text-yellow-400 text-xs">👑</Text>
+              ) : null}
+              {player.id === currentUserId && (
+                <Text className="text-gray-400 text-xs">(You)</Text>
+              )}
+            </View>
+          );
+        }
+        const { scale, opacity } = animated;
         const isSelecting = player.state === "selecting";
         const baseOpacity = isSelecting ? 0.5 : 1;
         

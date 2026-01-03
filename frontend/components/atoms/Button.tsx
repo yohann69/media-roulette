@@ -73,7 +73,7 @@ export function Button({
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 disabled={disabled || loading}
-                className={`${bgColor} py-6 px-8 rounded-2xl items-center justify-center ${disabled ? "opacity-50" : ""}`}
+                className={`${bgColor} py-4 px-8 rounded-2xl items-center justify-center ${disabled ? "opacity-50" : ""}`}
                 activeOpacity={0.8}
             >
                 {loading ? (

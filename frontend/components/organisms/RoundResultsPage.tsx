@@ -90,7 +90,7 @@ export function RoundResultsPage({
       {/* Blurred background */}
       {currentMedia && <MediaDisplay media={currentMedia} showAsBackground />}
       
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 44 }}>
         <View className="items-center mb-6">
           <Text className="text-white text-3xl font-bold mb-2">
             {t("leaderboard.roundResults")}
@@ -222,7 +222,7 @@ export function RoundResultsPage({
         </View>
       </ScrollView>
 
-      <View className="px-6 py-4 border-t border-gray-800 bg-black">
+      <View className="px-6 py-3 border-t border-gray-800 bg-black">
         {isOwner ? (
           <Button
             title={t("common.continue")}

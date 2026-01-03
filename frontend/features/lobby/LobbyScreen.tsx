@@ -7,7 +7,9 @@ import { PlayerList } from "../../components/molecules/PlayerList";
 import { GameSettingsDisplay } from "../../components/molecules/GameSettingsDisplay";
 import { WarningBanner } from "../../components/molecules/WarningBanner";
 import { WarningModal } from "../../components/molecules/WarningModal";
+import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
 import { Button } from "../../components/atoms/Button";
+import { BackButton } from "../../components/atoms/BackButton";
 import { useUsername } from "../../hooks/useUsername";
 import { useSocket, SOCKET_URL } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -16,6 +18,7 @@ interface Player {
   id: string;
   name: string;
   isHost?: boolean;
+  state?: "selecting" | "ready";
 }
 
 export function LobbyScreen() {
@@ -142,6 +145,10 @@ export function LobbyScreen() {
 
   const totalMedia = players.length * 20; 
   const canStartGame = totalMedia >= settings.rounds;
+  
+  // Check if all players are ready (not selecting)
+  const allPlayersReady = players.length > 0 && players.every(p => p.state === "ready");
+  const canStart = canStartGame && allPlayersReady && !isSyncing;
 
   const hostPlayer = players.find((p) => p.isHost);
   const hostName = hostPlayer?.name || t("lobby.host");
@@ -175,7 +182,12 @@ export function LobbyScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24 }}>
+      <BackgroundSlideshow />
+      <View className="flex-1" style={{ zIndex: 1 }}>
+        <View className="pt-5 px-4">
+          <BackButton onPress={() => router.push("/")} />
+        </View>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 8 }}>
         <Text className="text-white text-4xl font-bold mb-2 text-center">
           {t("lobby.title")}
         </Text>
@@ -216,45 +228,46 @@ export function LobbyScreen() {
             </View>
         )}
 
-      </ScrollView>
+        </ScrollView>
 
-      {isHost ? (
-        <View className="px-6 py-4 border-t border-gray-800 bg-black">
+        {isHost ? (
+          <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
           {!isSyncing ? (
               <Button
                 title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
                 onPress={handlePrepareGame}
                 variant="primary"
-                disabled={isStarting}
+                disabled={isStarting || !canStart}
               />
           ) : (
               <Button
                 title={t("lobby.startGame")}
                 onPress={handleStartGame}
                 variant="primary"
-                disabled={!allReady} 
+                disabled={!allReady || !canStart} 
               />
           )}
-        </View>
-      ) : (
-        <View className="px-6 py-4 border-t border-gray-800 bg-black">
+          </View>
+        ) : (
+          <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
           <Button
             title={isSyncing ? syncStatus : t("lobby.waitingForHost", { hostName })}
             onPress={() => {}}
             variant="secondary"
             disabled
           />
-        </View>
-      )}
+          </View>
+        )}
 
-      <WarningModal
+        <WarningModal
         visible={showWarningModal}
         onClose={() => setShowWarningModal(false)}
         onWait={() => setShowWarningModal(false)}
         onProceed={handleProceedAnyway}
         totalMedia={totalMedia}
-        requiredRounds={settings.rounds}
-      />
+          requiredRounds={settings.rounds}
+        />
+      </View>
     </View>
   );
 }

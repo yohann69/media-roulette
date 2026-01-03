@@ -1,8 +1,9 @@
-import { View, Text, Animated, ScrollView } from "react-native";
+import { View, Text, Animated, ScrollView, Image, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Input } from "../../components/atoms/Input";
 import { Button } from "../../components/atoms/Button";
+import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
 import { useUsername } from "../../hooks/useUsername";
 import { GameSettingsModal } from "../game-settings/GameSettingsModal";
 import { useGameSettings, GameSettings } from "../../hooks/useGameSettings";
@@ -172,47 +173,50 @@ export function HomeScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 48 }}>
-        <Animated.View style={titleStyle} className="mb-12 items-center">
-          <Text className="text-white text-4xl font-bold mb-2">
-            {t("app.name")}
-          </Text>
-          <Text className="text-gray-400 text-lg">{t("app.tagline")}</Text>
+      <BackgroundSlideshow />
+      <View className="flex-1" style={{ zIndex: 1 }}>
+        <View className="pt-12 items-center">
+          <Image
+            source={require("../../assets/icon.png")}
+            style={{ width: 280, height: 280 }}
+            resizeMode="contain"
+          />
           {!isConnected && (
             <Text className="text-orange-400 text-sm mt-2">
               {t("common.connecting")}
             </Text>
           )}
-        </Animated.View>
+        </View>
 
-        <Animated.View style={inputStyle} className="mb-8">
-          <Input
-            value={username}
-            onChangeText={setUsername}
-            placeholder={t("home.usernamePlaceholder")}
-            label={t("home.username")}
-            autoFocus={!username}
-          />
-        </Animated.View>
-      </ScrollView>
+        <View className="flex-1 justify-center px-6">
+          <Animated.View style={inputStyle}>
+            <Input
+              value={username}
+              onChangeText={setUsername}
+              placeholder={username ? undefined : t("home.usernamePlaceholder")}
+              autoFocus={!username}
+            />
+          </Animated.View>
+        </View>
 
-      <View className="px-6 py-4 border-t border-gray-800 bg-black">
-        <Animated.View style={button1Style} className="mb-3">
-          <Button
-            title={isCreatingGame ? t("home.creating") : t("home.createGame")}
-            onPress={handleCreateGame}
-            disabled={!isUsernameValid || isCreatingGame || !isConnected}
-            variant="primary"
-          />
-        </Animated.View>
-        <Animated.View style={button2Style}>
-          <Button
-            title={t("home.joinGame")}
-            onPress={handleJoinGame}
-            disabled={!isUsernameValid || !isConnected}
-            variant="secondary"
-          />
-        </Animated.View>
+        <View className="px-6 py-3 pb-8">
+          <Animated.View style={button1Style} className="mb-3">
+            <Button
+              title={isCreatingGame ? t("home.creating") : t("home.createGame")}
+              onPress={handleCreateGame}
+              disabled={!isUsernameValid || isCreatingGame || !isConnected}
+              variant="primary"
+            />
+          </Animated.View>
+          <Animated.View style={button2Style}>
+            <Button
+              title={t("home.joinGame")}
+              onPress={handleJoinGame}
+              disabled={!isUsernameValid || !isConnected}
+              variant="secondary"
+            />
+          </Animated.View>
+        </View>
       </View>
 
       <GameSettingsModal

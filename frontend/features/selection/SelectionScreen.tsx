@@ -2,6 +2,8 @@ import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
+import { BackButton } from "../../components/atoms/BackButton";
+import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useSelectionScreenLogic } from "./useSelectionScreenLogic";
 
@@ -96,7 +98,12 @@ export function SelectionScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <View className="px-6 pt-12 pb-4">
+      <BackgroundSlideshow />
+      <View className="flex-1" style={{ zIndex: 1 }}>
+        <View className="pt-5 px-4">
+          <BackButton />
+        </View>
+        <View className="px-6 pt-4 pb-4">
         <Text className="text-white text-3xl font-bold mb-2">
           {t("selection.title")}
         </Text>
@@ -114,9 +121,9 @@ export function SelectionScreen() {
         ) : (
           <MediaGrid items={media} columns={4} />
         )}
-      </ScrollView>
+        </ScrollView>
 
-      <View className="px-6 py-4 border-t border-gray-800">
+        <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
         <View className="flex-row" style={{ gap: 16 }}>
           <View className="flex-1">
             <Button
@@ -134,6 +141,7 @@ export function SelectionScreen() {
               disabled={loading || media.length === 0 || isUploading}
             />
           </View>
+        </View>
         </View>
       </View>
     </View>

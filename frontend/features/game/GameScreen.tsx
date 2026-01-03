@@ -70,7 +70,7 @@ export function GameScreen() {
         ) : (
           <Podium players={finalLeaderboard} />
         )}
-        <View className="px-6 py-4 border-t border-gray-800 bg-black">
+        <View className="px-6 py-3 border-t border-gray-800 bg-black">
           <Button
             title={t("game.playAgain")}
             onPress={handlePlayAgain}

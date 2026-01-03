@@ -42,7 +42,7 @@ export function GameStatsPage({
   const top3 = sortedPlayers.slice(0, 3);
 
   return (
-    <ScrollView className="flex-1 bg-black" contentContainerStyle={{ padding: 24 }}>
+    <ScrollView className="flex-1 bg-black" contentContainerStyle={{ padding: 24, paddingTop: 44 }}>
       <View className="items-center mb-8">
         <Text className="text-white text-5xl font-bold mb-2">🎉</Text>
         <Text className="text-white text-4xl font-bold mb-2">{t("leaderboard.gameOver")}</Text>
@@ -206,4 +206,5 @@ export function GameStatsPage({
     </ScrollView>
   );
 }
+
 
