@@ -22,19 +22,8 @@ function calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes) {
 
     io.to(pin).emit("round-result", roundResults);
 
-    if (room.currentRound >= room.settings.rounds) {
-        gameManager.updateGameState(pin, "finished");
-        setTimeout(() => {
-            io.to(pin).emit("game-finished", {
-                leaderboard: gameManager.getPlayerScores(pin),
-            });
-        }, 3000);
-    } else {
-        setTimeout(() => {
-            gameManager.setCurrentRound(pin, room.currentRound + 1);
-            startNewRound(pin, io, gameManager, roundStartTimes);
-        }, 5000);
-    }
+    // Don't auto-advance - wait for the owner to click continue
+    // The next round will start when the owner calls continue-game
 }
 
 function startNewRound(pin, io, gameManager, roundStartTimes) {

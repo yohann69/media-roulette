@@ -41,8 +41,9 @@ export function GameScreen() {
   } = useGameScreenLogic(pin, isHost);
 
   const isOwner = actualOwnerId === currentPlayerId;
-  // Disable selection if showing media again, already selected, or if this player is the owner
-  const isDisabled = isShowingMediaAgain || selectedPlayer !== null || isOwner;
+  // Disable selection if showing media again or already selected
+  // All players can guess, including the owner (they just can't guess themselves)
+  const isDisabled = isShowingMediaAgain || selectedPlayer !== null;
   const correctPlayerId = actualOwnerId || players[0]?.id;
 
   // Media Overlay when showing again
@@ -90,6 +91,12 @@ export function GameScreen() {
   }
 
   if (gameState === "reveal" && currentMedia) {
+    // Filter out the owner from the selection list if current player is the owner
+    // (they can't guess themselves, but can guess others)
+    const availablePlayers = isOwner 
+      ? players.filter(p => p.id !== actualOwnerId)
+      : players;
+    
     return (
       <RevealView
         currentRound={currentRound}
@@ -97,7 +104,7 @@ export function GameScreen() {
         timerDuration={timerDuration}
         timerActive={timerActive}
         currentMedia={currentMedia}
-        players={players}
+        players={availablePlayers}
         selectedPlayer={selectedPlayer}
         disabled={isDisabled}
         onPlayerSelect={handlePlayerSelect}

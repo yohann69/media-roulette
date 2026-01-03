@@ -257,11 +257,8 @@ class GameManager {
     
     const results = [];
     
-    // Get all players who should have guessed (excluding the media owner)
-    const playersWhoShouldGuess = room.players.filter(p => p.socketId !== actualOwnerId);
-    
-    // Process all players who should have guessed
-    playersWhoShouldGuess.forEach((player) => {
+    // Process ALL players (including the owner - they can also guess, just not themselves)
+    room.players.forEach((player) => {
       const socketId = player.socketId;
       const guess = room.roundGuesses.get(socketId);
       

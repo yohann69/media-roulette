@@ -111,9 +111,9 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   const handlePlayerSelect = async (playerId: string) => {
     if (timeExpired || selectedPlayer || !pin) return;
     
-    // Prevent the media owner from submitting a guess
-    if (actualOwnerId === currentPlayerId) {
-      console.log("Media owner cannot submit a guess for their own media");
+    // Prevent players from guessing themselves (the media owner)
+    if (actualOwnerId === currentPlayerId && playerId === actualOwnerId) {
+      console.log("You cannot guess yourself");
       return;
     }
     

@@ -193,10 +193,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     return;
                 }
 
-                // Prevent the media owner from submitting a guess
+                // Prevent players from guessing themselves (the media owner)
                 const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
-                if (socket.id === actualOwnerId) {
-                    socket.emit("guess-received", { success: false, message: "You cannot guess your own media" });
+                if (targetUser === actualOwnerId && socket.id === actualOwnerId) {
+                    socket.emit("guess-received", { success: false, message: "You cannot guess yourself" });
                     return;
                 }
 
@@ -206,14 +206,14 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 gameManager.submitGuess(pin, socket.id, targetUser, timestamp, roundStartTime);
                 socket.emit("guess-received", { success: true });
 
-                // Check if all players have submitted their guesses
-                const playersWhoShouldGuess = room.players.filter(p => p.socketId !== actualOwnerId);
+                // Check if ALL players have submitted their guesses (including the owner if they want to guess)
                 const guessesReceived = room.roundGuesses.size;
+                const totalPlayers = room.players.length;
 
-                console.log(`[Game ${pin}] Player ${socket.id} submitted guess. Guesses received: ${guessesReceived}/${playersWhoShouldGuess.length}`);
+                console.log(`[Game ${pin}] Player ${socket.id} submitted guess. Guesses received: ${guessesReceived}/${totalPlayers}`);
 
                 // Only calculate results if ALL players have guessed AND results haven't been calculated yet
-                if (guessesReceived >= playersWhoShouldGuess.length && !room.roundResultsCalculated) {
+                if (guessesReceived >= totalPlayers && !room.roundResultsCalculated) {
                     console.log(`[Game ${pin}] All players have guessed. Calculating results...`);
                     calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
                 }
@@ -245,9 +245,29 @@ function setupSocket(io, gameManager, roundStartTimes) {
             try {
                 const { pin } = data;
                 const room = gameManager.getRoom(pin);
-                if (!room || room.hostSocketId !== socket.id) return;
-                calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
-            } catch (error) { }
+                if (!room) return;
+                
+                // Only the media owner can continue to the next round
+                const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
+                if (socket.id !== actualOwnerId) {
+                    socket.emit("error", { message: "Only the media owner can continue" });
+                    return;
+                }
+                
+                // Check if game is finished
+                if (room.currentRound >= room.settings.rounds) {
+                    gameManager.updateGameState(pin, "finished");
+                    io.to(pin).emit("game-finished", {
+                        leaderboard: gameManager.getPlayerScores(pin),
+                    });
+                } else {
+                    // Start next round
+                    gameManager.setCurrentRound(pin, room.currentRound + 1);
+                    startNewRound(pin, io, gameManager, roundStartTimes);
+                }
+            } catch (error) {
+                console.error("Error in continue-game:", error);
+            }
         });
 
         socket.on("show-media-again", (data) => {
