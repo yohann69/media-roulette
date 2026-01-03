@@ -1,8 +1,22 @@
-import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
 
 const MAX_PHOTO_SIZE_KB = 100;
 const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_KB * 1024;
+
+// Lazy load ImageManipulator to handle cases where native module isn't available
+let ImageManipulator: any = null;
+
+async function loadImageManipulator() {
+  if (ImageManipulator) return ImageManipulator;
+  
+  try {
+    ImageManipulator = await import("expo-image-manipulator");
+    return ImageManipulator;
+  } catch (error) {
+    console.warn("expo-image-manipulator not available, compression will be skipped:", error);
+    return null;
+  }
+}
 
 /**
  * Compress an image to be under 100KB
@@ -11,6 +25,13 @@ const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_KB * 1024;
  */
 export async function compressImage(uri: string): Promise<string> {
   try {
+    const manipulator = await loadImageManipulator();
+    if (!manipulator) {
+      // If module not available, return original
+      console.warn("Image compression not available, using original image");
+      return uri;
+    }
+
     // Get original file info
     const fileInfo = await FileSystem.getInfoAsync(uri);
     if (!fileInfo.exists) {
@@ -30,10 +51,10 @@ export async function compressImage(uri: string): Promise<string> {
 
     // Try compressing with decreasing quality until we're under the limit
     for (let attempt = 0; attempt < 5; attempt++) {
-      const manipResult = await ImageManipulator.manipulateAsync(
+      const manipResult = await manipulator.manipulateAsync(
         uri,
         [{ resize: { width, height } }],
-        { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: quality, format: manipulator.SaveFormat.JPEG }
       );
 
       const compressedInfo = await FileSystem.getInfoAsync(manipResult.uri);
@@ -83,4 +104,3 @@ export async function compressMedia(
   // Videos are not compressed (too complex for on-device compression)
   return uri;
 }
-
