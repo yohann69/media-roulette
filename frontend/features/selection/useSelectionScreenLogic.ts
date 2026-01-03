@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import { useMediaFetcher } from "../../hooks/useMediaFetcher";
@@ -34,6 +34,9 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
   const playAgain = params.playAgain === "true";
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const blindModeUploadTriggered = useRef(false);
+
+  const blindMode = room?.settings?.blindMode || false;
 
   useEffect(() => {
     const initializeMedia = async () => {
@@ -47,6 +50,24 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
     };
     initializeMedia();
   }, [room, isHost, mediaType, mediaCount]);
+
+  // Auto-upload in blind mode when media is loaded
+  useEffect(() => {
+    if (blindMode && media.length > 0 && !loading && !isUploading && permissionGranted && !blindModeUploadTriggered.current) {
+      console.log("Blind mode: Auto-uploading media without showing selection");
+      blindModeUploadTriggered.current = true;
+      // Use setTimeout to avoid calling handleReady during render
+      const timer = setTimeout(() => {
+        handleReady();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    // Reset trigger if blind mode is disabled or media changes
+    if (!blindMode || media.length === 0) {
+      blindModeUploadTriggered.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blindMode, media.length, loading, isUploading, permissionGranted]);
 
   const handleReady = async () => {
     if (!pin) return;
@@ -171,5 +192,6 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
     handleReady,
     handleReroll,
     requestPermission,
+    blindMode,
   };
 }

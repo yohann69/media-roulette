@@ -19,6 +19,7 @@ export function SelectionScreen() {
     handleReady,
     handleReroll,
     requestPermission,
+    blindMode,
   } = useSelectionScreenLogic(params);
 
   if (loading && media.length === 0) {
@@ -28,6 +29,23 @@ export function SelectionScreen() {
         <Text className="text-white text-lg mt-4">
           {permissionGranted ? t("selection.loadingMedia") : t("selection.requestingPermission")}
         </Text>
+      </View>
+    );
+  }
+
+  // In blind mode, show loading screen while uploading
+  if (blindMode && (loading || isUploading || media.length === 0)) {
+    return (
+      <View className="flex-1 bg-black items-center justify-center px-6">
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text className="text-white text-lg mt-4 text-center">
+          {isUploading ? t("selection.uploading") : t("selection.loadingMedia")}
+        </Text>
+        {blindMode && (
+          <Text className="text-gray-400 text-sm mt-2 text-center">
+            {t("selection.blindModeMessage")}
+          </Text>
+        )}
       </View>
     );
   }

@@ -16,6 +16,7 @@ interface Room {
         timer: number;
         mode: string;
         playVideoWithSound?: boolean;
+        blindMode?: boolean;
     };
     gameState: "lobby" | "syncing" | "playing" | "finished";
 }

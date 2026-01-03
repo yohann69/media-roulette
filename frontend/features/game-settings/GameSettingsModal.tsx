@@ -11,6 +11,7 @@ interface GameSettings {
   timer: number;
   mode: "Photo" | "Video" | "Mix";
   playVideoWithSound?: boolean;
+  blindMode?: boolean;
 }
 
 interface GameSettingsModalProps {
@@ -31,13 +32,15 @@ export function GameSettingsModal({
   const [timer, setTimer] = useState(5);
   const [mode, setMode] = useState<"Photo" | "Video" | "Mix">("Photo");
   const [playVideoWithSound, setPlayVideoWithSound] = useState(true);
+  const [blindMode, setBlindMode] = useState(false);
 
   const handleConfirm = () => {
     onConfirm({ 
       rounds, 
       timer, 
       mode,
-      playVideoWithSound: (mode === "Video" || mode === "Mix") ? playVideoWithSound : undefined
+      playVideoWithSound: (mode === "Video" || mode === "Mix") ? playVideoWithSound : undefined,
+      blindMode: blindMode
     });
     onClose();
   };
@@ -126,6 +129,29 @@ export function GameSettingsModal({
           </View>
         </View>
       )}
+
+      <View className="mt-6">
+        <Text className="text-white text-base font-semibold mb-3">
+          {t("gameSettings.blindMode")}
+        </Text>
+        <View className="flex-row items-center justify-between bg-gray-800 rounded-xl p-4">
+          <Text className="text-gray-300 text-sm flex-1">
+            {t("gameSettings.blindModeDescription")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setBlindMode(!blindMode)}
+            className={`w-14 h-8 rounded-full ${
+              blindMode ? "bg-primary" : "bg-gray-600"
+            } justify-center`}
+          >
+            <View
+              className={`w-6 h-6 rounded-full bg-white ${
+                blindMode ? "ml-7" : "ml-1"
+              }`}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <View className="mt-4">
         <Button

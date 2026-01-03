@@ -47,7 +47,8 @@
     "grantPermission": "Grant Permission",
     "reroll": "Reroll",
     "ready": "Ready",
-    "uploading": "Uploading..."
+    "uploading": "Uploading...",
+    "blindModeMessage": "Blind mode: Your media will be a surprise! 🎲"
   },
   "lobby": {
     "title": "Game Lobby",
@@ -66,7 +67,9 @@
     "video": "🎞️ Videos",
     "mix": "🎉 Mix",
     "playVideoWithSound": "Play Videos with Sound",
-    "playVideoWithSoundDescription": "Videos will play with sound during rounds (harder without sound)"
+    "playVideoWithSoundDescription": "Videos will play with sound during rounds (harder without sound)",
+    "blindMode": "Blind Mode",
+    "blindModeDescription": "Skip media selection - random medias will be a surprise for everyone! 🎲"
   },
   "game": {
     "round": "Round {current} of {total}",
