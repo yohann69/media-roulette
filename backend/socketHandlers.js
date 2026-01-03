@@ -253,8 +253,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 // Check if game is finished
                 if (room.currentRound >= room.settings.rounds) {
                     gameManager.updateGameState(pin, "finished");
+                    const stats = gameManager.calculateGameStats(pin);
                     io.to(pin).emit("game-finished", {
                         leaderboard: gameManager.getPlayerScores(pin),
+                        stats: stats,
                     });
                 } else {
                     // Start next round

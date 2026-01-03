@@ -2,6 +2,7 @@ import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { RevealView } from "../../components/organisms/RevealView";
 import { RoundResultsPage } from "../../components/organisms/RoundResultsPage";
+import { GameStatsPage } from "../../components/organisms/GameStatsPage";
 import { Podium } from "../../components/molecules/Podium";
 import { Button } from "../../components/atoms/Button";
 import { MediaDisplay } from "../../components/molecules/MediaDisplay";
@@ -29,6 +30,7 @@ export function GameScreen() {
     showLeaderboard,
     roundResults,
     finalLeaderboard,
+    gameStats,
     actualOwnerId,
     isShowingMediaAgain,
     handlePlayerSelect,
@@ -59,7 +61,15 @@ export function GameScreen() {
   if (gameState === "podium") {
     return (
       <View className="flex-1 bg-black">
-        <Podium players={finalLeaderboard} />
+        {gameStats ? (
+          <GameStatsPage
+            leaderboard={finalLeaderboard}
+            stats={gameStats}
+            onPlayAgain={handlePlayAgain}
+          />
+        ) : (
+          <Podium players={finalLeaderboard} />
+        )}
         <View className="px-6 py-4 border-t border-gray-800 bg-black">
           <Button
             title={t("game.playAgain")}

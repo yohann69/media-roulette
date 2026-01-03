@@ -43,6 +43,8 @@ class GameManager {
       usedMediaIndices: new Set(),
       readyPlayers: new Set(), // Players who have finished syncing
       roundResultsCalculated: false, // Flag to prevent duplicate round result calculations
+      roundHistory: [], // Store round results for stats calculation
+      streaks: new Map(), // socketId -> current streak count
     };
 
     this.rooms.set(pin, room);
@@ -147,6 +149,8 @@ class GameManager {
     room.uploadedMedia.clear();
     room.gameMedia = [];
     room.readyPlayers.clear();
+    room.roundHistory = [];
+    room.streaks.clear();
     
     room.players.forEach((player) => { player.score = 0; });
     return true;
@@ -267,12 +271,24 @@ class GameManager {
       if (!room.scores.has(socketId)) {
         room.scores.set(socketId, { totalScore: 0, roundScore: 0, timeTaken: null });
       }
+      if (!room.streaks.has(socketId)) {
+        room.streaks.set(socketId, 0);
+      }
       const scoreData = room.scores.get(socketId);
+      let currentStreak = room.streaks.get(socketId) || 0;
       
       if (guess) {
         // Player submitted a guess
         const isCorrect = guess.guessedPlayerId === actualOwnerId;
         const roundScore = isCorrect ? calculateScore(guess.timeTaken) : 0;
+        
+        // Update streak: increment if correct, reset if incorrect
+        if (isCorrect) {
+          currentStreak += 1;
+        } else {
+          currentStreak = 0;
+        }
+        room.streaks.set(socketId, currentStreak);
         
         // Update score data
         const previousTotal = scoreData.totalScore;
@@ -281,7 +297,7 @@ class GameManager {
         scoreData.timeTaken = guess.timeTaken;
         player.score = scoreData.totalScore;
 
-        console.log(`[Game ${pin}] Player ${player.name} (${socketId}): guessed ${guess.guessedPlayerId}, correct: ${isCorrect}, roundScore: ${roundScore}, totalScore: ${scoreData.totalScore}`);
+        console.log(`[Game ${pin}] Player ${player.name} (${socketId}): guessed ${guess.guessedPlayerId}, correct: ${isCorrect}, roundScore: ${roundScore}, totalScore: ${scoreData.totalScore}, streak: ${currentStreak}`);
 
         results.push({
           playerId: socketId,
@@ -292,9 +308,14 @@ class GameManager {
           timeTaken: guess.timeTaken,
           totalScore: scoreData.totalScore,
           tooSlow: false,
+          streak: currentStreak,
         });
       } else {
         // Player didn't submit a guess (too slow or didn't answer)
+        // Reset streak for not answering
+        currentStreak = 0;
+        room.streaks.set(socketId, 0);
+        
         scoreData.roundScore = 0;
         scoreData.timeTaken = null;
         // Don't modify totalScore (it stays the same)
@@ -309,11 +330,26 @@ class GameManager {
           timeTaken: null,
           totalScore: scoreData.totalScore,
           tooSlow: true,
+          streak: 0,
         });
       }
     });
 
     const leaderboard = this.getPlayerScores(pin);
+    
+    // Store round results in history for stats calculation
+    room.roundHistory.push({
+      round: room.currentRound,
+      actualOwnerId,
+      results: results.map(r => ({
+        playerId: r.playerId,
+        playerName: r.playerName,
+        isCorrect: r.isCorrect,
+        timeTaken: r.timeTaken,
+        streak: r.streak,
+      })),
+    });
+    
     return { actualOwnerId, results, leaderboard };
   }
 

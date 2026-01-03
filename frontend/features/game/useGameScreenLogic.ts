@@ -45,6 +45,7 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [roundResults, setRoundResults] = useState<any>(null);
   const [finalLeaderboard, setFinalLeaderboard] = useState<any[]>([]);
+  const [gameStats, setGameStats] = useState<any>(null);
   const [actualOwnerId, setActualOwnerId] = useState<string | null>(null);
   const [isShowingMediaAgain, setIsShowingMediaAgain] = useState(false);
 
@@ -87,6 +88,7 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     },
     onGameFinished: async (data) => {
       setFinalLeaderboard(data.leaderboard);
+      setGameStats(data.stats || null);
       setGameState("podium");
       setIsShowingMediaAgain(false);
       
@@ -163,6 +165,7 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     showLeaderboard,
     roundResults,
     finalLeaderboard,
+    gameStats,
     actualOwnerId,
     isShowingMediaAgain,
     currentPlayerId,

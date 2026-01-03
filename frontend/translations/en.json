@@ -95,6 +95,8 @@
     "gameOver": "Game Over!",
     "finalResults": "Final Results",
     "leaderboard": "Leaderboard",
+    "podium": "Podium",
+    "fullLeaderboard": "Full Leaderboard",
     "correct": "Correct",
     "guessed": "Guessed",
     "tooSlow": "Too slow",
@@ -102,6 +104,31 @@
     "responseTime": "Response time",
     "waitingForOwner": "Waiting for {ownerName} to continue",
     "correctAnswer": "The correct answer was:"
+  },
+  "stats": {
+    "longestStreak": "Longest Streak",
+    "fastestAnswer": "Fastest Answer",
+    "averageTime": "Average Response Time",
+    "worstPlayer": "Needs Improvement",
+    "hardestRound": "Hardest Round",
+    "consecutive": "consecutive",
+    "correctAnswers": "correct answers"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "continue": "Continue",
+    "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
+    "confirm": "Confirm",
+    "save": "Save",
+    "retry": "Try Again",
+    "goBack": "Go Back",
+    "waiting": "Waiting...",
+    "connecting": "Connecting to server...",
+    "pts": "pts",
+    "nobody": "Nobody"
   },
   "warning": {
     "waitForPlayers": "Wait for players",
