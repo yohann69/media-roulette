@@ -118,10 +118,20 @@ export function RoundResultsPage({
                     )}
                   </View>
                   <View className="flex-1">
-                    <View className="flex-row items-center mb-1">
+                    <View className="flex-row items-center mb-1 flex-wrap">
                       <Text className="text-white text-lg font-semibold">
                         {player.playerName}
                       </Text>
+                      {roundScore > 0 && (
+                        <Text className="text-green-400 text-sm font-semibold ml-2">
+                          +{roundScore.toLocaleString()} {t("common.pts")}
+                        </Text>
+                      )}
+                      {roundScore === 0 && !didNotGuess && (
+                        <Text className="text-gray-500 text-sm ml-2">
+                          +0 {t("common.pts")}
+                        </Text>
+                      )}
                     </View>
                     <View className="flex-row items-center gap-2 mb-1">
                       {guessedPlayer ? (
@@ -137,16 +147,6 @@ export function RoundResultsPage({
                     {timeTaken !== null && timeTaken !== undefined && !didNotGuess && (
                       <Text className="text-gray-400 text-xs">
                         {t("leaderboard.responseTime")}: {formatTime(timeTaken)}
-                      </Text>
-                    )}
-                    {roundScore > 0 && (
-                      <Text className="text-green-400 text-sm font-semibold mt-1">
-                        +{roundScore.toLocaleString()} {t("common.pts")}
-                      </Text>
-                    )}
-                    {roundScore === 0 && !didNotGuess && (
-                      <Text className="text-gray-500 text-sm mt-1">
-                        +0 {t("common.pts")}
                       </Text>
                     )}
                   </View>
