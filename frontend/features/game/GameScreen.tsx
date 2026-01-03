@@ -48,9 +48,10 @@ export function GameScreen() {
 
   // Media Overlay when showing again
   if (isShowingMediaAgain && currentMedia) {
+    const playVideoWithSound = room?.settings?.playVideoWithSound !== false; // Default to true
     return (
       <View className="flex-1 bg-black items-center justify-center">
-        <MediaDisplay media={currentMedia} />
+        <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />
       </View>
     );
   }
@@ -93,6 +94,7 @@ export function GameScreen() {
 
   if (gameState === "reveal" && currentMedia) {
     // All players can select from all players, including themselves
+    const playVideoWithSound = room?.settings?.playVideoWithSound !== false; // Default to true
     return (
       <RevealView
         currentRound={currentRound}
@@ -105,6 +107,7 @@ export function GameScreen() {
         disabled={isDisabled}
         onPlayerSelect={handlePlayerSelect}
         onTimeExpired={handleTimeExpired}
+        playVideoWithSound={playVideoWithSound}
       />
     );
   }

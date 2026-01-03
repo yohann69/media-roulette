@@ -64,7 +64,9 @@
     "mode": "Mode",
     "photo": "📸 Photos",
     "video": "🎞️ Videos",
-    "mix": "🎉 Mix"
+    "mix": "🎉 Mix",
+    "playVideoWithSound": "Play Videos with Sound",
+    "playVideoWithSoundDescription": "Videos will play with sound during rounds (harder without sound)"
   },
   "game": {
     "round": "Round {current} of {total}",

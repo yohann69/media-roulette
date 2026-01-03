@@ -1,6 +1,7 @@
 import { View, Image, useWindowDimensions } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 
 interface MediaItem {
   id: string;
@@ -14,10 +15,12 @@ interface MediaItem {
 interface MediaDisplayProps {
   media: MediaItem;
   showAsBackground?: boolean;
+  playVideoWithSound?: boolean;
 }
 
-export function MediaDisplay({ media, showAsBackground = false }: MediaDisplayProps) {
+export function MediaDisplay({ media, showAsBackground = false, playVideoWithSound = true }: MediaDisplayProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const videoRef = useRef<Video>(null);
   const { width: screenWidth } = useWindowDimensions();
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
   const [aspectRatio, setAspectRatio] = useState<number>(1);
@@ -35,6 +38,17 @@ export function MediaDisplay({ media, showAsBackground = false }: MediaDisplayPr
       useNativeDriver: true,
     }).start();
   }, [media.id, fadeAnim]);
+
+  // Cleanup video on unmount or media change
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.unloadAsync().catch(() => {
+          // Ignore cleanup errors
+        });
+      }
+    };
+  }, [media.id]);
 
   useEffect(() => {
     if (imageSource && media.mediaType === "photo" && !showAsBackground) {
@@ -102,12 +116,31 @@ export function MediaDisplay({ media, showAsBackground = false }: MediaDisplayPr
         </View>
       ) : (
         <View 
-          className="rounded-2xl overflow-hidden bg-gray-900 items-center justify-center"
+          className="rounded-2xl overflow-hidden bg-gray-900"
           style={{ width: displayWidth, height: displayHeight }}
         >
-          <View className="w-20 h-20 rounded-full bg-secondary items-center justify-center">
-            <View className="w-0 h-0 border-l-[20px] border-l-white border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent ml-1" />
-          </View>
+          {imageSource ? (
+            <Video
+              ref={videoRef}
+              source={{ uri: imageSource.uri }}
+              style={{ width: displayWidth, height: displayHeight }}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay={true}
+              isLooping={true}
+              isMuted={!playVideoWithSound}
+              volume={playVideoWithSound ? 1.0 : 0.0}
+              onLoad={() => {
+                // Video loaded, start playing
+                videoRef.current?.playAsync();
+              }}
+            />
+          ) : (
+            <View className="w-full h-full items-center justify-center">
+              <View className="w-20 h-20 rounded-full bg-secondary items-center justify-center">
+                <View className="w-0 h-0 border-l-[20px] border-l-white border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent ml-1" />
+              </View>
+            </View>
+          )}
         </View>
       )}
     </Animated.View>

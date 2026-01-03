@@ -15,6 +15,7 @@ interface Room {
         rounds: number;
         timer: number;
         mode: string;
+        playVideoWithSound?: boolean;
     };
     gameState: "lobby" | "syncing" | "playing" | "finished";
 }

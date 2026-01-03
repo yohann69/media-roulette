@@ -10,6 +10,7 @@ interface GameSettings {
   rounds: number;
   timer: number;
   mode: "Photo" | "Video" | "Mix";
+  playVideoWithSound?: boolean;
 }
 
 interface GameSettingsModalProps {
@@ -29,9 +30,15 @@ export function GameSettingsModal({
   const [rounds, setRounds] = useState(10);
   const [timer, setTimer] = useState(5);
   const [mode, setMode] = useState<"Photo" | "Video" | "Mix">("Photo");
+  const [playVideoWithSound, setPlayVideoWithSound] = useState(true);
 
   const handleConfirm = () => {
-    onConfirm({ rounds, timer, mode });
+    onConfirm({ 
+      rounds, 
+      timer, 
+      mode,
+      playVideoWithSound: (mode === "Video" || mode === "Mix") ? playVideoWithSound : undefined
+    });
     onClose();
   };
 
@@ -94,6 +101,31 @@ export function GameSettingsModal({
           setMode(modeValues[index]);
         }}
       />
+
+      {(mode === "Video" || mode === "Mix") && (
+        <View className="mt-6">
+          <Text className="text-white text-base font-semibold mb-3">
+            {t("gameSettings.playVideoWithSound")}
+          </Text>
+          <View className="flex-row items-center justify-between bg-gray-800 rounded-xl p-4">
+            <Text className="text-gray-300 text-sm flex-1">
+              {t("gameSettings.playVideoWithSoundDescription")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setPlayVideoWithSound(!playVideoWithSound)}
+              className={`w-14 h-8 rounded-full ${
+                playVideoWithSound ? "bg-primary" : "bg-gray-600"
+              } justify-center`}
+            >
+              <View
+                className={`w-6 h-6 rounded-full bg-white ${
+                  playVideoWithSound ? "ml-7" : "ml-1"
+                }`}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <View className="mt-4">
         <Button

@@ -32,6 +32,7 @@ class GameManager {
         rounds: settings.rounds || 25,
         timer: settings.timer || 5,
         mode: settings.mode || "Photo",
+        playVideoWithSound: settings.playVideoWithSound !== undefined ? settings.playVideoWithSound : true,
       },
       uploadedMedia: new Map(), // socketId -> Array<MediaItem>
       gameMedia: [], // Selected media for the game

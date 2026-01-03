@@ -31,6 +31,7 @@ interface RevealViewProps {
   disabled: boolean;
   onPlayerSelect: (playerId: string) => void;
   onTimeExpired: () => void;
+  playVideoWithSound?: boolean;
 }
 
 export function RevealView({
@@ -44,6 +45,7 @@ export function RevealView({
   disabled,
   onPlayerSelect,
   onTimeExpired,
+  playVideoWithSound = true,
 }: RevealViewProps) {
   const { t } = useTranslation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -78,7 +80,7 @@ export function RevealView({
 
           {/* Center: Media display */}
           <View className="items-center justify-center flex-1">
-            {currentMedia && <MediaDisplay media={currentMedia} />}
+            {currentMedia && <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />}
           </View>
 
           {/* Bottom: Player selection - always at bottom */}
