@@ -240,12 +240,18 @@ function setupSocket(io, gameManager, roundStartTimes) {
         socket.on("continue-game", (data) => {
             try {
                 const { pin } = data;
+                console.log(`[Game ${pin}] Player ${socket.id} requested continue-game`);
+                
                 const room = gameManager.getRoom(pin);
-                if (!room) return;
+                if (!room) {
+                    console.error(`[Game ${pin}] Room not found`);
+                    return;
+                }
                 
                 // Only the media owner can continue to the next round
                 const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
                 if (socket.id !== actualOwnerId) {
+                    console.warn(`[Game ${pin}] Player ${socket.id} tried to continue but is not owner (${actualOwnerId})`);
                     socket.emit("error", { message: "Only the media owner can continue" });
                     return;
                 }
@@ -253,14 +259,30 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 // Check if game is finished
                 // Rounds are 1-based. After finishing round N, currentRound is still N.
                 // If currentRound >= rounds, we've completed all rounds
+                console.log(`[Game ${pin}] Current round: ${room.currentRound}, Total rounds: ${room.settings.rounds}`);
+                
                 if (room.currentRound >= room.settings.rounds) {
                     console.log(`[Game ${pin}] Game finished after round ${room.currentRound}/${room.settings.rounds}`);
-                    gameManager.updateGameState(pin, "finished");
-                    const stats = gameManager.calculateGameStats(pin);
-                    io.to(pin).emit("game-finished", {
-                        leaderboard: gameManager.getPlayerScores(pin),
-                        stats: stats,
-                    });
+                    
+                    try {
+                        const stats = gameManager.calculateGameStats(pin);
+                        // Update game state only AFTER calculating stats to ensure all data is available
+                        gameManager.updateGameState(pin, "finished");
+                        
+                        console.log(`[Game ${pin}] Sending game-finished event`);
+                        io.to(pin).emit("game-finished", {
+                            leaderboard: gameManager.getPlayerScores(pin),
+                            stats: stats,
+                        });
+                    } catch (statError) {
+                        console.error(`[Game ${pin}] Error calculating stats:`, statError);
+                        // Fallback: End game without stats if calculation fails
+                        gameManager.updateGameState(pin, "finished");
+                        io.to(pin).emit("game-finished", {
+                            leaderboard: gameManager.getPlayerScores(pin),
+                            stats: null,
+                        });
+                    }
                 } else {
                     // Start next round
                     const nextRound = room.currentRound + 1;
