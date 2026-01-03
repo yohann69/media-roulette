@@ -7,65 +7,98 @@ interface CountdownTimerProps {
   duration: number;
   onComplete: () => void;
   isActive: boolean;
+  roundKey?: string | number; // Key to reset timer only when round changes
 }
 
 export function CountdownTimer({
   duration,
   onComplete,
   isActive,
+  roundKey,
 }: CountdownTimerProps) {
   const { t } = useTranslation();
   const progress = useRef(new Animated.Value(1)).current;
   const [timeLeft, setTimeLeft] = useState(duration);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const lastRoundKeyRef = useRef<string | number | undefined>(undefined);
+  const hasStartedRef = useRef<boolean>(false);
 
   useEffect(() => {
+    // Only reset timer if roundKey changed (new round)
+    const isNewRound = roundKey !== undefined && roundKey !== lastRoundKeyRef.current;
+    
     if (!isActive) {
-      progress.setValue(1);
-      setTimeLeft(duration);
+      // Timer stopped - don't reset, just stop animations
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      hasStartedRef.current = false;
       return;
     }
 
-    progress.setValue(1);
-    setTimeLeft(duration);
-
-    const animation = Animated.timing(progress, {
-      toValue: 0,
-      duration: duration * 1000,
-      useNativeDriver: false,
-    });
-
-    animation.start(({ finished }) => {
-      if (finished) {
-        setTimeLeft(0);
-        onComplete();
+    // If it's a new round, reset everything and start timer
+    if (isNewRound && !hasStartedRef.current) {
+      lastRoundKeyRef.current = roundKey;
+      hasStartedRef.current = true;
+      progress.setValue(1);
+      setTimeLeft(duration);
+      
+      // Stop any existing animation
+      if (animationRef.current) {
+        animationRef.current.stop();
       }
-    });
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
 
-    let currentTime = duration;
-    intervalRef.current = setInterval(() => {
-      currentTime = Math.max(0, currentTime - 1);
-      setTimeLeft(currentTime);
-      if (currentTime === 0) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
+      // Start new animation
+      const animation = Animated.timing(progress, {
+        toValue: 0,
+        duration: duration * 1000,
+        useNativeDriver: false,
+      });
+      animationRef.current = animation;
+
+      animation.start(({ finished }) => {
+        if (finished) {
+          setTimeLeft(0);
+          onComplete();
         }
-      }
-    }, 1000);
+      });
+
+      // Start interval for time display
+      let currentTime = duration;
+      intervalRef.current = setInterval(() => {
+        currentTime = Math.max(0, currentTime - 1);
+        setTimeLeft(currentTime);
+        if (currentTime === 0) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        }
+      }, 1000);
+    }
+    // If not a new round and timer already started, don't reset - timer continues
 
     return () => {
-      animation.stop();
+      // Cleanup on unmount
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [duration, isActive, onComplete, progress]);
+  }, [duration, isActive, onComplete, progress, roundKey]);
 
   const width = progress.interpolate({
     inputRange: [0, 1],

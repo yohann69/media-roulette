@@ -75,6 +75,7 @@ export function RevealView({
               duration={timerDuration}
               onComplete={onTimeExpired}
               isActive={timerActive}
+              roundKey={`${currentRound}-${currentMedia?.id}`}
             />
           </View>
 
