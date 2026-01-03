@@ -3,7 +3,8 @@ import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import { useMediaFetcher } from "../../hooks/useMediaFetcher";
 import { useSocket, SOCKET_URL } from "../../stores/useSocket";
-import { compressMedia } from "../../utils/mediaCompression";
+import { compressMediaBatch } from "../../utils/mediaCompression";
+import { processInBatches } from "../../utils/parallelProcessing";
 
 export function useSelectionScreenLogic(params: { isHost?: string; pin?: string; playAgain?: string }) {
   const router = useRouter();
@@ -55,51 +56,73 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
     setUploadProgress(0);
 
     try {
-      // Upload files one by one
-      const uploadedMedia = [];
-      const total = media.length;
-
-      for (let i = 0; i < total; i++) {
-        const item = media[i];
-        
-        // Compress media before uploading (photos only, max 100kb)
-        const compressedUri = await compressMedia(item.uri, item.mediaType);
-        
-        // Upload to backend
-        const uploadResult = await FileSystem.uploadAsync(
-          `${SOCKET_URL}/upload`,
-          compressedUri,
-          {
-            fieldName: "media",
-            httpMethod: "POST",
-            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          }
-        );
-        
-        // Clean up compressed file if it's different from original
-        if (compressedUri !== item.uri) {
-          try {
-            await FileSystem.deleteAsync(compressedUri, { idempotent: true });
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-        }
-
-        if (uploadResult.status !== 200) {
-          console.error("Failed to upload file", uploadResult);
-          throw new Error("Upload failed");
-        }
-
-        const response = JSON.parse(uploadResult.body);
-        uploadedMedia.push({
-          id: item.id,
+      // Step 1: Compress all media in parallel (max 20 concurrent)
+      console.log(`-> Starting compression of ${media.length} media items...`);
+      const compressedUris = await compressMediaBatch(
+        media.map((item, index) => ({
+          uri: item.uri,
           mediaType: item.mediaType,
-          filename: response.filename,
-          // We don't need to send URI or Base64 to socket, just the backend filename reference
-        });
+          id: item.id,
+          name: `media_${index + 1}_${item.id}`,
+        })),
+        (completed, total) => {
+          setUploadProgress(completed / (total * 2)); // Compression is 50% of total progress
+        }
+      );
 
-        setUploadProgress((i + 1) / total);
-      }
+      // Step 2: Upload files in parallel (max 20 concurrent)
+      console.log(`-> Starting parallel upload of ${media.length} media items...`);
+      const total = media.length;
+      const MAX_PARALLEL_UPLOAD = 20;
+      let uploadCompleted = 0;
+
+      // Use the same parallel processing utility for uploads
+      const uploadResults = await processInBatches(
+        media.map((item, index) => ({ item, compressedUri: compressedUris[index], index })),
+        async (data, idx) => {
+          const { item, compressedUri } = data;
+          
+          // Upload to backend
+          const uploadResult = await FileSystem.uploadAsync(
+            `${SOCKET_URL}/upload`,
+            compressedUri,
+            {
+              fieldName: "media",
+              httpMethod: "POST",
+              uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            }
+          );
+
+          if (uploadResult.status !== 200) {
+            console.error(`Failed to upload file ${idx + 1}:`, uploadResult);
+            throw new Error(`Upload failed for media ${idx + 1}`);
+          }
+
+          const response = JSON.parse(uploadResult.body);
+          
+          // Clean up compressed file if it's different from original
+          if (compressedUri !== item.uri) {
+            try {
+              await FileSystem.deleteAsync(compressedUri, { idempotent: true });
+            } catch (e) {
+              // Ignore cleanup errors
+            }
+          }
+
+          // Update progress (upload is 50-100% of total progress)
+          uploadCompleted++;
+          setUploadProgress(0.5 + (uploadCompleted / total) * 0.5);
+
+          return {
+            id: item.id,
+            mediaType: item.mediaType,
+            filename: response.filename,
+          };
+        },
+        MAX_PARALLEL_UPLOAD
+      );
+
+      const uploadedMedia = uploadResults;
 
       console.log(`Uploaded ${uploadedMedia.length} files`);
       
