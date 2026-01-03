@@ -11,7 +11,9 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
   const { setMediaPool, room } = useSocket();
   
   const gameMode = room?.settings?.mode || "Photo";
-  const mediaType = gameMode === "Photo" ? "photo" : gameMode === "Video" ? "video" : "mixed";
+  const blindMode = room?.settings?.blindMode || false;
+  // Blind mode uses photos but with blind mode enabled
+  const mediaType = blindMode ? "photo" : gameMode === "Photo" ? "photo" : gameMode === "Video" ? "video" : "mixed";
   const mediaCount = mediaType === "mixed" ? 40 : 20;
   
   const {
@@ -35,8 +37,6 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const blindModeUploadTriggered = useRef(false);
-
-  const blindMode = room?.settings?.blindMode || false;
 
   useEffect(() => {
     const initializeMedia = async () => {

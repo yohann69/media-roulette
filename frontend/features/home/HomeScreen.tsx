@@ -13,12 +13,13 @@ import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 import { createSpringAnimation } from "../../utils/wiggleAnimation";
 
-type ScreenState = "home" | "create-mode" | "create-rounds" | "create-settings" | "join";
+type ScreenState = "home" | "create-mode" | "create-rounds" | "create-settings" | "create-duration" | "join";
 
 const MODE_COLORS = {
   Photo: "#f97316", // Orange
   Video: "#3b82f6", // Blue
   Mix: "#a855f7", // Purple
+  Blind: "#ef4444", // Red
 };
 
 const ROUND_OPTIONS = [10, 25, 50, 100];
@@ -31,11 +32,10 @@ export function HomeScreen() {
   const { connect, createGame, joinGame, isConnected } = useSocket();
   
   const [screenState, setScreenState] = useState<ScreenState>("home");
-  const [selectedMode, setSelectedMode] = useState<"Photo" | "Video" | "Mix">("Photo");
+  const [selectedMode, setSelectedMode] = useState<"Photo" | "Video" | "Mix" | "Blind">("Photo");
   const [rounds, setRounds] = useState(10);
   const [timer, setTimer] = useState(5);
   const [playVideoWithSound, setPlayVideoWithSound] = useState(true);
-  const [blindMode, setBlindMode] = useState(false);
   const [pin, setPin] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
@@ -71,6 +71,8 @@ export function HomeScreen() {
       setScreenState("create-mode");
     } else if (screenState === "create-settings") {
       setScreenState("create-rounds");
+    } else if (screenState === "create-duration") {
+      setScreenState("create-settings");
     } else if (screenState === "join") {
       setScreenState("home");
     }
@@ -82,7 +84,7 @@ export function HomeScreen() {
     }
   };
 
-  const handleModeSelect = (mode: "Photo" | "Video" | "Mix") => {
+  const handleModeSelect = (mode: "Photo" | "Video" | "Mix" | "Blind") => {
     setSelectedMode(mode);
     setScreenState("create-rounds");
   };
@@ -96,9 +98,9 @@ export function HomeScreen() {
     const settings: any = {
       rounds,
       timer,
-      mode: selectedMode,
+      mode: selectedMode === "Blind" ? "Photo" : selectedMode, // Blind mode uses Photo mode but with blindMode flag
       playVideoWithSound: (selectedMode === "Video" || selectedMode === "Mix") ? playVideoWithSound : undefined,
-      blindMode,
+      blindMode: selectedMode === "Blind", // Set blindMode flag if Blind mode is selected
     };
     
     saveSettings(settings);
@@ -162,25 +164,22 @@ export function HomeScreen() {
     <View className="flex-1 bg-black">
       <BackgroundSlideshow />
       <View className="flex-1" style={{ zIndex: 1 }}>
+        {/* Background tap handler - only active when not on home screen */}
+        {screenState !== "home" && (
+          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={handleBackgroundPress}
+              style={StyleSheet.absoluteFillObject}
+            />
+          </View>
+        )}
+        
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1"
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          {/* Background tap handler - only active when not on home screen */}
-          {screenState !== "home" && (
-            <View
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="box-none"
-            >
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={handleBackgroundPress}
-                style={StyleSheet.absoluteFillObject}
-              />
-            </View>
-          )}
-          
           <ScrollView
             className="flex-1"
             contentContainerStyle={{ flexGrow: 1 }}
@@ -207,7 +206,7 @@ export function HomeScreen() {
           </Animated.View>
 
           {/* Main Content */}
-          <View className="flex-1 justify-start px-6 pb-8" pointerEvents="box-none">
+          <View className="flex-1 justify-start px-6 pb-8">
             {/* Home State */}
             {screenState === "home" && (
               <>
@@ -252,7 +251,7 @@ export function HomeScreen() {
 
             {/* Create Mode Selection */}
             {screenState === "create-mode" && (
-              <View pointerEvents="auto">
+              <View>
                 <Text className="text-white text-3xl font-bold text-center mb-8">
                   {t("gameSettings.selectMode")}
                 </Text>
@@ -274,12 +273,18 @@ export function HomeScreen() {
                   color={MODE_COLORS.Mix}
                   visible={true}
                 />
+                <WiggleButton
+                  title={t("gameSettings.blind")}
+                  onPress={() => handleModeSelect("Blind")}
+                  color={MODE_COLORS.Blind}
+                  visible={true}
+                />
               </View>
             )}
 
             {/* Create Rounds Selection */}
             {screenState === "create-rounds" && (
-              <View pointerEvents="auto">
+              <View>
                 <Text className="text-white text-3xl font-bold text-center mb-8">
                   {t("gameSettings.rounds")}
                 </Text>
@@ -297,83 +302,77 @@ export function HomeScreen() {
 
             {/* Create Settings */}
             {screenState === "create-settings" && (
-              <View pointerEvents="auto">
-                <Text className="text-white text-3xl font-bold text-center mb-8">
-                  {t("gameSettings.additionalSettings")}
-                </Text>
-                
-                <View className="mb-6">
-                  <CustomSlider
-                    label={t("gameSettings.timer")}
-                    value={timer}
-                    onValueChange={setTimer}
-                    minimumValue={1}
-                    maximumValue={15}
-                    step={1}
-                  />
-                </View>
-
-                {(selectedMode === "Video" || selectedMode === "Mix") && (
-                  <View className="mb-6">
-                    <Text className="text-white text-base font-semibold mb-3">
+              <View>
+                {(selectedMode === "Video" || selectedMode === "Mix") ? (
+                  <>
+                    <Text className="text-white text-3xl font-bold text-center mb-8">
                       {t("gameSettings.playVideoWithSound")}
                     </Text>
-                    <View className="flex-row items-center justify-between bg-gray-800 rounded-xl p-4">
-                      <Text className="text-gray-300 text-sm flex-1">
-                        {t("gameSettings.playVideoWithSoundDescription")}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => setPlayVideoWithSound(!playVideoWithSound)}
-                        className={`w-14 h-8 rounded-full ${
-                          playVideoWithSound ? "bg-primary" : "bg-gray-600"
-                        } justify-center`}
-                      >
-                        <View
-                          className={`w-6 h-6 rounded-full bg-white ${
-                            playVideoWithSound ? "ml-7" : "ml-1"
-                          }`}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                <View className="mb-6">
-                  <Text className="text-white text-base font-semibold mb-3">
-                    {t("gameSettings.blindMode")}
-                  </Text>
-                  <View className="flex-row items-center justify-between bg-gray-800 rounded-xl p-4">
-                    <Text className="text-gray-300 text-sm flex-1">
-                      {t("gameSettings.blindModeDescription")}
+                    <WiggleButton
+                      title={playVideoWithSound ? t("gameSettings.withSound") : t("gameSettings.withoutSound")}
+                      onPress={() => {
+                        setPlayVideoWithSound(!playVideoWithSound);
+                        // Auto-continue to duration selection
+                        setTimeout(() => {
+                          setScreenState("create-duration");
+                        }, 200);
+                      }}
+                      color={currentColor}
+                      visible={true}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Text className="text-white text-3xl font-bold text-center mb-8">
+                      {t("gameSettings.roundDuration")}
                     </Text>
-                    <TouchableOpacity
-                      onPress={() => setBlindMode(!blindMode)}
-                      className={`w-14 h-8 rounded-full ${
-                        blindMode ? "bg-primary" : "bg-gray-600"
-                      } justify-center`}
-                    >
-                      <View
-                        className={`w-6 h-6 rounded-full bg-white ${
-                          blindMode ? "ml-7" : "ml-1"
-                        }`}
+                    {[5, 6,  8, 10].map((seconds) => (
+                      <WiggleButton
+                        key={seconds}
+                        title={`${seconds} ${t("gameSettings.seconds")}`}
+                        onPress={() => {
+                          setTimer(seconds);
+                          // Auto-continue when timer is selected
+                          setTimeout(() => {
+                            handleSettingsConfirm();
+                          }, 200);
+                        }}
+                        color={currentColor}
+                        visible={true}
                       />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                    ))}
+                  </>
+                )}
+              </View>
+            )}
 
-                <WiggleButton
-                  title={isCreatingGame ? t("home.creating") : t("common.continue")}
-                  onPress={handleSettingsConfirm}
-                  color={currentColor}
-                  disabled={isCreatingGame}
-                  visible={true}
-                />
+            {/* Create Duration Selection */}
+            {screenState === "create-duration" && (
+              <View>
+                <Text className="text-white text-3xl font-bold text-center mb-8">
+                  {t("gameSettings.roundDuration")}
+                </Text>
+                {[5, 6, 7, 8, 9, 10].map((seconds) => (
+                  <WiggleButton
+                    key={seconds}
+                    title={`${seconds} ${t("gameSettings.seconds")}`}
+                    onPress={() => {
+                      setTimer(seconds);
+                      // Auto-continue when timer is selected
+                      setTimeout(() => {
+                        handleSettingsConfirm();
+                      }, 200);
+                    }}
+                    color={currentColor}
+                    visible={true}
+                  />
+                ))}
               </View>
             )}
 
             {/* Join Game */}
             {screenState === "join" && (
-              <View pointerEvents="auto">
+              <View>
                 <Text className="text-white text-3xl font-bold text-center mb-8">
                   {t("join.title")}
                 </Text>

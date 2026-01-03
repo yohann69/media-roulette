@@ -122,6 +122,7 @@ export function LobbyScreen() {
 
     onAllPlayersReady(() => {
         setAllReady(true);
+        setIsSyncing(false); // Reset syncing state when all players are ready
         setSyncStatus(t("lobby.allReady"));
         if (!isHost) {
              setSyncStatus(t("lobby.waitingForHostStart"));
@@ -148,7 +149,8 @@ export function LobbyScreen() {
   
   // Check if all players are ready (not selecting)
   const allPlayersReady = players.length > 0 && players.every(p => p.state === "ready");
-  const canStart = canStartGame && allPlayersReady && !isSyncing;
+  // Can start if: enough media, all players ready, and either not syncing OR all ready (syncing complete)
+  const canStart = canStartGame && allPlayersReady && (!isSyncing || allReady);
 
   const hostPlayer = players.find((p) => p.isHost);
   const hostName = hostPlayer?.name || t("lobby.host");
@@ -232,10 +234,10 @@ export function LobbyScreen() {
 
         {isHost ? (
           <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
-          {!isSyncing ? (
+          {!isSyncing || allReady ? (
               <Button
                 title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
-                onPress={handlePrepareGame}
+                onPress={allReady ? handleStartGame : handlePrepareGame}
                 variant="primary"
                 disabled={isStarting || !canStart}
               />

@@ -59,6 +59,8 @@
     "title": "游戏设置",
     "rounds": "回合数",
     "timer": "计时器（秒）",
+    "roundDuration": "回合时长",
+    "seconds": "秒",
     "mode": "模式",
     "photo": "📸 照片",
     "video": "🎞️ 视频",

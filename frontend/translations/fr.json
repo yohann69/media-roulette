@@ -59,6 +59,8 @@
     "title": "Paramètres du jeu",
     "rounds": "Manches",
     "timer": "Minuteur (secondes)",
+    "roundDuration": "Durée de la manche",
+    "seconds": "secondes",
     "mode": "Mode",
     "photo": "📸 Photos",
     "video": "🎞️ Vidéos",

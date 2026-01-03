@@ -7,6 +7,7 @@ interface WiggleButtonProps {
   color: string;
   disabled?: boolean;
   visible?: boolean;
+  style?: any;
 }
 
 export function WiggleButton({
@@ -15,6 +16,7 @@ export function WiggleButton({
   color,
   disabled = false,
   visible = true,
+  style,
 }: WiggleButtonProps) {
   const translateX = useRef(new Animated.Value(visible ? 0 : -300)).current;
   const scaleAnim = useRef(new Animated.Value(visible ? 1 : 0)).current;
@@ -129,6 +131,7 @@ export function WiggleButton({
           styles.button,
           { backgroundColor: color },
           disabled && styles.disabled,
+          style,
         ]}
         activeOpacity={0.9}
       >

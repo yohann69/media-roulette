@@ -59,6 +59,8 @@
     "title": "Spieleinstellungen",
     "rounds": "Runden",
     "timer": "Timer (Sekunden)",
+    "roundDuration": "Rundendauer",
+    "seconds": "Sekunden",
     "mode": "Modus",
     "photo": "📸 Fotos",
     "video": "🎞️ Videos",
