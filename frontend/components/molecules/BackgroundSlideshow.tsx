@@ -166,11 +166,11 @@ export function BackgroundSlideshow({
         />
       </Animated.View>
       
-      {/* Dark overlay - constant, not animated - way more darkened */}
+      {/* Dark overlay - constant, not animated - slightly less darkened */}
       <View
         style={[
           StyleSheet.absoluteFillObject,
-          { backgroundColor: "rgba(0, 0, 0, 0.92)" },
+          { backgroundColor: "rgba(0, 0, 0, 0.88)" },
         ]}
       />
     </View>
