@@ -25,6 +25,7 @@ export function LobbyScreen() {
   const { username } = useUsername();
   const { 
     room, 
+    currentPlayerId,
     startGame, 
     prepareGame,
     notifySyncComplete,
@@ -126,6 +127,7 @@ export function LobbyScreen() {
     id: p.socketId,
     name: p.name,
     isHost: p.isHost,
+    state: p.state || "selecting", // Include player state
   })) || [];
 
   const settings = room?.settings || {
@@ -182,7 +184,7 @@ export function LobbyScreen() {
           </Text>
           <PlayerList 
             players={players} 
-            currentUserId={room?.players.find(p => p.name === username)?.socketId || ""} 
+            currentUserId={currentPlayerId || undefined} 
           />
         </View>
 

@@ -5,6 +5,7 @@ const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs-extra");
+const ffmpeg = require("fluent-ffmpeg");
 const GameManager = require("./GameManager");
 const setupSocket = require("./socketHandlers");
 
@@ -51,16 +52,59 @@ app.get("/health", (req, res) => {
     res.json({ status: "ok", message: "PhotoRoulette Backend Server" });
 });
 
-// Upload endpoint
-app.post("/upload", upload.single("media"), (req, res) => {
+// Upload endpoint with optional video trimming
+app.post("/upload", upload.single("media"), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
     }
     
+    let finalFilename = req.file.filename;
+    let finalPath = `/uploads/${req.file.filename}`;
+    
+    // If it's a video and trimming parameters are provided, trim it server-side
+    const isVideo = req.file.mimetype.startsWith("video/");
+    const maxDuration = req.body.maxDuration ? parseFloat(req.body.maxDuration) : null;
+    
+    if (isVideo && maxDuration) {
+        try {
+            // Server-side video trimming (fallback if client-side failed)
+            const inputPath = req.file.path;
+            const trimmedFilename = `trimmed_${req.file.filename}`;
+            const outputPath = path.join(UPLOADS_DIR, trimmedFilename);
+            
+            // Use fluent-ffmpeg to trim video
+            await new Promise((resolve, reject) => {
+                ffmpeg(inputPath)
+                    .setDuration(maxDuration) // Trim to max duration
+                    .output(outputPath)
+                    .on("end", () => {
+                        // Check if trimmed file was created
+                        if (fs.existsSync(outputPath)) {
+                            // Delete original and use trimmed version
+                            fs.unlinkSync(inputPath);
+                            finalFilename = trimmedFilename;
+                            finalPath = `/uploads/${trimmedFilename}`;
+                            console.log(`Video trimmed server-side: ${req.file.filename} -> ${trimmedFilename} (${maxDuration}s)`);
+                        }
+                        resolve();
+                    })
+                    .on("error", (err) => {
+                        // FFmpeg not available or failed - use original
+                        console.warn("Server-side video trimming failed:", err.message);
+                        resolve(); // Don't reject - continue with original file
+                    })
+                    .run();
+            });
+        } catch (error) {
+            console.warn("Error in server-side video trimming:", error);
+            // Continue with original file
+        }
+    }
+    
     // Return the filename so frontend can send it via socket
     res.json({ 
-        filename: req.file.filename,
-        path: `/uploads/${req.file.filename}`,
+        filename: finalFilename,
+        path: finalPath,
         mimetype: req.file.mimetype
     });
 });

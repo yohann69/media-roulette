@@ -45,14 +45,14 @@ interface SocketState {
     onPlayerReady: (callback: (data: any) => void) => void;
     onAllPlayersReady: (callback: (data: any) => void) => void;
     onGameStarted: (callback: (data: any) => void) => void;
-    onNewRound: (callback: (data: any) => void) => void;
-    onRoundResult: (callback: (data: any) => void) => void;
-    onGameFinished: (callback: (data: any) => void) => void;
-    onRoomDeleted: (callback: (data: any) => void) => void;
-    onRoomUpdate: (callback: (data: any) => void) => void;
+           onNewRound: (callback: (data: any) => void) => void;
+           onRoundResult: (callback: (data: any) => void) => void;
+           onGameFinished: (callback: (data: any) => void) => void;
+           onRoomDeleted: (callback: (data: any) => void) => void;
+           onRoomUpdate: (callback: (data: any) => void) => void;
     onShowMediaAgain: (callback: (data: any) => void) => void;
     onHideMediaAgain: (callback: () => void) => void;
-    cleanup: () => void;
+           cleanup: () => void;
 }
 
 export const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";

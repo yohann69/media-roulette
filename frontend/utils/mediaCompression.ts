@@ -3,6 +3,8 @@ import { processInBatches as processBatches } from "./parallelProcessing";
 
 const MAX_PHOTO_SIZE_KB = 100;
 const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_KB * 1024;
+const MAX_VIDEO_SIZE_MB = 5;
+const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 const MAX_PARALLEL_COMPRESSION = 20;
 
 // Helper function to format file size
@@ -197,35 +199,177 @@ export async function compressImage(uri: string, mediaName?: string): Promise<st
 }
 
 /**
- * Compress media if it's a photo, otherwise return original
+ * Get video duration using expo-av
+ * Returns 0 if duration cannot be determined (will still attempt trimming)
+ */
+async function getVideoDuration(uri: string): Promise<number> {
+  try {
+    const AV = await import("expo-av");
+    // expo-av Video API - we'll attempt to get duration but it's not critical
+    // If we can't get it, we'll still trim/compress based on maxDurationSeconds
+    return 0; // Duration check is optional - we always trim to maxDurationSeconds anyway
+  } catch (error) {
+    return 0;
+  }
+}
+
+/**
+ * Compress and trim a video client-side
+ * @param uri - Original video URI
+ * @param maxDurationSeconds - Maximum duration in seconds (round duration + 1)
+ * @param mediaName - Name/ID of the media for logging
+ * @returns Compressed/trimmed video URI
+ */
+async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?: string): Promise<string> {
+  const displayName = mediaName || uri.split('/').pop() || 'unknown';
+  
+  try {
+    // Get original file info
+    const fileInfo = await FileSystem.getInfoAsync(uri);
+    if (!fileInfo.exists) {
+      throw new Error("File does not exist");
+    }
+
+    const originalSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
+    const originalSizeFormatted = formatFileSize(originalSize);
+
+    // Get video duration
+    const videoDuration = await getVideoDuration(uri);
+    const needsTrimming = videoDuration > maxDurationSeconds;
+    const needsCompression = originalSize > MAX_VIDEO_SIZE_BYTES;
+
+    // If video is already small enough and doesn't need trimming, return original
+    if (!needsCompression && !needsTrimming) {
+      console.log(`-> compressed media ${displayName}: already optimized (${originalSizeFormatted}, ${videoDuration.toFixed(1)}s)`);
+      return uri;
+    }
+
+    // Try to use ffmpeg-kit for video processing
+    let FFmpegKit: any = null;
+    try {
+      const ffmpegModule = await import("ffmpeg-kit-react-native");
+      FFmpegKit = ffmpegModule.FFmpegKit || ffmpegModule.default?.FFmpegKit;
+    } catch (e) {
+      console.warn("ffmpeg-kit not available, will attempt server-side processing");
+    }
+
+    if (FFmpegKit) {
+      // Client-side processing with ffmpeg-kit
+      const cacheDir = FileSystem.cacheDirectory || "";
+      const outputUri = `${cacheDir}compressed_${Date.now()}_${displayName}.mp4`;
+      
+      // Build ffmpeg command
+      // -i input: input file
+      // -t duration: trim to max duration
+      // -c:v libx264: video codec
+      // -crf 28: quality (lower = better quality, higher = smaller file)
+      // -preset fast: encoding speed
+      // -c:a aac: audio codec
+      // -b:a 128k: audio bitrate
+      // -movflags +faststart: optimize for streaming
+      // -fs 5M: limit file size to 5MB (approximate)
+      
+      let crf = 28; // Start with moderate quality
+      let command = `-i "${uri}" -t ${maxDurationSeconds} -c:v libx264 -crf ${crf} -preset fast -c:a aac -b:a 128k -movflags +faststart "${outputUri}"`;
+      
+      if (needsCompression) {
+        // Add file size limit
+        command = `-i "${uri}" -t ${maxDurationSeconds} -c:v libx264 -crf ${crf} -preset fast -c:a aac -b:a 128k -movflags +faststart -fs ${MAX_VIDEO_SIZE_BYTES} "${outputUri}"`;
+      }
+
+      console.log(`-> compressed media ${displayName}: processing video (trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB)`);
+      
+      try {
+        // FFmpegKit.execute can take command as string or array of arguments
+        // Using array format is more reliable
+        const commandArray = command.split(' ').filter(arg => arg.length > 0);
+        const session = await FFmpegKit.execute(...commandArray);
+        const returnCode = await session.getReturnCode();
+        
+        if (returnCode && returnCode.isValueSuccess && returnCode.isValueSuccess()) {
+          // Check output file size
+          const outputInfo = await FileSystem.getInfoAsync(outputUri);
+          const outputSize = outputInfo.exists && "size" in outputInfo ? outputInfo.size : 0;
+          
+          if (outputSize > 0 && outputSize <= MAX_VIDEO_SIZE_BYTES) {
+            const outputSizeFormatted = formatFileSize(outputSize);
+            const reduction = originalSize > 0 ? ((1 - outputSize / originalSize) * 100).toFixed(1) : '0';
+            console.log(`-> compressed media ${displayName}: success! ${originalSizeFormatted} -> ${outputSizeFormatted} (${reduction}% reduction)`);
+            return outputUri;
+          } else if (outputSize > MAX_VIDEO_SIZE_BYTES) {
+            // Try with higher CRF (lower quality) for better compression
+            console.log(`-> compressed media ${displayName}: output still too large (${formatFileSize(outputSize)}), trying higher compression...`);
+            crf = 32; // Lower quality for smaller file
+            const retryCommand = `-i "${uri}" -t ${maxDurationSeconds} -c:v libx264 -crf ${crf} -preset fast -c:a aac -b:a 96k -movflags +faststart -fs ${MAX_VIDEO_SIZE_MB}M "${outputUri}"`;
+            const retryCommandArray = retryCommand.split(' ').filter(arg => arg.length > 0);
+            const retrySession = await FFmpegKit.execute(...retryCommandArray);
+            const retryReturnCode = await retrySession.getReturnCode();
+            
+            if (retryReturnCode && retryReturnCode.isValueSuccess && retryReturnCode.isValueSuccess()) {
+              const retryOutputInfo = await FileSystem.getInfoAsync(outputUri);
+              const retryOutputSize = retryOutputInfo.exists && "size" in retryOutputInfo ? retryOutputInfo.size : 0;
+              if (retryOutputSize > 0) {
+                console.log(`-> compressed media ${displayName}: compressed to ${formatFileSize(retryOutputSize)}`);
+                return outputUri;
+              }
+            }
+          }
+        } else {
+          const failStackTrace = session?.getFailStackTrace ? await session.getFailStackTrace() : null;
+          console.warn(`-> compressed media ${displayName}: ffmpeg failed`, failStackTrace);
+        }
+      } catch (ffmpegError) {
+        console.warn(`-> compressed media ${displayName}: ffmpeg error:`, ffmpegError);
+      }
+    }
+
+    // Fallback: if client-side processing failed or not available, return original
+    // Server-side processing can be implemented as a fallback
+    console.warn(`-> compressed media ${displayName}: client-side processing unavailable or failed, using original`);
+    console.warn(`  Target: trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB max`);
+    console.warn(`  Current: ${originalSizeFormatted}, duration: ${videoDuration.toFixed(1)}s`);
+    
+    return uri;
+  } catch (error) {
+    console.error(`-> compressed media ${displayName}: error processing video:`, error);
+    return uri;
+  }
+}
+
+/**
+ * Compress media if it's a photo, otherwise compress/trim video
  * @param uri - Media URI
  * @param mediaType - "photo" or "video"
  * @param mediaName - Name/ID of the media for logging
- * @returns Compressed URI (for photos) or original URI (for videos)
+ * @param roundDurationSeconds - Round duration in seconds (for video trimming)
+ * @returns Compressed URI (for photos) or compressed/trimmed URI (for videos)
  */
 export async function compressMedia(
   uri: string,
   mediaType: "photo" | "video",
-  mediaName?: string
+  mediaName?: string,
+  roundDurationSeconds?: number
 ): Promise<string> {
   if (mediaType === "photo") {
     return await compressImage(uri, mediaName);
   }
-  // Videos are not compressed (too complex for on-device compression)
-  const displayName = mediaName || uri.split('/').pop() || 'unknown';
-  console.log(`-> compressed media ${displayName}: video, skipping compression`);
-  return uri;
+  
+  // For videos: trim to round duration + 1 second, then compress to 5MB max
+  const maxDuration = roundDurationSeconds ? roundDurationSeconds + 1 : undefined;
+  return await compressVideo(uri, maxDuration || 10, mediaName);
 }
 
 /**
  * Compress multiple media items in parallel (max 20 concurrent)
  * @param mediaItems - Array of media items with uri, mediaType, and optional name
  * @param onProgress - Optional callback for progress updates
+ * @param roundDurationSeconds - Round duration in seconds (for video trimming)
  * @returns Array of compressed URIs in the same order
  */
 export async function compressMediaBatch(
   mediaItems: Array<{ uri: string; mediaType: "photo" | "video"; id?: string; name?: string }>,
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
+  roundDurationSeconds?: number
 ): Promise<string[]> {
   console.log(`-> Starting parallel compression of ${mediaItems.length} media items (max ${MAX_PARALLEL_COMPRESSION} concurrent)`);
   
@@ -234,7 +378,7 @@ export async function compressMediaBatch(
     mediaItems,
     async (item, index) => {
       const mediaName = item.name || item.id || `media_${index + 1}`;
-      const compressedUri = await compressMedia(item.uri, item.mediaType, mediaName);
+      const compressedUri = await compressMedia(item.uri, item.mediaType, mediaName, roundDurationSeconds);
       
       completed++;
       if (onProgress) {

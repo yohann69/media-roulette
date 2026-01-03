@@ -57,6 +57,8 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
 
     try {
       // Step 1: Compress all media in parallel (max 20 concurrent)
+      // Get round duration from room settings for video trimming
+      const roundDurationSeconds = room?.settings?.timer || 5;
       console.log(`-> Starting compression of ${media.length} media items...`);
       const compressedUris = await compressMediaBatch(
         media.map((item, index) => ({
@@ -67,7 +69,8 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
         })),
         (completed, total) => {
           setUploadProgress(completed / (total * 2)); // Compression is 50% of total progress
-        }
+        },
+        roundDurationSeconds
       );
 
       // Step 2: Upload files in parallel (max 20 concurrent)
@@ -83,14 +86,23 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
           const { item, compressedUri } = data;
           
           // Upload to backend
+          // For videos, include maxDuration for server-side trimming fallback
+          const uploadOptions: any = {
+            fieldName: "media",
+            httpMethod: "POST",
+            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          };
+          
+          // Add maxDuration parameter for videos (server-side trimming fallback)
+          if (item.mediaType === "video" && room?.settings?.timer) {
+            const maxDuration = (room.settings.timer + 1).toString();
+            uploadOptions.parameters = { maxDuration };
+          }
+          
           const uploadResult = await FileSystem.uploadAsync(
             `${SOCKET_URL}/upload`,
             compressedUri,
-            {
-              fieldName: "media",
-              httpMethod: "POST",
-              uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-            }
+            uploadOptions
           );
 
           if (uploadResult.status !== 200) {

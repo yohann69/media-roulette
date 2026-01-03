@@ -11,6 +11,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~54.0.30",
+    "expo-av": "^16.0.8",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.12",
     "expo-dev-client": "~6.0.20",
@@ -21,6 +22,7 @@
     "expo-media-library": "~18.2.1",
     "expo-router": "~6.0.21",
     "expo-status-bar": "~3.0.9",
+    "ffmpeg-kit-react-native": "^6.0.2",
     "i18n-js": "^4.5.1",
     "nativewind": "^4.2.1",
     "react": "19.1.0",
