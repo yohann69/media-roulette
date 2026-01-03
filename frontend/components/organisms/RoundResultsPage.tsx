@@ -188,15 +188,24 @@ export function RoundResultsPage({
                   </View>
                 </View>
                 <View className="items-end justify-center ml-4">
-                  <View className="flex-row items-center gap-2">
-                    {playerResult && playerResult.streak && playerResult.streak >= 3 && (
+                  {playerResult && playerResult.streak && playerResult.streak >= 3 ? (
+                    <View className="flex-row items-center gap-2">
                       <View className="flex-row items-center gap-1">
                         <Text className="text-orange-500 text-lg">🔥</Text>
                         <Text className="text-orange-500 text-sm font-bold">
                           {playerResult.streak}
                         </Text>
                       </View>
-                    )}
+                      <View className="items-end">
+                        <Text className="text-white text-xl font-bold">
+                          {player.totalScore.toLocaleString()}
+                        </Text>
+                        <Text className="text-gray-400 text-xs">
+                          {t("common.pts")}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
                     <View className="items-end">
                       <Text className="text-white text-xl font-bold">
                         {player.totalScore.toLocaleString()}
@@ -205,7 +214,7 @@ export function RoundResultsPage({
                         {t("common.pts")}
                       </Text>
                     </View>
-                  </View>
+                  )}
                 </View>
               </View>
             );

@@ -251,7 +251,11 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 }
                 
                 // Check if game is finished
-                if (room.currentRound >= room.settings.rounds) {
+                // Rounds are 1-based, so if currentRound equals rounds, we've completed all rounds
+                // After finishing round N, currentRound is still N, so we check if N >= rounds
+                const nextRound = room.currentRound + 1;
+                if (nextRound > room.settings.rounds) {
+                    console.log(`[Game ${pin}] Game finished after round ${room.currentRound}/${room.settings.rounds}`);
                     gameManager.updateGameState(pin, "finished");
                     const stats = gameManager.calculateGameStats(pin);
                     io.to(pin).emit("game-finished", {
@@ -260,7 +264,8 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     });
                 } else {
                     // Start next round
-                    gameManager.setCurrentRound(pin, room.currentRound + 1);
+                    console.log(`[Game ${pin}] Continuing to round ${nextRound}/${room.settings.rounds}`);
+                    gameManager.setCurrentRound(pin, nextRound);
                     startNewRound(pin, io, gameManager, roundStartTimes);
                 }
             } catch (error) {
