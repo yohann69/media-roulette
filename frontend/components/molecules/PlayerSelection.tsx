@@ -18,7 +18,7 @@ export function PlayerSelection({
   onSelect,
   disabled,
 }: PlayerSelectionProps) {
-  // Group players into rows of 2 (or 1 if odd number)
+  // Group players into rows of 2, except the last row if odd number
   const rows: Player[][] = [];
   for (let i = 0; i < players.length; i += 2) {
     rows.push(players.slice(i, i + 2));
@@ -27,24 +27,28 @@ export function PlayerSelection({
   return (
     <View className="mb-4">
       <View className="gap-3">
-        {rows.map((row, rowIndex) => (
-          <View key={rowIndex} className="flex-row gap-3">
-            {row.map((player) => {
-              const isSelected = selectedPlayer === player.id;
-              const isOddRow = row.length === 1;
+        {rows.map((row, rowIndex) => {
+          const isLastRow = rowIndex === rows.length - 1;
+          const isOddNumber = players.length % 2 !== 0;
+          const isLastRowWithOneItem = isLastRow && isOddNumber && row.length === 1;
 
-              return (
+          // If last row has one item (odd number), render it without flex-row to take full width
+          if (isLastRowWithOneItem) {
+            const player = row[0];
+            const isSelected = selectedPlayer === player.id;
+            
+            return (
+              <View key={rowIndex}>
                 <TouchableOpacity
-                  key={player.id}
                   onPress={() => onSelect(player.id)}
                   disabled={disabled}
-                  className={`py-4 px-6 rounded-xl border-2 ${
+                  className={`py-4 px-6 rounded-xl border-2 w-full ${
                     isSelected
                       ? "bg-primary border-primary"
                       : disabled
                       ? "bg-gray-800/90 border-gray-700 opacity-50"
                       : "bg-gray-800/90 border-gray-700"
-                  } ${isOddRow ? "flex-1" : "flex-1"}`}
+                  }`}
                 >
                   <Text
                     className={`text-lg font-semibold text-center ${
@@ -54,14 +58,44 @@ export function PlayerSelection({
                     {player.name}
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
-            {/* Add empty space if odd row to maintain layout */}
-            {row.length === 1 && <View className="flex-1" />}
-          </View>
-        ))}
+              </View>
+            );
+          }
+
+          // Normal row with 2 items
+          return (
+            <View key={rowIndex} className="flex-row gap-3">
+              {row.map((player) => {
+                const isSelected = selectedPlayer === player.id;
+
+                return (
+                  <TouchableOpacity
+                    key={player.id}
+                    onPress={() => onSelect(player.id)}
+                    disabled={disabled}
+                    className={`py-4 px-6 rounded-xl border-2 ${
+                      isSelected
+                        ? "bg-primary border-primary"
+                        : disabled
+                        ? "bg-gray-800/90 border-gray-700 opacity-50"
+                        : "bg-gray-800/90 border-gray-700"
+                    }`}
+                    style={{ flex: 1 }}
+                  >
+                    <Text
+                      className={`text-lg font-semibold text-center ${
+                        isSelected ? "text-white" : "text-gray-300"
+                      }`}
+                    >
+                      {player.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          );
+        })}
       </View>
     </View>
   );
 }
-

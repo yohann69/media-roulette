@@ -252,24 +252,52 @@ async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?
       console.log(`-> compressed media ${displayName}: processing video (compress to ${MAX_VIDEO_SIZE_MB}MB, trim to ${maxDurationSeconds}s)`);
       
       try {
+        // Estimate compressed video size before compressing
+        // Formula: estimated_size = (bitrate * duration) / 8 + overhead
+        // For H.264 compression, overhead is typically 5-10% of video data
+        // We'll use a conservative estimate with 10% overhead
+        const estimateCompressedSize = (bitrate: number, duration: number): number => {
+          const videoDataSize = (bitrate * duration) / 8; // Convert bits to bytes
+          const overhead = videoDataSize * 0.1; // 10% overhead for container/metadata
+          return videoDataSize + overhead;
+        };
+        
         // Calculate target bitrate based on max file size and duration
         // bitrate (bits/sec) = (target_size_bytes * 8) / duration_seconds
         const targetBitrate = Math.floor((MAX_VIDEO_SIZE_BYTES * 8) / maxDurationSeconds);
         
-        // First attempt: auto compression
-        let compressionOptions: any = {
-          compressionMethod: 'auto',
-        };
+        // Estimate size with target bitrate
+        const estimatedSize = estimateCompressedSize(targetBitrate, maxDurationSeconds);
         
-        // If file is large, use manual compression with calculated bitrate
-        if (needsCompression) {
+        // If estimated size is close to or exceeds target, use more aggressive compression from the start
+        // Use a safety margin of 90% to account for compression variations
+        const safetyMargin = 0.9;
+        const effectiveMaxSize = MAX_VIDEO_SIZE_BYTES * safetyMargin;
+        
+        let initialBitrate: number;
+        let compressionOptions: any;
+        
+        if (estimatedSize > effectiveMaxSize || needsCompression) {
+          // Estimated size too large, use more aggressive compression
+          // Calculate bitrate that should result in target size (with safety margin)
+          initialBitrate = Math.floor((effectiveMaxSize * 8) / maxDurationSeconds);
+          // Ensure minimum quality (200kbps) and maximum reasonable quality (5000kbps)
+          initialBitrate = Math.max(200000, Math.min(5000000, initialBitrate));
+          
           compressionOptions = {
-            compressionMethod: 'manual',
-            bitrate: Math.max(300000, targetBitrate), // Minimum 300kbps, or calculated bitrate
+            compressionMethod: 'manual' as const,
+            bitrate: initialBitrate,
           };
+          
+          const estimatedSizeWithInitial = estimateCompressedSize(initialBitrate, maxDurationSeconds);
+          console.log(`-> compressed media ${displayName}: estimated size ${formatFileSize(estimatedSizeWithInitial)} with bitrate ${initialBitrate}bps, using aggressive compression`);
+        } else {
+          // Estimated size should be fine, use auto or moderate compression
+          compressionOptions = {
+            compressionMethod: 'auto',
+          };
+          console.log(`-> compressed media ${displayName}: estimated size ${formatFileSize(estimatedSize)} with target bitrate ${targetBitrate}bps, using auto compression`);
         }
-        
-        console.log(`-> compressed media ${displayName}: compressing with bitrate target: ${compressionOptions.bitrate || 'auto'} bps`);
         
         let compressedUri = await Video.compress(uri, compressionOptions);
         
@@ -282,11 +310,11 @@ async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?
         const compressedSize = compressedInfo.exists && "size" in compressedInfo ? compressedInfo.size : 0;
         const compressedSizeFormatted = formatFileSize(compressedSize);
         
-        // If still too large, try more aggressive compression
+        // If still too large (should be rare with estimation), try more aggressive compression
         if (compressedSize > MAX_VIDEO_SIZE_BYTES) {
           console.log(`-> compressed media ${displayName}: still too large (${compressedSizeFormatted}), trying more aggressive compression...`);
           
-          // More aggressive: lower bitrate
+          // More aggressive: lower bitrate by 30%
           const aggressiveBitrate = Math.max(200000, Math.floor((MAX_VIDEO_SIZE_BYTES * 8) / maxDurationSeconds) * 0.7);
           const aggressiveOptions = {
             compressionMethod: 'manual' as const,
