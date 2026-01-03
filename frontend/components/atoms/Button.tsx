@@ -79,7 +79,7 @@ export function Button({
                 {loading ? (
                     <ActivityIndicator color="white" />
                 ) : (
-                    <Text className={`${textColor} text-xl font-bold`}>{title}</Text>
+                    <Text className={`${textColor} text-xl font-bold text-center`}>{title}</Text>
                 )}
             </TouchableOpacity>
         </Animated.View>

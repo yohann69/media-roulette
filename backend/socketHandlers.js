@@ -56,6 +56,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     },
                     players: room.players,
                 });
+
+                // Emit room-update to all clients (including the new joiner) for auto-refresh
+                io.to(pin).emit("room-update", room);
             } catch (error) {
                 socket.emit("error", { message: "Failed to join game" });
             }
@@ -79,13 +82,13 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
                 // Store uploaded media info for this player
                 gameManager.setPlayerMedia(pin, socket.id, mediaPool);
-                
+
                 // Update player state to ready
                 const player = room.players.find(p => p.socketId === socket.id);
                 if (player) {
                     player.state = "ready";
                 }
-                
+
                 io.to(pin).emit("room-update", room);
                 socket.emit("media-pool-set", { success: true });
             } catch (error) {
@@ -101,7 +104,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const room = gameManager.getRoom(pin);
 
                 if (!room) return;
-                
+
                 // Only host
                 const isHost = room.hostSocketId === socket.id || room.players.some(p => p.socketId === socket.id && p.isHost);
                 if (!isHost) return;
@@ -112,9 +115,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
                 // Select media for the game
                 const gameMedia = gameManager.prepareGameMedia(pin);
-                
+
                 // Send media list to all players to download
-                io.to(pin).emit("sync-media", { 
+                io.to(pin).emit("sync-media", {
                     media: gameMedia,
                     count: gameMedia.length
                 });
@@ -136,11 +139,14 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 gameManager.setPlayerReady(pin, socket.id);
 
                 // Notify host (or everyone) about progress?
-                io.to(pin).emit("player-ready", { 
+                io.to(pin).emit("player-ready", {
                     socketId: socket.id,
                     readyCount: room.readyPlayers.size,
                     totalPlayers: room.players.length
                 });
+
+                // Emit room-update when player becomes ready
+                io.to(pin).emit("room-update", room);
 
                 // Check if everyone is ready
                 if (gameManager.areAllPlayersReady(pin)) {
@@ -224,9 +230,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const { pin } = data;
                 const room = gameManager.getRoom(pin);
                 if (!room || room.gameState !== "playing") return;
-                
+
                 console.log(`[Game ${pin}] Timer expired. Calculating results...`);
-                
+
                 // Only calculate results if they haven't been calculated yet
                 // (in case all players guessed before timer expired)
                 if (!room.roundResultsCalculated) {
@@ -241,13 +247,13 @@ function setupSocket(io, gameManager, roundStartTimes) {
             try {
                 const { pin } = data;
                 console.log(`[Game ${pin}] Player ${socket.id} requested continue-game`);
-                
+
                 const room = gameManager.getRoom(pin);
                 if (!room) {
                     console.error(`[Game ${pin}] Room not found`);
                     return;
                 }
-                
+
                 // Only the media owner can continue to the next round
                 const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
                 if (socket.id !== actualOwnerId) {
@@ -255,20 +261,20 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     socket.emit("error", { message: "Only the media owner can continue" });
                     return;
                 }
-                
+
                 // Check if game is finished
                 // Rounds are 1-based. After finishing round N, currentRound is still N.
                 // If currentRound >= rounds, we've completed all rounds
                 console.log(`[Game ${pin}] Current round: ${room.currentRound}, Total rounds: ${room.settings.rounds}`);
-                
+
                 if (room.currentRound >= room.settings.rounds) {
                     console.log(`[Game ${pin}] Game finished after round ${room.currentRound}/${room.settings.rounds}`);
-                    
+
                     try {
                         const stats = gameManager.calculateGameStats(pin);
                         // Update game state only AFTER calculating stats to ensure all data is available
                         gameManager.updateGameState(pin, "finished");
-                        
+
                         console.log(`[Game ${pin}] Sending game-finished event`);
                         io.to(pin).emit("game-finished", {
                             leaderboard: gameManager.getPlayerScores(pin),
@@ -320,6 +326,8 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     io.to(result.pin).emit("room-deleted", { message: "Host left the game" });
                 } else {
                     io.to(result.pin).emit("player-left", { socketId: socket.id, players: result.room.players });
+                    // Emit room-update to all clients for auto-refresh
+                    io.to(result.pin).emit("room-update", result.room);
                 }
             }
         });
