@@ -71,6 +71,10 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
       setGameState("reveal");
       setRoundResults(null);
       setIsShowingMediaAgain(false);
+      // Set the owner ID from the new-round event so we can disable selection for the owner
+      if (data.actualOwnerId) {
+        setActualOwnerId(data.actualOwnerId);
+      }
     },
     onRoundResult: (data) => {
       setActualOwnerId(data.actualOwnerId);
@@ -106,9 +110,16 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
 
   const handlePlayerSelect = async (playerId: string) => {
     if (timeExpired || selectedPlayer || !pin) return;
+    
+    // Prevent the media owner from submitting a guess
+    if (actualOwnerId === currentPlayerId) {
+      console.log("Media owner cannot submit a guess for their own media");
+      return;
+    }
+    
     const timestamp = Date.now();
     setSelectedPlayer(playerId);
-    setTimerActive(false);
+    setTimerActive(false); // Stop local timer for this player
     await submitGuess(pin, playerId, timestamp);
   };
 

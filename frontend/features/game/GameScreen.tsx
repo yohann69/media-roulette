@@ -40,9 +40,10 @@ export function GameScreen() {
     handlePlayAgain,
   } = useGameScreenLogic(pin, isHost);
 
-  const isDisabled = isShowingMediaAgain || selectedPlayer !== null;
-  const correctPlayerId = actualOwnerId || players[0]?.id;
   const isOwner = actualOwnerId === currentPlayerId;
+  // Disable selection if showing media again, already selected, or if this player is the owner
+  const isDisabled = isShowingMediaAgain || selectedPlayer !== null || isOwner;
+  const correctPlayerId = actualOwnerId || players[0]?.id;
 
   // Media Overlay when showing again
   if (isShowingMediaAgain && currentMedia) {

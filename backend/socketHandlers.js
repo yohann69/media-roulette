@@ -193,6 +193,13 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     return;
                 }
 
+                // Prevent the media owner from submitting a guess
+                const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
+                if (socket.id === actualOwnerId) {
+                    socket.emit("guess-received", { success: false, message: "You cannot guess your own media" });
+                    return;
+                }
+
                 const roundStartTime = roundStartTimes.get(pin);
                 if (!roundStartTime) return;
 
@@ -200,15 +207,18 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 socket.emit("guess-received", { success: true });
 
                 // Check if all players have submitted their guesses
-                const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
                 const playersWhoShouldGuess = room.players.filter(p => p.socketId !== actualOwnerId);
                 const guessesReceived = room.roundGuesses.size;
 
-                // Only calculate results if all players have guessed AND results haven't been calculated yet
+                console.log(`[Game ${pin}] Player ${socket.id} submitted guess. Guesses received: ${guessesReceived}/${playersWhoShouldGuess.length}`);
+
+                // Only calculate results if ALL players have guessed AND results haven't been calculated yet
                 if (guessesReceived >= playersWhoShouldGuess.length && !room.roundResultsCalculated) {
+                    console.log(`[Game ${pin}] All players have guessed. Calculating results...`);
                     calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
                 }
             } catch (error) {
+                console.error("Error in submit-guess:", error);
                 socket.emit("error", { message: "Failed to submit guess" });
             }
         });
@@ -219,12 +229,16 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const room = gameManager.getRoom(pin);
                 if (!room || room.gameState !== "playing") return;
                 
+                console.log(`[Game ${pin}] Timer expired. Calculating results...`);
+                
                 // Only calculate results if they haven't been calculated yet
                 // (in case all players guessed before timer expired)
                 if (!room.roundResultsCalculated) {
                     calculateAndEmitRoundResults(pin, io, gameManager, roundStartTimes);
                 }
-            } catch (error) { }
+            } catch (error) {
+                console.error("Error in time-expired:", error);
+            }
         });
 
         socket.on("continue-game", (data) => {

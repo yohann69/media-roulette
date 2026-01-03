@@ -256,30 +256,58 @@ class GameManager {
     const { calculateScore } = require("./utils/scoring");
     
     const results = [];
-    room.roundGuesses.forEach((guess, socketId) => {
-      const player = room.players.find((p) => p.socketId === socketId);
-      if (!player) return;
-      const isCorrect = guess.guessedPlayerId === actualOwnerId;
-      const roundScore = isCorrect ? calculateScore(guess.timeTaken) : 0;
-
+    
+    // Get all players who should have guessed (excluding the media owner)
+    const playersWhoShouldGuess = room.players.filter(p => p.socketId !== actualOwnerId);
+    
+    // Process all players who should have guessed
+    playersWhoShouldGuess.forEach((player) => {
+      const socketId = player.socketId;
+      const guess = room.roundGuesses.get(socketId);
+      
+      // Initialize score data if it doesn't exist
       if (!room.scores.has(socketId)) {
         room.scores.set(socketId, { totalScore: 0, roundScore: 0, timeTaken: null });
       }
       const scoreData = room.scores.get(socketId);
-      scoreData.roundScore = roundScore;
-      scoreData.totalScore += roundScore;
-      scoreData.timeTaken = guess.timeTaken; // Store timeTaken for all guesses
-      player.score = scoreData.totalScore;
+      
+      if (guess) {
+        // Player submitted a guess
+        const isCorrect = guess.guessedPlayerId === actualOwnerId;
+        const roundScore = isCorrect ? calculateScore(guess.timeTaken) : 0;
+        scoreData.roundScore = roundScore;
+        scoreData.totalScore += roundScore;
+        scoreData.timeTaken = guess.timeTaken;
+        player.score = scoreData.totalScore;
 
-      results.push({
-        playerId: socketId,
-        playerName: player.name,
-        guessedPlayerId: guess.guessedPlayerId,
-        isCorrect,
-        roundScore,
-        timeTaken: guess.timeTaken, // Always include timeTaken for all guesses
-        totalScore: scoreData.totalScore,
-      });
+        results.push({
+          playerId: socketId,
+          playerName: player.name,
+          guessedPlayerId: guess.guessedPlayerId,
+          isCorrect,
+          roundScore,
+          timeTaken: guess.timeTaken,
+          totalScore: scoreData.totalScore,
+          tooSlow: false,
+        });
+      } else {
+        // Player didn't submit a guess (too slow or didn't answer)
+        scoreData.roundScore = 0;
+        scoreData.timeTaken = null;
+        // Don't modify totalScore (it stays the same)
+        player.score = scoreData.totalScore;
+
+        results.push({
+          playerId: socketId,
+          playerName: player.name,
+          guessedPlayerId: null,
+          isCorrect: false,
+          roundScore: 0,
+          timeTaken: null,
+          totalScore: scoreData.totalScore,
+          tooSlow: true,
+        });
+      }
     });
 
     const leaderboard = this.getPlayerScores(pin);

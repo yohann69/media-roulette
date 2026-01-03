@@ -74,6 +74,7 @@ function startNewRound(pin, io, gameManager, roundStartTimes) {
         duration: room.settings.timer,
         options,
         roundStartTime,
+        actualOwnerId: room.currentMediaOwnerId, // Send owner ID so clients can disable selection
     });
 
     console.log(`Round ${room.currentRound} started for game ${pin}`);
