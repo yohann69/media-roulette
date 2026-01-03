@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024"
+     xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <linearGradient id="gradBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4DD0E1"/>
+      <stop offset="100%" stop-color="#2979FF"/>
+    </linearGradient>
+
+    <linearGradient id="gradPurple" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#BA68C8"/>
+      <stop offset="100%" stop-color="#5E35B1"/>
+    </linearGradient>
+
+    <linearGradient id="gradOrange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFB74D"/>
+      <stop offset="100%" stop-color="#F57C00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer ring -->
+  <circle cx="512" cy="512" r="430"
+          fill="none" stroke="#E0E0E0" stroke-width="20"/>
+
+  <!-- Spinner arrow -->
+  <polygon points="512,40 540,100 484,100"
+           fill="#4DD0E1"/>
+
+  <!-- Segments -->
+  <g transform="translate(512 512)">
+    <g fill="url(#gradBlue)">
+      <path d="M0,-380 A380,380 0 0,1 268,-268 L220,-220 A310,310 0 0,0 0,-310Z"/>
+    </g>
+
+    <g fill="url(#gradPurple)">
+      <path d="M268,-268 A380,380 0 0,1 380,0 L310,0 A310,310 0 0,0 220,-220Z"/>
+    </g>
+
+    <g fill="url(#gradOrange)">
+      <path d="M380,0 A380,380 0 0,1 268,268 L220,220 A310,310 0 0,0 310,0Z"/>
+    </g>
+
+    <g fill="url(#gradBlue)">
+      <path d="M268,268 A380,380 0 0,1 0,380 L0,310 A310,310 0 0,0 220,220Z"/>
+    </g>
+
+    <g fill="url(#gradPurple)">
+      <path d="M0,380 A380,380 0 0,1 -268,268 L-220,220 A310,310 0 0,0 0,310Z"/>
+    </g>
+
+    <g fill="url(#gradOrange)">
+      <path d="M-268,268 A380,380 0 0,1 -380,0 L-310,0 A310,310 0 0,0 -220,220Z"/>
+    </g>
+
+    <g fill="url(#gradBlue)">
+      <path d="M-380,0 A380,380 0 0,1 -268,-268 L-220,-220 A310,310 0 0,0 -310,0Z"/>
+    </g>
+
+    <g fill="url(#gradPurple)">
+      <path d="M-268,-268 A380,380 0 0,1 0,-380 L0,-310 A310,310 0 0,0 -220,-220Z"/>
+    </g>
+  </g>
+
+  <!-- Center circle -->
+  <circle cx="512" cy="512" r="120" fill="#0D1B2A"/>
+
+  <!-- Question mark -->
+  <text x="512" y="560"
+        text-anchor="middle"
+        font-size="160"
+        font-weight="700"
+        fill="#4DD0E1"
+        font-family="Arial, Helvetica, sans-serif">
+    ?
+  </text>
+
+</svg>

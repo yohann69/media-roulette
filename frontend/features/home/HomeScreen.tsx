@@ -1,4 +1,4 @@
-import { View, Text, Animated, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Animated, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Input } from "../../components/atoms/Input";
@@ -162,23 +162,37 @@ export function HomeScreen() {
     <View className="flex-1 bg-black">
       <BackgroundSlideshow />
       <View className="flex-1" style={{ zIndex: 1 }}>
-        {/* Background tap handler - only active when not on home screen */}
-        {screenState !== "home" && (
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={handleBackgroundPress}
-            style={StyleSheet.absoluteFillObject}
-          />
-        )}
-        
-        <View className="flex-1">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          className="flex-1"
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          {/* Background tap handler - only active when not on home screen */}
+          {screenState !== "home" && (
+            <View
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="box-none"
+            >
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={handleBackgroundPress}
+                style={StyleSheet.absoluteFillObject}
+              />
+            </View>
+          )}
+          
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+          >
           {/* Logo */}
           <Animated.View
             style={{
               transform: [{ scale: logoAnim.scale }],
               opacity: logoAnim.opacity,
             }}
-            className="pt-12 items-center"
+            className="pt-12 items-center mb-8"
           >
             <Image
               source={require("../../assets/icon.png")}
@@ -193,7 +207,7 @@ export function HomeScreen() {
           </Animated.View>
 
           {/* Main Content */}
-          <View className="flex-1 justify-center px-6">
+          <View className="flex-1 justify-start px-6 pb-8" pointerEvents="box-none">
             {/* Home State */}
             {screenState === "home" && (
               <>
@@ -238,8 +252,8 @@ export function HomeScreen() {
 
             {/* Create Mode Selection */}
             {screenState === "create-mode" && (
-              <View>
-                <Text className="text-white text-2xl font-bold text-center mb-8">
+              <View pointerEvents="auto">
+                <Text className="text-white text-3xl font-bold text-center mb-8">
                   {t("gameSettings.selectMode")}
                 </Text>
                 <WiggleButton
@@ -265,8 +279,8 @@ export function HomeScreen() {
 
             {/* Create Rounds Selection */}
             {screenState === "create-rounds" && (
-              <View>
-                <Text className="text-white text-2xl font-bold text-center mb-8">
+              <View pointerEvents="auto">
+                <Text className="text-white text-3xl font-bold text-center mb-8">
                   {t("gameSettings.rounds")}
                 </Text>
                 {ROUND_OPTIONS.map((option) => (
@@ -283,8 +297,8 @@ export function HomeScreen() {
 
             {/* Create Settings */}
             {screenState === "create-settings" && (
-              <View>
-                <Text className="text-white text-2xl font-bold text-center mb-8">
+              <View pointerEvents="auto">
+                <Text className="text-white text-3xl font-bold text-center mb-8">
                   {t("gameSettings.additionalSettings")}
                 </Text>
                 
@@ -359,12 +373,9 @@ export function HomeScreen() {
 
             {/* Join Game */}
             {screenState === "join" && (
-              <View>
-                <Text className="text-white text-2xl font-bold text-center mb-4">
+              <View pointerEvents="auto">
+                <Text className="text-white text-3xl font-bold text-center mb-8">
                   {t("join.title")}
-                </Text>
-                <Text className="text-gray-400 text-center mb-8">
-                  {t("join.description")}
                 </Text>
 
                 {joinError && (
@@ -382,14 +393,13 @@ export function HomeScreen() {
                       setJoinError("");
                     }}
                     placeholder={t("join.pinPlaceholder")}
-                    label={t("join.pinLabel")}
                     autoFocus
                     keyboardType="number-pad"
                   />
                   <TouchableOpacity
                     onPress={() => setShowScanner(true)}
                     disabled={!isConnected}
-                    className="absolute right-3 top-10 p-2 items-center justify-center"
+                    className="absolute right-3 top-3 p-2 items-center justify-center"
                     activeOpacity={0.7}
                   >
                     <View className="items-center justify-center">
@@ -406,7 +416,7 @@ export function HomeScreen() {
                 </View>
 
                 <WiggleButton
-                  title={isJoining ? t("join.joining") : t("join.join")}
+                  title={isJoining ? t("join.joining") : t("home.joinGame")}
                   onPress={handleJoin}
                   color="#3b82f6"
                   disabled={!isValidPIN || isJoining || !isConnected}
@@ -415,7 +425,8 @@ export function HomeScreen() {
               </View>
             )}
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
 
       <QRScanner
