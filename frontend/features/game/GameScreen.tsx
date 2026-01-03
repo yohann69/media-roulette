@@ -1,8 +1,7 @@
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { RevealView } from "../../components/organisms/RevealView";
-import { ResultView } from "../../components/organisms/ResultView";
-import { InterimLeaderboard } from "../../components/molecules/InterimLeaderboard";
+import { RoundResultsPage } from "../../components/organisms/RoundResultsPage";
 import { Podium } from "../../components/molecules/Podium";
 import { Button } from "../../components/atoms/Button";
 import { MediaDisplay } from "../../components/molecules/MediaDisplay";
@@ -70,14 +69,22 @@ export function GameScreen() {
   }
 
   if (gameState === "leaderboard" && roundResults) {
+    // Find the owner's name - they might not be in results since they don't guess their own media
+    const actualOwnerName = 
+      players.find((p) => p.id === actualOwnerId)?.name || 
+      roundResults.results.find((r: any) => r.playerId === actualOwnerId)?.playerName ||
+      t("game.owner");
+
     return (
-      <View className="flex-1 bg-black">
-        <InterimLeaderboard
-          visible={showLeaderboard}
-          players={roundResults.leaderboard}
-          onContinue={handleContinueFromLeaderboard}
-        />
-      </View>
+      <RoundResultsPage
+        currentRound={currentRound}
+        totalRounds={totalRounds}
+        roundResults={roundResults}
+        actualOwnerName={actualOwnerName}
+        isOwner={isOwner}
+        onContinue={handleContinue}
+        allPlayers={players}
+      />
     );
   }
 
@@ -98,26 +105,6 @@ export function GameScreen() {
     );
   }
 
-  if (gameState === "result" && currentMedia && roundResults) {
-    const userResult = roundResults.results.find(
-      (r: any) => r.playerId === currentPlayerId
-    );
-
-    return (
-      <ResultView
-        currentRound={currentRound}
-        totalRounds={totalRounds}
-        currentMedia={currentMedia}
-        selectedPlayer={userResult?.guessedPlayerId || null}
-        correctPlayerId={actualOwnerId || ""}
-        players={players}
-        isOwner={isOwner}
-        onShowAgainStart={handleShowAgainStart}
-        onShowAgainEnd={handleShowAgainEnd}
-        onContinue={handleContinue}
-      />
-    );
-  }
 
   return (
     <View className="flex-1 bg-black items-center justify-center">

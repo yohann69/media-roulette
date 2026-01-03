@@ -265,7 +265,7 @@ class GameManager {
       const scoreData = room.scores.get(socketId);
       scoreData.roundScore = roundScore;
       scoreData.totalScore += roundScore;
-      scoreData.timeTaken = isCorrect ? guess.timeTaken : null;
+      scoreData.timeTaken = guess.timeTaken; // Store timeTaken for all guesses
       player.score = scoreData.totalScore;
 
       results.push({
@@ -274,7 +274,7 @@ class GameManager {
         guessedPlayerId: guess.guessedPlayerId,
         isCorrect,
         roundScore,
-        timeTaken: guess.timeTaken,
+        timeTaken: guess.timeTaken, // Always include timeTaken for all guesses
         totalScore: scoreData.totalScore,
       });
     });

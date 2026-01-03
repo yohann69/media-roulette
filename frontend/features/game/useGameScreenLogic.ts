@@ -134,10 +134,8 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   };
 
   const handleContinueFromLeaderboard = async () => {
-    setShowLeaderboard(false);
-    if (currentRound < totalRounds) {
-      setGameState("reveal");
-    }
+    // This is no longer used - continue is handled directly
+    await handleContinue();
   };
 
   const handlePlayAgain = () => {

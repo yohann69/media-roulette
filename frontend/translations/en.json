@@ -72,7 +72,8 @@
     "result": "Result",
     "waitingRound": "Waiting for round to start...",
     "timeRemaining": "Time remaining",
-    "playAgain": "Play Again"
+    "playAgain": "Play Again",
+    "owner": "Owner"
   },
   "result": {
     "greatGuess": "🎉 Great guess!",
@@ -91,7 +92,13 @@
     "fastest": "⚡ Fastest",
     "gameOver": "Game Over!",
     "finalResults": "Final Results",
-    "leaderboard": "Leaderboard"
+    "leaderboard": "Leaderboard",
+    "correct": "Correct",
+    "guessed": "Guessed",
+    "tooSlow": "Too slow",
+    "total": "Total",
+    "responseTime": "Response time",
+    "waitingForOwner": "Waiting for {ownerName} to continue"
   },
   "warning": {
     "waitForPlayers": "Wait for players",
