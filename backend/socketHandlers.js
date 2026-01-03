@@ -193,12 +193,8 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     return;
                 }
 
-                // Prevent players from guessing themselves (the media owner)
-                const actualOwnerId = room.currentMediaOwnerId || room.players[0].socketId;
-                if (targetUser === actualOwnerId && socket.id === actualOwnerId) {
-                    socket.emit("guess-received", { success: false, message: "You cannot guess yourself" });
-                    return;
-                }
+                // All players can guess anyone, including themselves
+                // No restrictions on who can guess whom
 
                 const roundStartTime = roundStartTimes.get(pin);
                 if (!roundStartTime) return;

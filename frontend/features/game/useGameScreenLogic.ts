@@ -111,12 +111,7 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   const handlePlayerSelect = async (playerId: string) => {
     if (timeExpired || selectedPlayer || !pin) return;
     
-    // Prevent players from guessing themselves (the media owner)
-    if (actualOwnerId === currentPlayerId && playerId === actualOwnerId) {
-      console.log("You cannot guess yourself");
-      return;
-    }
-    
+    // All players can select anyone, including themselves
     const timestamp = Date.now();
     setSelectedPlayer(playerId);
     setTimerActive(false); // Stop local timer for this player

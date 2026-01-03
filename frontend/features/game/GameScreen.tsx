@@ -91,12 +91,7 @@ export function GameScreen() {
   }
 
   if (gameState === "reveal" && currentMedia) {
-    // Filter out the owner from the selection list if current player is the owner
-    // (they can't guess themselves, but can guess others)
-    const availablePlayers = isOwner 
-      ? players.filter(p => p.id !== actualOwnerId)
-      : players;
-    
+    // All players can select from all players, including themselves
     return (
       <RevealView
         currentRound={currentRound}
@@ -104,7 +99,7 @@ export function GameScreen() {
         timerDuration={timerDuration}
         timerActive={timerActive}
         currentMedia={currentMedia}
-        players={availablePlayers}
+        players={players}
         selectedPlayer={selectedPlayer}
         disabled={isDisabled}
         onPlayerSelect={handlePlayerSelect}
