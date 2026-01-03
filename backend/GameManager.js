@@ -353,6 +353,101 @@ class GameManager {
     return { actualOwnerId, results, leaderboard };
   }
 
+  calculateGameStats(pin) {
+    const room = this.rooms.get(pin);
+    if (!room) return null;
+    
+    // Safely initialize default stats
+    const stats = {
+      longestStreak: { playerName: null, streak: 0 },
+      fastestAnswer: { playerName: null, time: null, round: null },
+      averageTime: null,
+      worstPlayer: { playerName: null, score: Infinity },
+      hardestRound: { round: null, correctCount: Infinity },
+    };
+    
+    try {
+        // Calculate longest streak
+        let maxStreak = 0;
+        let maxStreakPlayer = null;
+        if (room.streaks) {
+            room.streaks.forEach((streak, socketId) => {
+                if (streak > maxStreak) {
+                    maxStreak = streak;
+                    const player = room.players.find(p => p.socketId === socketId);
+                    maxStreakPlayer = player?.name || null;
+                }
+            });
+            stats.longestStreak = { playerName: maxStreakPlayer, streak: maxStreak };
+        }
+        
+        // Calculate fastest answer and average time
+        const allTimes = [];
+        let fastestTime = Infinity;
+        let fastestPlayer = null;
+        let fastestRound = null;
+        
+        const history = room.roundHistory || [];
+        history.forEach((roundData) => {
+            if (!roundData || !roundData.results) return;
+            roundData.results.forEach((result) => {
+                if (result.isCorrect && result.timeTaken !== null && result.timeTaken !== undefined) {
+                    allTimes.push(result.timeTaken);
+                    if (result.timeTaken < fastestTime) {
+                        fastestTime = result.timeTaken;
+                        const player = room.players.find(p => p.socketId === result.playerId);
+                        fastestPlayer = player?.name || null;
+                        fastestRound = roundData.round;
+                    }
+                }
+            });
+        });
+        
+        if (fastestTime !== Infinity) {
+            stats.fastestAnswer = { playerName: fastestPlayer, time: fastestTime, round: fastestRound };
+        }
+        
+        if (allTimes.length > 0) {
+            const sum = allTimes.reduce((a, b) => a + b, 0);
+            stats.averageTime = Math.round(sum / allTimes.length);
+        }
+        
+        // Calculate worst player (lowest score)
+        let minScore = Infinity;
+        let worstPlayer = null;
+        room.players.forEach((player) => {
+            if (player.score < minScore) {
+                minScore = player.score;
+                worstPlayer = player.name;
+            }
+        });
+        if (worstPlayer) {
+            stats.worstPlayer = { playerName: worstPlayer, score: minScore };
+        }
+        
+        // Calculate hardest round (fewest correct answers)
+        let minCorrect = Infinity;
+        let hardestRoundNum = null;
+        if (history.length > 0) {
+            history.forEach((roundData) => {
+                if (!roundData || !roundData.results) return;
+                const correctCount = roundData.results.filter(r => r.isCorrect).length;
+                if (correctCount < minCorrect) {
+                    minCorrect = correctCount;
+                    hardestRoundNum = roundData.round;
+                }
+            });
+            if (hardestRoundNum !== null) {
+                stats.hardestRound = { round: hardestRoundNum, correctCount: minCorrect };
+            }
+        }
+    } catch (e) {
+        console.error("Error inside calculateGameStats:", e);
+    }
+    
+    return stats;
+  }
+
   getPlayerScores(pin) {
     const room = this.rooms.get(pin);
     if (!room) return [];
