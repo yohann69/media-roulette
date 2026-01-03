@@ -13,11 +13,12 @@ interface PlayerScore {
 interface RoundResult {
   playerId: string;
   playerName: string;
-  guessedPlayerId: string;
+  guessedPlayerId: string | null;
   isCorrect: boolean;
   roundScore: number;
-  timeTaken: number;
+  timeTaken: number | null;
   totalScore: number;
+  tooSlow?: boolean;
 }
 
 interface RoundResultsPageProps {
@@ -34,7 +35,8 @@ interface RoundResultsPageProps {
   allPlayers: Array<{ id: string; name: string }>;
 }
 
-function formatTime(ms: number): string {
+function formatTime(ms: number | null): string {
+  if (ms === null || ms === undefined) return "-";
   if (ms < 1000) {
     return `${ms}ms`;
   }
@@ -57,8 +59,8 @@ export function RoundResultsPage({
     (a, b) => b.totalScore - a.totalScore
   );
 
-  // Find result data for each player to get their time taken
-  const getPlayerResult = (playerId: string) => {
+  // Find result data for each player to get their guess and time taken
+  const getPlayerResult = (playerId: string): RoundResult | undefined => {
     return roundResults.results.find((r) => r.playerId === playerId);
   };
 
@@ -77,22 +79,26 @@ export function RoundResultsPage({
         <View className="gap-3 mb-6">
           {sortedPlayers.map((player, index) => {
             const playerResult = getPlayerResult(player.playerId);
-            const timeTaken = playerResult?.timeTaken;
+            const timeTaken = playerResult?.timeTaken ?? null;
             const isCorrect = playerResult?.isCorrect || false;
             const guessedPlayerId = playerResult?.guessedPlayerId;
             const guessedPlayer = guessedPlayerId 
               ? allPlayers.find((p) => p.id === guessedPlayerId)
               : null;
-            const didNotGuess = !playerResult;
+            const didNotGuess = !playerResult || playerResult.tooSlow;
+            const roundScore = playerResult?.roundScore || 0;
+
+            // Determine card color based on correctness
+            const cardBgColor = didNotGuess 
+              ? "bg-gray-800 border-gray-700" 
+              : isCorrect 
+              ? "bg-green-900/30 border-green-500" 
+              : "bg-red-900/30 border-red-500";
 
             return (
               <View
                 key={player.playerId}
-                className={`flex-row items-center justify-between py-4 px-4 rounded-xl ${
-                  index === 0
-                    ? "bg-primary/20 border-2 border-primary"
-                    : "bg-gray-800"
-                }`}
+                className={`flex-row items-center justify-between py-4 px-4 rounded-xl border-2 ${cardBgColor}`}
               >
                 <View className="flex-row items-center flex-1">
                   <View className="w-10 items-center mr-3">
@@ -116,38 +122,42 @@ export function RoundResultsPage({
                       <Text className="text-white text-lg font-semibold">
                         {player.playerName}
                       </Text>
-                      {isCorrect && (
-                        <Text className="text-green-400 text-sm ml-2">
-                          ✓ {t("leaderboard.correct")}
+                    </View>
+                    <View className="flex-row items-center gap-2 mb-1">
+                      {guessedPlayer ? (
+                        <Text className="text-gray-300 text-sm">
+                          {t("leaderboard.guessed")} <Text className="font-semibold">{guessedPlayer.name}</Text>
                         </Text>
-                      )}
-                      {!isCorrect && guessedPlayer && (
-                        <Text className="text-gray-400 text-sm ml-2">
-                          {t("leaderboard.guessed")} {guessedPlayer.name}
-                        </Text>
-                      )}
-                      {(didNotGuess || timeTaken === null) && (
-                        <Text className="text-red-400 text-sm ml-2">
+                      ) : (
+                        <Text className="text-gray-400 text-sm">
                           {t("leaderboard.tooSlow")}
                         </Text>
                       )}
                     </View>
-                    <View className="flex-row items-center gap-3">
-                      <Text className="text-gray-400 text-sm">
-                        {t("leaderboard.total")}: {player.totalScore.toLocaleString()} {t("common.pts")}
-                      </Text>
-                      {player.roundScore > 0 && (
-                        <Text className="text-green-400 text-sm font-semibold">
-                          +{player.roundScore.toLocaleString()} {t("common.pts")}
-                        </Text>
-                      )}
-                    </View>
                     {timeTaken !== null && timeTaken !== undefined && !didNotGuess && (
-                      <Text className="text-gray-500 text-xs mt-1">
+                      <Text className="text-gray-400 text-xs">
                         {t("leaderboard.responseTime")}: {formatTime(timeTaken)}
                       </Text>
                     )}
+                    {roundScore > 0 && (
+                      <Text className="text-green-400 text-sm font-semibold mt-1">
+                        +{roundScore.toLocaleString()} {t("common.pts")}
+                      </Text>
+                    )}
+                    {roundScore === 0 && !didNotGuess && (
+                      <Text className="text-gray-500 text-sm mt-1">
+                        +0 {t("common.pts")}
+                      </Text>
+                    )}
                   </View>
+                </View>
+                <View className="items-end justify-center ml-4">
+                  <Text className="text-white text-xl font-bold">
+                    {player.totalScore.toLocaleString()}
+                  </Text>
+                  <Text className="text-gray-400 text-xs">
+                    {t("common.pts")}
+                  </Text>
                 </View>
               </View>
             );
@@ -174,4 +184,3 @@ export function RoundResultsPage({
     </View>
   );
 }
-

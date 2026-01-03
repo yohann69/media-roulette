@@ -272,10 +272,15 @@ class GameManager {
         // Player submitted a guess
         const isCorrect = guess.guessedPlayerId === actualOwnerId;
         const roundScore = isCorrect ? calculateScore(guess.timeTaken) : 0;
+        
+        // Update score data
+        const previousTotal = scoreData.totalScore;
         scoreData.roundScore = roundScore;
-        scoreData.totalScore += roundScore;
+        scoreData.totalScore = previousTotal + roundScore; // Add to existing total
         scoreData.timeTaken = guess.timeTaken;
         player.score = scoreData.totalScore;
+
+        console.log(`[Game ${pin}] Player ${player.name} (${socketId}): guessed ${guess.guessedPlayerId}, correct: ${isCorrect}, roundScore: ${roundScore}, totalScore: ${scoreData.totalScore}`);
 
         results.push({
           playerId: socketId,
