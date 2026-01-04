@@ -28,7 +28,6 @@ export function MediaGrid({
   const itemSize = `${100 / columns}%` as DimensionValue;
   const [displayItems, setDisplayItems] = useState<Array<MediaItem | null>>([]);
   const fadeAnims = useRef<Map<string, Animated.Value>>(new Map()).current;
-  const longPressTimers = useRef<Map<string, NodeJS.Timeout>>(new Map()).current;
 
   // Initialize grid with expected count or items length
   useEffect(() => {
@@ -91,18 +90,10 @@ export function MediaGrid({
             onPress={() => item && onItemPress?.(item)}
             onPressIn={() => {
               if (item) {
-                const timer = setTimeout(() => {
-                  onItemLongPressStart?.(item);
-                }, 300);
-                longPressTimers.set(itemKey, timer);
+                onItemLongPressStart?.(item);
               }
             }}
             onPressOut={() => {
-              const timer = longPressTimers.get(itemKey);
-              if (timer) {
-                clearTimeout(timer);
-                longPressTimers.delete(itemKey);
-              }
               onItemLongPressEnd?.();
             }}
             style={{ width: itemSize, aspectRatio: 1 }}
