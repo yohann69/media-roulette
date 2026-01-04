@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { View, Pressable } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { RevealView } from "../../components/organisms/RevealView";
 import { RoundResultsPage } from "../../components/organisms/RoundResultsPage";
@@ -52,9 +52,13 @@ export function GameScreen() {
   if (isShowingMediaAgain && currentMedia) {
     const playVideoWithSound = room?.settings?.playVideoWithSound !== false; // Default to true
     return (
-      <View className="flex-1 bg-black items-center justify-center">
+      <Pressable
+        className="flex-1 bg-black items-center justify-center"
+        onPressOut={handleShowAgainEnd}
+        style={{ flex: 1 }}
+      >
         <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />
-      </View>
+      </Pressable>
     );
   }
 
@@ -93,9 +97,13 @@ export function GameScreen() {
     if (isShowingMediaAgain && currentMedia) {
       const playVideoWithSound = room?.settings?.playVideoWithSound !== false; // Default to true
       return (
-        <View className="flex-1 bg-black items-center justify-center">
+        <Pressable
+          className="flex-1 bg-black items-center justify-center"
+          onPressOut={handleShowAgainEnd}
+          style={{ flex: 1 }}
+        >
           <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />
-        </View>
+        </Pressable>
       );
     }
 
