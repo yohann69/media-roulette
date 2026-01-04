@@ -358,26 +358,6 @@ function setupSocket(io, gameManager, roundStartTimes) {
             } catch (error) { }
         });
 
-        socket.on("leave-game", (data) => {
-            try {
-                const { pin } = data;
-                const result = gameManager.removePlayer(socket.id);
-                if (result) {
-                    socket.leave(pin);
-                    if (result.roomDeleted) {
-                        roundStartTimes.delete(result.pin);
-                        io.to(result.pin).emit("room-deleted", { message: "Host left the game" });
-                    } else {
-                        io.to(result.pin).emit("player-left", { socketId: socket.id, players: result.room.players });
-                        // Emit room-update to all clients for auto-refresh
-                        io.to(result.pin).emit("room-update", result.room);
-                    }
-                }
-            } catch (error) {
-                console.error("Error in leave-game:", error);
-            }
-        });
-
         socket.on("disconnect", () => {
             const result = gameManager.removePlayer(socket.id);
             if (result) {

@@ -43,6 +43,8 @@ interface RoundResultsPageProps {
   actualOwnerName: string;
   isOwner: boolean;
   onContinue: () => void;
+  onShowAgainStart?: () => void;
+  onShowAgainEnd?: () => void;
   allPlayers: Array<{ id: string; name: string }>;
   currentMedia?: MediaItem | null;
 }
@@ -63,6 +65,8 @@ export function RoundResultsPage({
   actualOwnerName,
   isOwner,
   onContinue,
+  onShowAgainStart,
+  onShowAgainEnd,
   allPlayers,
   currentMedia,
 }: RoundResultsPageProps) {
@@ -224,11 +228,19 @@ export function RoundResultsPage({
 
       <View className="px-6 py-3 border-t border-gray-800 bg-black">
         {isOwner ? (
-          <Button
-            title={t("common.continue")}
-            onPress={onContinue}
-            variant="primary"
-          />
+          <View className="gap-3">
+            <Button
+              title={t("result.showAgain")}
+              onPressIn={onShowAgainStart}
+              onPressOut={onShowAgainEnd}
+              variant="secondary"
+            />
+            <Button
+              title={t("common.continue")}
+              onPress={onContinue}
+              variant="primary"
+            />
+          </View>
         ) : (
           <Button
             title={t("leaderboard.waitingForOwner", { ownerName: actualOwnerName })}

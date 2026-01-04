@@ -89,6 +89,16 @@ export function GameScreen() {
       roundResults.results.find((r: any) => r.playerId === actualOwnerId)?.playerName ||
       t("game.owner");
 
+    // Media Overlay when showing again (also works in leaderboard state)
+    if (isShowingMediaAgain && currentMedia) {
+      const playVideoWithSound = room?.settings?.playVideoWithSound !== false; // Default to true
+      return (
+        <View className="flex-1 bg-black items-center justify-center">
+          <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />
+        </View>
+      );
+    }
+
     return (
       <RoundResultsPage
         currentRound={currentRound}
@@ -97,6 +107,8 @@ export function GameScreen() {
         actualOwnerName={actualOwnerName}
         isOwner={isOwner}
         onContinue={handleContinue}
+        onShowAgainStart={handleShowAgainStart}
+        onShowAgainEnd={handleShowAgainEnd}
         allPlayers={players}
         currentMedia={currentMedia}
       />
