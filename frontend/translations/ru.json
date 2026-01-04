@@ -16,7 +16,10 @@
     "goBack": "Вернуться",
     "waiting": "Ожидание...",
     "connecting": "Подключение к серверу...",
-    "pts": "очков"
+    "pts": "очков",
+    "nobody": "Никто",
+    "insufficientMedia": "Недостаточно медиа",
+    "notEnoughMediaForMode": "Вам нужно захватить больше медиа перед игрой!\n\nТребуется:\n{required}\n\nДоступно:\n{available}"
   },
   "home": {
     "username": "Имя пользователя",
@@ -47,13 +50,21 @@
     "grantPermission": "Предоставить разрешение",
     "reroll": "Перебросить",
     "ready": "Готово",
-    "uploading": "Загрузка..."
+    "uploading": "Загрузка...",
+    "blindModeMessage": "Режим вслепую: Ваши медиа будут сюрпризом! 🎲"
   },
   "lobby": {
     "title": "Игровой лобби",
     "players": "Игроки",
     "startGame": "Начать игру",
-    "starting": "Запуск..."
+    "starting": "Запуск...",
+    "waitingForHost": "Ожидание {hostName} для запуска игры",
+    "host": "Хост",
+    "syncingMedia": "Синхронизация медиа...",
+    "waitingForOthers": "Ожидание других игроков...",
+    "allReady": "Все готовы!",
+    "waitingForHostStart": "Ожидание запуска хостом...",
+    "preparingGame": "Подготовка игры..."
   },
   "gameSettings": {
     "title": "Настройки игры",
@@ -62,9 +73,18 @@
     "roundDuration": "Длительность раунда",
     "seconds": "секунд",
     "mode": "Режим",
+    "selectMode": "Выбрать режим игры",
+    "additionalSettings": "Дополнительные настройки",
     "photo": "📸 Фото",
     "video": "🎞️ Видео",
-    "mix": "🎉 Микс"
+    "mix": "🎉 Микс",
+    "blind": "🎲 Режим вслепую",
+    "playVideoWithSound": "Воспроизводить видео со звуком",
+    "playVideoWithSoundDescription": "Видео будут воспроизводиться со звуком во время раундов (сложнее без звука)",
+    "withSound": "Со звуком",
+    "withoutSound": "Без звука",
+    "blindMode": "Режим вслепую",
+    "blindModeDescription": "Пропустить выбор медиа - случайные медиа будут сюрпризом для всех! 🎲"
   },
   "game": {
     "round": "Раунд {current} из {total}",
@@ -72,36 +92,77 @@
     "result": "Результат",
     "waitingRound": "Ожидание начала раунда...",
     "timeRemaining": "Оставшееся время",
-    "playAgain": "Играть снова"
+    "playAgain": "Играть снова",
+    "owner": "Владелец"
   },
   "result": {
     "greatGuess": "🎉 Отличная догадка!",
     "betterLuck": "Удачи в следующий раз!",
     "timesUp": "Время вышло!",
     "photoTakenBy": "Фото было сделано:",
-    "yourGuess": "Ваша догадка:"
+    "yourGuess": "Ваша догадка:",
+    "showAgain": "Показать снова",
+    "correctAnswer": "Правильный ответ:",
+    "incorrect": "❌ Неправильно",
+    "correct": "✅ Правильно",
+    "noSelection": "Вы никого не выбрали"
   },
   "leaderboard": {
     "roundResults": "Результаты раунда",
     "fastest": "⚡ Самый быстрый",
     "gameOver": "Игра окончена!",
     "finalResults": "Финальные результаты",
-    "leaderboard": "Таблица лидеров"
+    "leaderboard": "Таблица лидеров",
+    "podium": "Подиум",
+    "fullLeaderboard": "Полная таблица лидеров",
+    "correct": "Правильно",
+    "guessed": "Угадано",
+    "tooSlow": "Слишком медленно",
+    "total": "Всего",
+    "responseTime": "Время ответа",
+    "waitingForOwner": "Ожидание {ownerName} для продолжения",
+    "correctAnswer": "Правильный ответ был:"
+  },
+  "stats": {
+    "longestStreak": "Самая длинная серия",
+    "fastestAnswer": "Самый быстрый ответ",
+    "averageTime": "Среднее время ответа",
+    "worstPlayer": "Требует улучшения",
+    "hardestRound": "Самый сложный раунд",
+    "consecutive": "подряд",
+    "correctAnswers": "правильных ответов"
   },
   "warning": {
     "waitForPlayers": "Ждать игроков",
-    "proceed": "Продолжить (Количество раундов будет уменьшено)"
+    "proceed": "Продолжить (Количество раундов будет уменьшено)",
+    "insufficientMedia": "Недостаточно медиа",
+    "notEnoughMedia": "У вас недостаточно медиа для {rounds} раундов.",
+    "notEnoughMediaForMode": "Вам нужно захватить больше медиа перед игрой!\n\nТребуется:\n{required}\n\nДоступно:\n{available}",
+    "connectionError": "Ошибка подключения",
+    "connectionFailed": "Не удалось подключиться к серверу после нескольких попыток. Проверьте подключение к Интернету и попробуйте снова.",
+    "available": "Доступно: {total} элементов медиа",
+    "required": "Требуется: {rounds} раундов",
+    "notEnoughMediaBanner": "⚠️ Недостаточно медиа: {total} доступно, {rounds} раундов необходимо",
+    "waitForMorePlayers": "Ждать больше игроков",
+    "proceedReduceRounds": "Продолжить (Уменьшить раунды)"
   },
   "qrScanner": {
     "title": "Сканировать QR-код",
     "description": "Наведите камеру на QR-код",
     "notAvailable": "Сканирование QR недоступно",
-    "notAvailableMessage": "Сканирование QR-кодов требует версию приложения для разработки. Введите PIN-код вручную.",
+    "notAvailableMessage": "Сканирование QR-кодов требует версию приложения для разработки. Введите PIN-код вручную или создайте приложение с EAS Build.",
+    "notAvailableMessage2": "Модуль камеры недоступен в Expo Go. Вы все еще можете присоединиться, введя 6-значный PIN-код.",
     "cameraPermission": "Разрешение камеры",
     "cameraPermissionMessage": "Нам нужен доступ к вашей камере для сканирования QR-кодов.",
     "cameraPermissionRequired": "Требуется разрешение камеры",
     "cameraPermissionMessage2": "Предоставьте разрешение камеры для сканирования QR-кодов.",
-    "grantPermission": "Предоставить разрешение"
+    "grantPermission": "Предоставить разрешение",
+    "scanned": "QR-код отсканирован!"
+  },
+  "gameSettingsDisplay": {
+    "title": "Настройки игры",
+    "rounds": "Раунды: {count}",
+    "timer": "Таймер: {seconds}s",
+    "mode": "Режим: {emoji} {mode}"
   }
 }
-

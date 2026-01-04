@@ -16,7 +16,10 @@
     "goBack": "返回",
     "waiting": "等待中...",
     "connecting": "正在连接到服务器...",
-    "pts": "分"
+    "pts": "分",
+    "nobody": "没有人",
+    "insufficientMedia": "媒体不足",
+    "notEnoughMediaForMode": "在游戏前您需要捕获更多媒体！\n\n需要：\n{required}\n\n可用：\n{available}"
   },
   "home": {
     "username": "用户名",
@@ -47,13 +50,21 @@
     "grantPermission": "授予权限",
     "reroll": "重新选择",
     "ready": "准备就绪",
-    "uploading": "上传中..."
+    "uploading": "上传中...",
+    "blindModeMessage": "盲选模式：您的媒体将是一个惊喜！🎲"
   },
   "lobby": {
     "title": "游戏大厅",
     "players": "玩家",
     "startGame": "开始游戏",
-    "starting": "开始中..."
+    "starting": "开始中...",
+    "waitingForHost": "等待 {hostName} 开始游戏",
+    "host": "主持人",
+    "syncingMedia": "正在同步媒体...",
+    "waitingForOthers": "等待其他玩家...",
+    "allReady": "全部准备就绪！",
+    "waitingForHostStart": "等待主持人开始...",
+    "preparingGame": "正在准备游戏..."
   },
   "gameSettings": {
     "title": "游戏设置",
@@ -62,9 +73,18 @@
     "roundDuration": "回合时长",
     "seconds": "秒",
     "mode": "模式",
+    "selectMode": "选择游戏模式",
+    "additionalSettings": "附加设置",
     "photo": "📸 照片",
     "video": "🎞️ 视频",
-    "mix": "🎉 混合"
+    "mix": "🎉 混合",
+    "blind": "🎲 盲选模式",
+    "playVideoWithSound": "播放视频时带声音",
+    "playVideoWithSoundDescription": "视频在回合期间将带声音播放（无声音时更难）",
+    "withSound": "带声音",
+    "withoutSound": "无声音",
+    "blindMode": "盲选模式",
+    "blindModeDescription": "跳过媒体选择 - 随机媒体对所有人来说都是惊喜！🎲"
   },
   "game": {
     "round": "第 {current} 回合，共 {total} 回合",
@@ -72,36 +92,77 @@
     "result": "结果",
     "waitingRound": "等待回合开始...",
     "timeRemaining": "剩余时间",
-    "playAgain": "再玩一次"
+    "playAgain": "再玩一次",
+    "owner": "所有者"
   },
   "result": {
     "greatGuess": "🎉 猜对了！",
     "betterLuck": "下次好运！",
     "timesUp": "时间到了！",
     "photoTakenBy": "这张照片是由以下人员拍摄的：",
-    "yourGuess": "您的猜测："
+    "yourGuess": "您的猜测：",
+    "showAgain": "再次显示",
+    "correctAnswer": "正确答案：",
+    "incorrect": "❌ 错误",
+    "correct": "✅ 正确",
+    "noSelection": "您没有选择任何人"
   },
   "leaderboard": {
     "roundResults": "回合结果",
     "fastest": "⚡ 最快",
     "gameOver": "游戏结束！",
     "finalResults": "最终结果",
-    "leaderboard": "排行榜"
+    "leaderboard": "排行榜",
+    "podium": "领奖台",
+    "fullLeaderboard": "完整排行榜",
+    "correct": "正确",
+    "guessed": "已猜测",
+    "tooSlow": "太慢",
+    "total": "总计",
+    "responseTime": "响应时间",
+    "waitingForOwner": "等待 {ownerName} 继续",
+    "correctAnswer": "正确答案是："
+  },
+  "stats": {
+    "longestStreak": "最长连胜",
+    "fastestAnswer": "最快回答",
+    "averageTime": "平均响应时间",
+    "worstPlayer": "需要改进",
+    "hardestRound": "最难的回合",
+    "consecutive": "连续",
+    "correctAnswers": "正确答案"
   },
   "warning": {
     "waitForPlayers": "等待玩家",
-    "proceed": "继续（回合数将减少）"
+    "proceed": "继续（回合数将减少）",
+    "insufficientMedia": "媒体不足",
+    "notEnoughMedia": "您没有足够的媒体进行 {rounds} 回合。",
+    "notEnoughMediaForMode": "在游戏前您需要捕获更多媒体！\n\n需要：\n{required}\n\n可用：\n{available}",
+    "connectionError": "连接错误",
+    "connectionFailed": "多次尝试后无法连接到服务器。请检查您的互联网连接并重试。",
+    "available": "可用：{total} 个媒体项目",
+    "required": "需要：{rounds} 回合",
+    "notEnoughMediaBanner": "⚠️ 媒体不足：{total} 可用，需要 {rounds} 回合",
+    "waitForMorePlayers": "等待更多玩家",
+    "proceedReduceRounds": "继续（减少回合）"
   },
   "qrScanner": {
     "title": "扫描二维码",
     "description": "将相机对准二维码",
     "notAvailable": "二维码扫描不可用",
-    "notAvailableMessage": "扫描二维码需要应用的开发版本。请手动输入PIN码。",
+    "notAvailableMessage": "扫描二维码需要应用的开发版本。请手动输入PIN码或使用EAS Build构建应用。",
+    "notAvailableMessage2": "相机模块在Expo Go中不可用。您仍然可以通过输入6位PIN码加入。",
     "cameraPermission": "相机权限",
     "cameraPermissionMessage": "我们需要访问您的相机以扫描二维码。",
     "cameraPermissionRequired": "需要相机权限",
     "cameraPermissionMessage2": "请授予相机权限以扫描二维码。",
-    "grantPermission": "授予权限"
+    "grantPermission": "授予权限",
+    "scanned": "二维码已扫描！"
+  },
+  "gameSettingsDisplay": {
+    "title": "游戏设置",
+    "rounds": "回合数：{count}",
+    "timer": "计时器：{seconds}s",
+    "mode": "模式：{emoji} {mode}"
   }
 }
-

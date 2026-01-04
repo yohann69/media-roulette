@@ -59,7 +59,12 @@
     "startGame": "Start Game",
     "starting": "Starting...",
     "waitingForHost": "Waiting for {hostName} to start the game",
-    "host": "Host"
+    "host": "Host",
+    "syncingMedia": "Syncing media...",
+    "waitingForOthers": "Waiting for others...",
+    "allReady": "All ready!",
+    "waitingForHostStart": "Waiting for host to start...",
+    "preparingGame": "Preparing game..."
   },
   "gameSettings": {
     "title": "Game Settings",

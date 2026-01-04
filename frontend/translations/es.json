@@ -16,7 +16,10 @@
     "goBack": "Volver",
     "waiting": "Esperando...",
     "connecting": "Conectando al servidor...",
-    "pts": "pts"
+    "pts": "pts",
+    "nobody": "Nadie",
+    "insufficientMedia": "Medios insuficientes",
+    "notEnoughMediaForMode": "¡Necesitas capturar más medios antes de jugar!\n\nRequerido:\n{required}\n\nDisponible:\n{available}"
   },
   "home": {
     "username": "Nombre de usuario",
@@ -47,13 +50,21 @@
     "grantPermission": "Conceder permiso",
     "reroll": "Volver a lanzar",
     "ready": "Listo",
-    "uploading": "Subiendo..."
+    "uploading": "Subiendo...",
+    "blindModeMessage": "Modo ciego: ¡Tus medios serán una sorpresa! 🎲"
   },
   "lobby": {
     "title": "Sala de espera",
     "players": "Jugadores",
     "startGame": "Iniciar partida",
-    "starting": "Iniciando..."
+    "starting": "Iniciando...",
+    "waitingForHost": "Esperando a {hostName} para iniciar la partida",
+    "host": "Anfitrión",
+    "syncingMedia": "Sincronizando medios...",
+    "waitingForOthers": "Esperando a otros jugadores...",
+    "allReady": "¡Todos listos!",
+    "waitingForHostStart": "Esperando que el anfitrión inicie...",
+    "preparingGame": "Preparando partida..."
   },
   "gameSettings": {
     "title": "Configuración del juego",
@@ -62,9 +73,18 @@
     "roundDuration": "Duración de la ronda",
     "seconds": "segundos",
     "mode": "Modo",
+    "selectMode": "Seleccionar modo de juego",
+    "additionalSettings": "Configuraciones adicionales",
     "photo": "📸 Fotos",
     "video": "🎞️ Videos",
-    "mix": "🎉 Mixto"
+    "mix": "🎉 Mixto",
+    "blind": "🎲 Modo ciego",
+    "playVideoWithSound": "Reproducir videos con sonido",
+    "playVideoWithSoundDescription": "Los videos se reproducirán con sonido durante las rondas (más difícil sin sonido)",
+    "withSound": "Con sonido",
+    "withoutSound": "Sin sonido",
+    "blindMode": "Modo ciego",
+    "blindModeDescription": "Omitir selección de medios - ¡los medios aleatorios serán una sorpresa para todos! 🎲"
   },
   "game": {
     "round": "Ronda {current} de {total}",
@@ -72,36 +92,77 @@
     "result": "Resultado",
     "waitingRound": "Esperando que comience la ronda...",
     "timeRemaining": "Tiempo restante",
-    "playAgain": "Jugar de nuevo"
+    "playAgain": "Jugar de nuevo",
+    "owner": "Propietario"
   },
   "result": {
     "greatGuess": "🎉 ¡Buen intento!",
     "betterLuck": "¡Mejor suerte la próxima vez!",
     "timesUp": "¡Se acabó el tiempo!",
     "photoTakenBy": "La foto fue tomada por:",
-    "yourGuess": "Tu respuesta:"
+    "yourGuess": "Tu respuesta:",
+    "showAgain": "Mostrar de nuevo",
+    "correctAnswer": "Respuesta correcta:",
+    "incorrect": "❌ Incorrecto",
+    "correct": "✅ Correcto",
+    "noSelection": "No seleccionaste a nadie"
   },
   "leaderboard": {
     "roundResults": "Resultados de la ronda",
     "fastest": "⚡ Más rápido",
     "gameOver": "¡Juego terminado!",
     "finalResults": "Resultados finales",
-    "leaderboard": "Clasificación"
+    "leaderboard": "Clasificación",
+    "podium": "Podio",
+    "fullLeaderboard": "Clasificación completa",
+    "correct": "Correcto",
+    "guessed": "Adivinado",
+    "tooSlow": "Demasiado lento",
+    "total": "Total",
+    "responseTime": "Tiempo de respuesta",
+    "waitingForOwner": "Esperando a {ownerName} para continuar",
+    "correctAnswer": "La respuesta correcta era:"
+  },
+  "stats": {
+    "longestStreak": "Racha más larga",
+    "fastestAnswer": "Respuesta más rápida",
+    "averageTime": "Tiempo de respuesta promedio",
+    "worstPlayer": "Necesita mejorar",
+    "hardestRound": "Ronda más difícil",
+    "consecutive": "consecutivos",
+    "correctAnswers": "respuestas correctas"
   },
   "warning": {
     "waitForPlayers": "Esperar jugadores",
-    "proceed": "Continuar (El número de rondas se reducirá)"
+    "proceed": "Continuar (El número de rondas se reducirá)",
+    "insufficientMedia": "Medios insuficientes",
+    "notEnoughMedia": "No tienes suficientes medios para {rounds} rondas.",
+    "notEnoughMediaForMode": "¡Necesitas capturar más medios antes de jugar!\n\nRequerido:\n{required}\n\nDisponible:\n{available}",
+    "connectionError": "Error de conexión",
+    "connectionFailed": "No se pudo conectar al servidor después de varios intentos. Por favor verifica tu conexión a Internet e intenta de nuevo.",
+    "available": "Disponible: {total} elementos multimedia",
+    "required": "Requerido: {rounds} rondas",
+    "notEnoughMediaBanner": "⚠️ No hay suficientes medios: {total} disponibles, {rounds} rondas necesarias",
+    "waitForMorePlayers": "Esperar más jugadores",
+    "proceedReduceRounds": "Continuar (Reducir rondas)"
   },
   "qrScanner": {
     "title": "Escanear código QR",
     "description": "Apunta tu cámara al código QR",
     "notAvailable": "Escanear QR no disponible",
-    "notAvailableMessage": "Escanear códigos QR requiere una versión de desarrollo de la aplicación. Por favor ingresa el PIN manualmente.",
+    "notAvailableMessage": "Escanear códigos QR requiere una versión de desarrollo de la aplicación. Por favor ingresa el PIN manualmente o construye la aplicación con EAS Build.",
+    "notAvailableMessage2": "El módulo de cámara no está disponible en Expo Go. Aún puedes unirte ingresando el PIN de 6 dígitos.",
     "cameraPermission": "Permiso de cámara",
     "cameraPermissionMessage": "Necesitamos acceso a tu cámara para escanear códigos QR.",
     "cameraPermissionRequired": "Permiso de cámara requerido",
     "cameraPermissionMessage2": "Por favor concede permiso de cámara para escanear códigos QR.",
-    "grantPermission": "Conceder permiso"
+    "grantPermission": "Conceder permiso",
+    "scanned": "¡Código QR escaneado!"
+  },
+  "gameSettingsDisplay": {
+    "title": "Configuración del juego",
+    "rounds": "Rondas: {count}",
+    "timer": "Temporizador: {seconds}s",
+    "mode": "Modo: {emoji} {mode}"
   }
 }
-
