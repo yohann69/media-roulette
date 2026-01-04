@@ -37,11 +37,11 @@ export function Input({
         autoFocus={autoFocus}
         keyboardType={keyboardType}
         className={`bg-gray-800 text-white px-4 py-3 rounded-xl border-2 ${
-          isFocused ? "border-primary" : "border-gray-700"
-        } ${error ? "border-red-500" : ""}`}
+          error ? "border-red-500" : isFocused ? "border-primary" : "border-gray-700"
+        }`}
         style={{ fontSize: 16, minHeight: 52 }}
       />
-      {error && <Text className="text-red-500 text-sm mt-1">{error}</Text>}
+      {error && error.trim() !== "" && <Text className="text-red-500 text-sm mt-1">{error}</Text>}
     </View>
   );
 }
