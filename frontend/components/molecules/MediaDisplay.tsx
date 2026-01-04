@@ -56,6 +56,9 @@ export function MediaDisplay({ media, showAsBackground = false, playVideoWithSou
         imageSource.uri,
         (width, height) => {
           setImageDimensions({ width, height });
+          // Calculate aspect ratio: width/height
+          // If height > width, it's portrait (aspectRatio < 1)
+          // If height < width, it's landscape (aspectRatio > 1)
           setAspectRatio(width / height);
         },
         () => {
@@ -72,14 +75,22 @@ export function MediaDisplay({ media, showAsBackground = false, playVideoWithSou
     }
   }, [imageSource, media, showAsBackground]);
 
-  // Determine if portrait (height > width) or landscape
+  // Determine if portrait (height > width) or landscape (height < width)
+  // aspectRatio = width/height, so:
+  // - If height > width: aspectRatio < 1 (portrait)
+  // - If height < width: aspectRatio > 1 (landscape)
+  // - If height = width: aspectRatio = 1 (square, treat as landscape)
   const isPortrait = aspectRatio < 1;
-  // Portrait: 3:4, Landscape: 4:3
+  
+  // Portrait: 3:4 aspect ratio (width:height = 3:4)
+  // Landscape: 4:3 aspect ratio (width:height = 4:3)
   const targetAspectRatio = isPortrait ? 3 / 4 : 4 / 3;
   
-  // Calculate display dimensions
+  // Calculate display dimensions based on target aspect ratio
+  // Ensure the container maintains the correct aspect ratio for cropping
   const maxWidth = screenWidth - 48; // Account for padding
   const displayWidth = maxWidth;
+  // Calculate height to maintain target aspect ratio (3:4 for portrait, 4:3 for landscape)
   const displayHeight = displayWidth / targetAspectRatio;
 
   if (showAsBackground) {
@@ -109,7 +120,11 @@ export function MediaDisplay({ media, showAsBackground = false, playVideoWithSou
           {imageSource && (
             <Image
               source={imageSource}
-              style={{ width: displayWidth, height: displayHeight }}
+              style={{ 
+                width: displayWidth, 
+                height: displayHeight,
+                // Ensure image fills container and crops without deformation
+              }}
               resizeMode="cover"
             />
           )}

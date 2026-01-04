@@ -1,4 +1,5 @@
 import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "react-native";
 import { processInBatches as processBatches } from "./parallelProcessing";
 
 const MAX_PHOTO_SIZE_KB = 100;
@@ -109,16 +110,54 @@ export async function compressImage(uri: string, mediaName?: string): Promise<st
       normalizedUri = uri;
     }
 
-    // Step 2: Compress the normalized image
+    // Step 2: Get original image dimensions to maintain aspect ratio
+    let originalWidth = 1920;
+    let originalHeight = 1920;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        Image.getSize(
+          normalizedUri,
+          (width, height) => {
+            originalWidth = width;
+            originalHeight = height;
+            resolve();
+          },
+          (error) => {
+            console.warn(`-> compressed media ${displayName}: failed to get image size, using default:`, error);
+            resolve(); // Continue with defaults
+          }
+        );
+      });
+    } catch (error) {
+      console.warn(`-> compressed media ${displayName}: error getting image dimensions:`, error);
+    }
+
+    // Calculate aspect ratio
+    const aspectRatio = originalWidth / originalHeight;
+    
+    // Step 3: Compress the normalized image while maintaining aspect ratio
     let quality = 0.8;
-    let width = 1920;
-    let height = 1920;
+    let maxDimension = 1920; // Start with max dimension, maintain aspect ratio
     let compressedUri = normalizedUri;
     let tempCompressedUri: string | null = null;
 
     // Try compressing with decreasing quality until we're under the limit
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
+        // Calculate width and height maintaining aspect ratio
+        let width: number;
+        let height: number;
+        
+        if (originalWidth > originalHeight) {
+          // Landscape: width is the limiting dimension
+          width = maxDimension;
+          height = Math.round(maxDimension / aspectRatio);
+        } else {
+          // Portrait or square: height is the limiting dimension
+          height = maxDimension;
+          width = Math.round(maxDimension * aspectRatio);
+        }
+        
         const manipResult = await manipulateAsync(
           normalizedUri,
           [{ resize: { width, height } }],
@@ -163,8 +202,7 @@ export async function compressImage(uri: string, mediaName?: string): Promise<st
 
         // If still too large, reduce quality and/or size
         quality = Math.max(0.3, quality - 0.15);
-        width = Math.floor(width * 0.8);
-        height = Math.floor(height * 0.8);
+        maxDimension = Math.floor(maxDimension * 0.8); // Reduce max dimension, aspect ratio will be maintained
         compressedUri = manipResult.uri;
         tempCompressedUri = manipResult.uri;
       } catch (error) {
