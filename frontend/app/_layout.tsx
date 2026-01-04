@@ -34,12 +34,6 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
-          name="join"
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
           name="selection"
           options={{
             headerShown: false,
