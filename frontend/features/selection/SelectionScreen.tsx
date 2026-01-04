@@ -18,14 +18,14 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string; playAgain?: string }>();
-  
+
   // Use props if provided, otherwise fall back to route params
   const actualParams = {
     isHost: isHost || params.isHost,
     pin: pin || params.pin,
     playAgain: playAgain || params.playAgain,
   };
-  
+
   const {
     media,
     loading,
@@ -147,8 +147,8 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
               <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
             </View>
           ) : (
-            <MediaGrid 
-              items={media} 
+            <MediaGrid
+              items={media}
               columns={4}
               expectedCount={mediaCount}
               onItemLongPressStart={handleLongPressStart}
@@ -164,8 +164,8 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
               <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
             </View>
           ) : (
-            <MediaGrid 
-              items={media} 
+            <MediaGrid
+              items={media}
               columns={4}
               expectedCount={mediaCount}
               onItemLongPressStart={handleLongPressStart}
@@ -196,7 +196,7 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
           </View>
           <View className="flex-1">
             <Button
-              title={isUploading ? t("selection.uploading") : t("selection.ready")}
+              title={t("selection.ready")}
               onPress={handleReady}
               variant="primary"
               disabled={loading || media.length === 0 || isUploading}
