@@ -1,9 +1,8 @@
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, BackHandler, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "../components/atoms/Input";
 import { Button } from "../components/atoms/Button";
-import { BackButton } from "../components/atoms/BackButton";
 import { BackgroundSlideshow } from "../components/molecules/BackgroundSlideshow";
 import { QRScanner } from "../components/molecules/QRScanner";
 import { useSocket } from "../stores/useSocket";
@@ -24,6 +23,16 @@ export default function JoinScreen() {
   useEffect(() => {
     connect();
   }, [connect]);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      router.push("/");
+      return true; // Prevent default behavior
+    });
+
+    return () => backHandler.remove();
+  }, [router]);
 
   const handleJoin = async () => {
     if (pin.trim().length === 6 && /^\d{6}$/.test(pin) && !isJoining && isConnected) {
@@ -76,10 +85,8 @@ export default function JoinScreen() {
     <View className="flex-1 bg-black">
       <BackgroundSlideshow />
       <View className="flex-1" style={{ zIndex: 1 }}>
-        <View className="pt-5 px-4">
-          <BackButton onPress={() => router.push("/")} />
-        </View>
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 8 }}>
+        <ScrollView className="flex-1" contentContainerStyle={{ flexGrow: 1 }}>
+          <Pressable style={{ flex: 1, padding: 24, paddingTop: 44 }} onPress={() => router.push("/")}>
         <Text className="text-white text-3xl font-bold mb-2 text-center">
           {t("join.title")}
         </Text>
@@ -99,54 +106,52 @@ export default function JoinScreen() {
           </Text>
         )}
 
-        <View className="relative">
-          <Input
-            value={pin}
-            onChangeText={(text) => {
-              const digitsOnly = text.replace(/\D/g, "").slice(0, 6);
-              setPin(digitsOnly);
-              setJoinError("");
-            }}
-            placeholder={t("join.pinPlaceholder")}
-            label={t("join.pinLabel")}
-            autoFocus
-            keyboardType="number-pad"
-          />
-          <TouchableOpacity
-            onPress={() => setShowScanner(true)}
-            disabled={!isConnected}
-            className="absolute right-3 top-10 p-2 items-center justify-center"
-            activeOpacity={0.7}
-          >
-            <View className="items-center justify-center">
-              {(() => {
-                try {
-                  const { Camera } = require("lucide-react-native");
-                  return <Camera size={24} color="#ffffff" />;
-                } catch {
-                  return <Text className="text-2xl">📷</Text>;
-                }
-              })()}
-            </View>
-          </TouchableOpacity>
-        </View>
+         <View className="relative" pointerEvents="box-none">
+           <View pointerEvents="auto">
+             <Input
+               value={pin}
+               onChangeText={(text) => {
+                 const digitsOnly = text.replace(/\D/g, "").slice(0, 6);
+                 setPin(digitsOnly);
+                 setJoinError("");
+               }}
+               placeholder={t("join.pinPlaceholder")}
+               label={t("join.pinLabel")}
+               autoFocus
+               keyboardType="number-pad"
+             />
+             <TouchableOpacity
+               onPress={() => setShowScanner(true)}
+               disabled={!isConnected}
+               className="absolute right-3 top-10 p-2 items-center justify-center"
+               activeOpacity={0.7}
+             >
+               <View className="items-center justify-center">
+                 {(() => {
+                   try {
+                     const { Camera } = require("lucide-react-native");
+                     return <Camera size={24} color="#ffffff" />;
+                   } catch {
+                     return <Text className="text-2xl">📷</Text>;
+                   }
+                 })()}
+               </View>
+             </TouchableOpacity>
+           </View>
+         </View>
+         </Pressable>
         </ScrollView>
 
-        <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
-          <Button
-            title={isJoining ? t("join.joining") : t("join.join")}
-            onPress={handleJoin}
-            disabled={!isValidPIN || isJoining || !isConnected}
-            variant="primary"
-          />
-          <View className="mt-3">
-            <Button
-              title={t("join.backToHome")}
-              onPress={() => router.back()}
-              variant="secondary"
-            />
-          </View>
-        </View>
+         <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80" pointerEvents="box-none">
+           <View pointerEvents="auto">
+             <Button
+               title={isJoining ? t("join.joining") : t("join.join")}
+               onPress={handleJoin}
+               disabled={!isValidPIN || isJoining || !isConnected}
+               variant="primary"
+             />
+           </View>
+         </View>
       </View>
 
       <QRScanner

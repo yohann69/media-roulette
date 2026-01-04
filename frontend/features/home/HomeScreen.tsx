@@ -1,6 +1,6 @@
-import { View, Text, Animated, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, Text, Animated, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, BackHandler, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "../../components/atoms/Input";
 import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
 import { WiggleButton } from "../../components/molecules/WiggleButton";
@@ -65,7 +65,7 @@ export function HomeScreen() {
   const isUsernameValid = username.trim().length > 0;
   const currentColor = MODE_COLORS[selectedMode];
 
-  const handleBackgroundPress = () => {
+  const handleBackgroundPress = useCallback(() => {
     if (screenState === "create-mode") {
       setScreenState("home");
     } else if (screenState === "create-rounds") {
@@ -77,7 +77,20 @@ export function HomeScreen() {
     } else if (screenState === "join") {
       setScreenState("home");
     }
-  };
+  }, [screenState]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (screenState !== "home") {
+        handleBackgroundPress();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [screenState, handleBackgroundPress]);
 
   const handleCreateGame = () => {
     if (isUsernameValid) {
@@ -166,17 +179,6 @@ export function HomeScreen() {
     <View className="flex-1 bg-black">
       <BackgroundSlideshow />
       <View className="flex-1" style={{ zIndex: 1 }}>
-        {/* Background tap handler - only active when not on home screen */}
-        {screenState !== "home" && (
-          <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={handleBackgroundPress}
-              style={StyleSheet.absoluteFillObject}
-            />
-          </View>
-        )}
-
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1"
@@ -187,6 +189,12 @@ export function HomeScreen() {
             contentContainerStyle={{ flexGrow: 1 }}
             keyboardShouldPersistTaps="handled"
           >
+            <Pressable 
+              style={{ flex: 1 }} 
+              onPress={() => {
+                if (screenState !== "home") handleBackgroundPress();
+              }}
+            >
             {/* Logo */}
             <Animated.View
               style={{
@@ -255,7 +263,7 @@ export function HomeScreen() {
 
               {/* Create Mode Selection */}
               {screenState === "create-mode" && (
-                <View>
+                <View pointerEvents="auto">
                   <Text className="text-white text-3xl font-bold text-center mb-8">
                     {t("gameSettings.selectMode")}
                   </Text>
@@ -288,7 +296,7 @@ export function HomeScreen() {
 
               {/* Create Rounds Selection */}
               {screenState === "create-rounds" && (
-                <View>
+                <View pointerEvents="auto">
                   <Text className="text-white text-3xl font-bold text-center mb-8">
                     {t("gameSettings.rounds")}
                   </Text>
@@ -306,7 +314,7 @@ export function HomeScreen() {
 
               {/* Create Settings */}
               {screenState === "create-settings" && (
-                <View>
+                <View pointerEvents="auto">
                   {(selectedMode === "Video" || selectedMode === "Mix") ? (
                     <>
                       <Text className="text-white text-3xl font-bold text-center mb-8">
@@ -352,7 +360,7 @@ export function HomeScreen() {
 
               {/* Create Duration Selection */}
               {screenState === "create-duration" && (
-                <View>
+                <View pointerEvents="auto">
                   <Text className="text-white text-3xl font-bold text-center mb-8">
                     {t("gameSettings.roundDuration")}
                   </Text>
@@ -376,7 +384,7 @@ export function HomeScreen() {
 
               {/* Join Game */}
               {screenState === "join" && (
-                <View>
+                <View pointerEvents="auto">
                   <Text className="text-white text-3xl font-bold text-center mb-8">
                     {t("join.title")}
                   </Text>
@@ -428,6 +436,7 @@ export function HomeScreen() {
                 </View>
               )}
             </View>
+            </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
