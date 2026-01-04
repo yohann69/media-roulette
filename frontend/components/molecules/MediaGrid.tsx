@@ -82,11 +82,10 @@ export function MediaGrid({
       {displayItems.map((item, index) => {
         const anim = item ? fadeAnims.get(item.id) : null;
         const opacity = anim || new Animated.Value(item ? 1 : 0);
-        const itemKey = item?.id || `placeholder-${index}`;
 
         return (
           <Pressable
-            key={itemKey}
+            key={`grid-item-${index}`}
             onPress={() => item && onItemPress?.(item)}
             onPressIn={() => {
               if (item) {
