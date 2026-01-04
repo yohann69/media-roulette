@@ -16,7 +16,7 @@ export default function JoinScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { username } = useUsername();
-  const { connect, joinGame, isConnected, connectionFailed, room } = useSocket();
+  const { connect, joinGame, leaveGame, isConnected, connectionFailed, room } = useSocket();
   const [pin, setPin] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -198,7 +198,12 @@ export default function JoinScreen() {
       {pin && (
         <CustomModal
           visible={showSelectionModal}
-          onClose={() => {
+          onClose={async () => {
+            // Leave the game if player was already in a room
+            const pinTrimmed = pin.trim();
+            if (pinTrimmed && room && room.pin === pinTrimmed) {
+              await leaveGame(pinTrimmed);
+            }
             setShowSelectionModal(false);
             setIsJoining(false);
             hasAutoJoinedRef.current = false;
@@ -210,7 +215,12 @@ export default function JoinScreen() {
           <SelectionScreen
             isHost="false"
             pin={pin.trim()}
-            onClose={() => {
+            onClose={async () => {
+              // Leave the game if player was already in a room
+              const pinTrimmed = pin.trim();
+              if (pinTrimmed && room && room.pin === pinTrimmed) {
+                await leaveGame(pinTrimmed);
+              }
               setShowSelectionModal(false);
               setIsJoining(false);
               hasAutoJoinedRef.current = false;

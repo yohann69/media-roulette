@@ -34,7 +34,7 @@ export function HomeScreen() {
   const { t } = useTranslation();
   const { username, setUsername, isLoading } = useUsername();
   const { saveSettings } = useGameSettings();
-  const { connect, createGame, joinGame, isConnected, connectionFailed, room } = useSocket();
+  const { connect, createGame, joinGame, leaveGame, isConnected, connectionFailed, room } = useSocket();
 
   const [screenState, setScreenState] = useState<ScreenState>("home");
   const [selectedMode, setSelectedMode] = useState<"Photo" | "Video" | "Mix" | "Blind">("Photo");
@@ -509,7 +509,11 @@ export function HomeScreen() {
       {selectionParams && (
         <CustomModal
           visible={showSelectionModal}
-          onClose={() => {
+          onClose={async () => {
+            // Leave the game if player was already in a room
+            if (selectionParams.pin && room && room.pin === selectionParams.pin) {
+              await leaveGame(selectionParams.pin);
+            }
             setShowSelectionModal(false);
             setSelectionParams(null);
             setIsCreatingGame(false);
@@ -522,7 +526,11 @@ export function HomeScreen() {
           <SelectionScreen
             isHost={selectionParams.isHost}
             pin={selectionParams.pin}
-            onClose={() => {
+            onClose={async () => {
+              // Leave the game if player was already in a room
+              if (selectionParams.pin && room && room.pin === selectionParams.pin) {
+                await leaveGame(selectionParams.pin);
+              }
               setShowSelectionModal(false);
               setSelectionParams(null);
               setIsCreatingGame(false);

@@ -32,6 +32,7 @@ interface SocketState {
     disconnect: () => void;
     createGame: (hostName: string, settings: any) => Promise<string | null>;
     joinGame: (pin: string, playerName: string) => Promise<boolean>;
+    leaveGame: (pin: string) => Promise<void>;
     setPlayerState: (pin: string, state: "selecting" | "uploading" | "ready") => Promise<void>;
     setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
     prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
@@ -148,6 +149,15 @@ function createGameHandlers(get: any, set: any) {
                 socket.once("error", () => resolve(false));
                 setTimeout(() => resolve(false), 5000);
             });
+        },
+
+        leaveGame: async (pin: string): Promise<void> => {
+            const { socket } = get();
+            if (!socket?.connected) return;
+            
+            socket.emit("leave-game", { pin });
+            // Clear room state when leaving
+            set({ room: null });
         },
 
         setPlayerState: async (pin: string, state: "selecting" | "uploading" | "ready"): Promise<void> => {
