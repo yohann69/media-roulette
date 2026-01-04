@@ -168,6 +168,9 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
 
       setIsUploading(false);
       const updatedIsHost = playAgain ? true : isHost;
+      
+      // If called from modal, close it and navigate
+      // Otherwise navigate directly
       router.push({ 
         pathname: "/lobby", 
         params: { isHost: updatedIsHost ? "true" : "false", pin } 

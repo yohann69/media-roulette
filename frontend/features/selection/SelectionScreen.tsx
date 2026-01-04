@@ -2,15 +2,28 @@ import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
-import { BackButton } from "../../components/atoms/BackButton";
 import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useSelectionScreenLogic } from "./useSelectionScreenLogic";
 
-export function SelectionScreen() {
+interface SelectionScreenProps {
+  isHost?: string;
+  pin?: string;
+  playAgain?: string;
+  onClose?: () => void;
+}
+
+export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionScreenProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string; playAgain?: string }>();
+  
+  // Use props if provided, otherwise fall back to route params
+  const actualParams = {
+    isHost: isHost || params.isHost,
+    pin: pin || params.pin,
+    playAgain: playAgain || params.playAgain,
+  };
   
   const {
     media,
@@ -22,7 +35,7 @@ export function SelectionScreen() {
     handleReroll,
     requestPermission,
     blindMode,
-  } = useSelectionScreenLogic(params);
+  } = useSelectionScreenLogic(actualParams);
 
   if (loading && media.length === 0) {
     return (
@@ -100,9 +113,6 @@ export function SelectionScreen() {
     <View className="flex-1 bg-black">
       <BackgroundSlideshow />
       <View className="flex-1" style={{ zIndex: 1 }}>
-        <View className="pt-5 px-4">
-          <BackButton />
-        </View>
         <View className="px-6 pt-4 pb-4">
         <Text className="text-white text-3xl font-bold mb-2">
           {t("selection.title")}

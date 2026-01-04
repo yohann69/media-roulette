@@ -24,6 +24,7 @@ interface Room {
 interface SocketState {
     socket: Socket | null;
     isConnected: boolean;
+    connectionFailed: boolean;
     room: Room | null;
     currentPlayerId: string | null;
     localMediaMap: Map<number, string>; // index -> local file URI
@@ -60,10 +61,16 @@ interface SocketState {
 export const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";
 
 function createSocketHandlers(set: any, get: any) {
+    let connectionErrorCount = 0;
+    const MAX_CONNECTION_ERRORS = 3;
+
     return {
         connect: () => {
             const { socket } = get();
             if (socket?.connected) return;
+
+            // Reset connection failed state when attempting to connect
+            set({ connectionFailed: false });
 
             const newSocket = io(SOCKET_URL, {
                 transports: ["websocket"],
@@ -73,11 +80,28 @@ function createSocketHandlers(set: any, get: any) {
             });
 
             newSocket.on("connect", () => {
-                set({ socket: newSocket, isConnected: true, currentPlayerId: newSocket.id });
+                connectionErrorCount = 0; // Reset on successful connection
+                set({ socket: newSocket, isConnected: true, connectionFailed: false, currentPlayerId: newSocket.id });
             });
 
-            newSocket.on("disconnect", () => set({ isConnected: false }));
-            newSocket.on("connect_error", () => set({ isConnected: false }));
+            newSocket.on("disconnect", () => {
+                set({ isConnected: false });
+            });
+
+            newSocket.on("connect_error", () => {
+                connectionErrorCount++;
+                set({ isConnected: false });
+                
+                // Only set connection failed after multiple failed attempts
+                if (connectionErrorCount >= MAX_CONNECTION_ERRORS) {
+                    set({ connectionFailed: true });
+                }
+            });
+
+            // Listen for reconnection attempts
+            newSocket.on("reconnect_attempt", () => {
+                // Silently retrying, no UI feedback needed
+            });
 
             set({ socket: newSocket });
         },
@@ -86,7 +110,7 @@ function createSocketHandlers(set: any, get: any) {
             const { socket } = get();
             if (socket) {
                 socket.disconnect();
-                set({ socket: null, isConnected: false, room: null, currentPlayerId: null, localMediaMap: new Map() });
+                set({ socket: null, isConnected: false, connectionFailed: false, room: null, currentPlayerId: null, localMediaMap: new Map() });
             }
         },
     };
@@ -285,6 +309,7 @@ function createEventHandlers(get: any, set: any) {
 export const useSocket = create<SocketState>((set, get) => ({
     socket: null,
     isConnected: false,
+    connectionFailed: false,
     room: null,
     currentPlayerId: null,
     localMediaMap: new Map(),

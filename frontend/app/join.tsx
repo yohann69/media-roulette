@@ -5,24 +5,38 @@ import { Input } from "../components/atoms/Input";
 import { Button } from "../components/atoms/Button";
 import { BackgroundSlideshow } from "../components/molecules/BackgroundSlideshow";
 import { QRScanner } from "../components/molecules/QRScanner";
+import { CustomModal } from "../components/molecules/Modal";
+import { SelectionScreen } from "../features/selection/SelectionScreen";
 import { useSocket } from "../stores/useSocket";
 import { useUsername } from "../hooks/useUsername";
 import { useTranslation } from "../hooks/useTranslation";
+import { checkMediaAvailability } from "../utils/checkMediaAvailability";
 
 export default function JoinScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { username } = useUsername();
-  const { connect, joinGame, isConnected } = useSocket();
+  const { connect, joinGame, isConnected, connectionFailed, room } = useSocket();
   const [pin, setPin] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
   const hasAutoJoinedRef = useRef(false);
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [showMediaError, setShowMediaError] = useState(false);
+  const [mediaErrorText, setMediaErrorText] = useState("");
+  const [showConnectionError, setShowConnectionError] = useState(false);
 
   useEffect(() => {
     connect();
   }, [connect]);
+
+  // Listen for connection errors
+  useEffect(() => {
+    if (connectionFailed) {
+      setShowConnectionError(true);
+    }
+  }, [connectionFailed]);
 
   // Handle Android back button
   useEffect(() => {
@@ -43,10 +57,35 @@ export default function JoinScreen() {
       const success = await joinGame(pin.trim(), username || "Player");
 
       if (success) {
-        router.push({
-          pathname: "/selection",
-          params: { isHost: "false", pin: pin.trim() }
-        });
+        // Get the room mode from socket store
+        const roomMode = room?.settings?.mode || "Photo";
+        const blindMode = room?.settings?.blindMode || false;
+        const modeToCheck = blindMode ? "Blind" : (roomMode === "Photo" ? "Photo" : roomMode === "Video" ? "Video" : "Mix");
+        
+        // Check media availability
+        const mediaCheck = await checkMediaAvailability(modeToCheck);
+        
+        if (!mediaCheck.hasEnough) {
+          const required = modeToCheck === "Photo" || modeToCheck === "Blind"
+            ? `• ${mediaCheck.requiredPhotos} photos`
+            : modeToCheck === "Video"
+            ? `• ${mediaCheck.requiredVideos} videos`
+            : `• ${mediaCheck.requiredPhotos} photos\n• ${mediaCheck.requiredVideos} videos`;
+          
+          const available = modeToCheck === "Photo" || modeToCheck === "Blind"
+            ? `• ${mediaCheck.photoCount} photos`
+            : modeToCheck === "Video"
+            ? `• ${mediaCheck.videoCount} videos`
+            : `• ${mediaCheck.photoCount} photos\n• ${mediaCheck.videoCount} videos`;
+          
+          setMediaErrorText(t("common.notEnoughMediaForMode", { required, available }));
+          setShowMediaError(true);
+          setIsJoining(false);
+          hasAutoJoinedRef.current = false;
+          return;
+        }
+        
+        setShowSelectionModal(true);
       } else {
         setIsJoining(false);
         setJoinError(t("join.error"));
@@ -94,11 +133,6 @@ export default function JoinScreen() {
           {t("join.description")}
         </Text>
 
-        {!isConnected && (
-          <Text className="text-orange-400 text-sm text-center mb-4">
-            {t("common.connecting")}
-          </Text>
-        )}
 
         {joinError && (
           <Text className="text-red-400 text-sm text-center mb-4">
@@ -159,6 +193,76 @@ export default function JoinScreen() {
         onClose={() => setShowScanner(false)}
         onScan={handleQRScan}
       />
+
+      {/* Media Selection Modal */}
+      {pin && (
+        <CustomModal
+          visible={showSelectionModal}
+          onClose={() => {
+            setShowSelectionModal(false);
+            setIsJoining(false);
+            hasAutoJoinedRef.current = false;
+          }}
+          title={t("selection.title")}
+          showCloseButton={true}
+        >
+          <View style={{ maxHeight: 600 }}>
+            <SelectionScreen
+              isHost="false"
+              pin={pin.trim()}
+              onClose={() => {
+                setShowSelectionModal(false);
+                setIsJoining(false);
+                hasAutoJoinedRef.current = false;
+              }}
+            />
+          </View>
+        </CustomModal>
+      )}
+
+      {/* Media Error Dialog */}
+      <CustomModal
+        visible={showMediaError}
+        onClose={() => setShowMediaError(false)}
+        title={t("common.insufficientMedia")}
+        showCloseButton={true}
+      >
+        <Text className="text-white text-base mb-4 whitespace-pre-line">
+          {mediaErrorText}
+        </Text>
+        <Button
+          title={t("common.close")}
+          onPress={() => setShowMediaError(false)}
+          variant="primary"
+        />
+      </CustomModal>
+
+      {/* Connection Error Dialog */}
+      <CustomModal
+        visible={showConnectionError}
+        onClose={() => setShowConnectionError(false)}
+        title={t("common.connectionError")}
+        showCloseButton={true}
+      >
+        <Text className="text-white text-base mb-4">
+          {t("common.connectionFailed")}
+        </Text>
+        <Button
+          title={t("common.retry")}
+          onPress={() => {
+            setShowConnectionError(false);
+            connect();
+          }}
+          variant="primary"
+        />
+        <View className="mt-3">
+          <Button
+            title={t("common.close")}
+            onPress={() => setShowConnectionError(false)}
+            variant="secondary"
+          />
+        </View>
+      </CustomModal>
     </View>
   );
 }

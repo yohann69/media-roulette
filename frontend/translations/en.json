@@ -16,7 +16,10 @@
     "goBack": "Go Back",
     "waiting": "Waiting...",
     "connecting": "Connecting to server...",
-    "pts": "pts"
+    "pts": "pts",
+    "nobody": "Nobody",
+    "insufficientMedia": "Insufficient Media",
+    "notEnoughMediaForMode": "You need to capture more media before playing!\n\nRequired:\n{required}\n\nAvailable:\n{available}"
   },
   "home": {
     "username": "Username",
@@ -124,27 +127,14 @@
     "consecutive": "consecutive",
     "correctAnswers": "correct answers"
   },
-  "common": {
-    "loading": "Loading...",
-    "error": "Error",
-    "continue": "Continue",
-    "back": "Back",
-    "cancel": "Cancel",
-    "close": "Close",
-    "confirm": "Confirm",
-    "save": "Save",
-    "retry": "Try Again",
-    "goBack": "Go Back",
-    "waiting": "Waiting...",
-    "connecting": "Connecting to server...",
-    "pts": "pts",
-    "nobody": "Nobody"
-  },
   "warning": {
     "waitForPlayers": "Wait for players",
     "proceed": "Proceed (Round count will reduce)",
     "insufficientMedia": "Insufficient Media",
     "notEnoughMedia": "You don't have enough media for {rounds} rounds.",
+    "notEnoughMediaForMode": "You need to capture more media before playing!\n\nRequired:\n{required}\n\nAvailable:\n{available}",
+    "connectionError": "Connection Error",
+    "connectionFailed": "Unable to connect to the server after several attempts. Please check your internet connection and try again.",
     "available": "Available: {total} media items",
     "required": "Required: {rounds} rounds",
     "notEnoughMediaBanner": "⚠️ Not enough media: {total} available, {rounds} rounds needed",

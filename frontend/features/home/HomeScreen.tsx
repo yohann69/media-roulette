@@ -8,11 +8,15 @@ import { CustomSlider } from "../../components/atoms/Slider";
 import { Toggle } from "../../components/atoms/Toggle";
 import { QRScanner } from "../../components/molecules/QRScanner";
 import { AnimatedLogo } from "../../components/molecules/AnimatedLogo";
+import { CustomModal } from "../../components/molecules/Modal";
+import { Button } from "../../components/atoms/Button";
 import { useUsername } from "../../hooks/useUsername";
 import { useGameSettings, GameSettings } from "../../hooks/useGameSettings";
 import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 import { createSpringAnimation } from "../../utils/wiggleAnimation";
+import { checkMediaAvailability } from "../../utils/checkMediaAvailability";
+import { SelectionScreen } from "../selection/SelectionScreen";
 
 type ScreenState = "home" | "create-mode" | "create-rounds" | "create-settings" | "create-duration" | "join";
 
@@ -30,7 +34,7 @@ export function HomeScreen() {
   const { t } = useTranslation();
   const { username, setUsername, isLoading } = useUsername();
   const { saveSettings } = useGameSettings();
-  const { connect, createGame, joinGame, isConnected } = useSocket();
+  const { connect, createGame, joinGame, isConnected, connectionFailed, room } = useSocket();
 
   const [screenState, setScreenState] = useState<ScreenState>("home");
   const [selectedMode, setSelectedMode] = useState<"Photo" | "Video" | "Mix" | "Blind">("Photo");
@@ -42,6 +46,11 @@ export function HomeScreen() {
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [selectionParams, setSelectionParams] = useState<{ isHost: string; pin: string } | null>(null);
+  const [showMediaError, setShowMediaError] = useState(false);
+  const [mediaErrorText, setMediaErrorText] = useState("");
+  const [showConnectionError, setShowConnectionError] = useState(false);
 
   // Animation refs
   const logoAnim = useRef(createSpringAnimation(0)).current;
@@ -52,6 +61,13 @@ export function HomeScreen() {
   useEffect(() => {
     connect();
   }, [connect]);
+
+  // Listen for connection errors
+  useEffect(() => {
+    if (connectionFailed) {
+      setShowConnectionError(true);
+    }
+  }, [connectionFailed]);
 
   // Animate logo and input on mount
   useEffect(() => {
@@ -118,6 +134,27 @@ export function HomeScreen() {
       blindMode: selectedMode === "Blind", // Set blindMode flag if Blind mode is selected
     };
 
+    // Check media availability before creating game
+    const mediaCheck = await checkMediaAvailability(selectedMode);
+    
+    if (!mediaCheck.hasEnough) {
+      const required = selectedMode === "Photo" || selectedMode === "Blind"
+        ? `• ${mediaCheck.requiredPhotos} photos`
+        : selectedMode === "Video"
+        ? `• ${mediaCheck.requiredVideos} videos`
+        : `• ${mediaCheck.requiredPhotos} photos\n• ${mediaCheck.requiredVideos} videos`;
+      
+      const available = selectedMode === "Photo" || selectedMode === "Blind"
+        ? `• ${mediaCheck.photoCount} photos`
+        : selectedMode === "Video"
+        ? `• ${mediaCheck.videoCount} videos`
+        : `• ${mediaCheck.photoCount} photos\n• ${mediaCheck.videoCount} videos`;
+      
+      setMediaErrorText(t("common.notEnoughMediaForMode", { required, available }));
+      setShowMediaError(true);
+      return;
+    }
+
     saveSettings(settings);
     setIsCreatingGame(true);
 
@@ -144,12 +181,39 @@ export function HomeScreen() {
     if (pin.trim().length === 6 && /^\d{6}$/.test(pin) && !isJoining && isConnected) {
       setIsJoining(true);
       setJoinError("");
+      
+      // First join the game to get room settings
       const success = await joinGame(pin.trim(), username || "Player");
       if (success) {
-        router.push({
-          pathname: "/selection",
-          params: { isHost: "false", pin: pin.trim() }
-        });
+        // Get the room mode from socket store
+        const roomMode = room?.settings?.mode || "Photo";
+        const blindMode = room?.settings?.blindMode || false;
+        const modeToCheck = blindMode ? "Blind" : (roomMode === "Photo" ? "Photo" : roomMode === "Video" ? "Video" : "Mix");
+        
+        // Check media availability
+        const mediaCheck = await checkMediaAvailability(modeToCheck);
+        
+        if (!mediaCheck.hasEnough) {
+          const required = modeToCheck === "Photo" || modeToCheck === "Blind"
+            ? `• ${mediaCheck.requiredPhotos} photos`
+            : modeToCheck === "Video"
+            ? `• ${mediaCheck.requiredVideos} videos`
+            : `• ${mediaCheck.requiredPhotos} photos\n• ${mediaCheck.requiredVideos} videos`;
+          
+          const available = modeToCheck === "Photo" || modeToCheck === "Blind"
+            ? `• ${mediaCheck.photoCount} photos`
+            : modeToCheck === "Video"
+            ? `• ${mediaCheck.videoCount} videos`
+            : `• ${mediaCheck.photoCount} photos\n• ${mediaCheck.videoCount} videos`;
+          
+          setMediaErrorText(t("common.notEnoughMediaForMode", { required, available }));
+          setShowMediaError(true);
+          setIsJoining(false);
+          return;
+        }
+        
+        setSelectionParams({ isHost: "false", pin: pin.trim() });
+        setShowSelectionModal(true);
       } else {
         setIsJoining(false);
         setJoinError(t("join.error"));
@@ -210,11 +274,6 @@ export function HomeScreen() {
                 }
                 size={200}
               />
-              {!isConnected && (
-                <Text className="text-orange-400 text-sm mt-2">
-                  {t("common.connecting")}
-                </Text>
-              )}
             </Animated.View>
 
             {/* Main Content */}
@@ -446,6 +505,78 @@ export function HomeScreen() {
         onClose={() => setShowScanner(false)}
         onScan={handleQRScan}
       />
+
+      {/* Media Selection Modal */}
+      {selectionParams && (
+        <CustomModal
+          visible={showSelectionModal}
+          onClose={() => {
+            setShowSelectionModal(false);
+            setSelectionParams(null);
+            setIsCreatingGame(false);
+            setIsJoining(false);
+          }}
+          title={t("selection.title")}
+          showCloseButton={true}
+        >
+          <View style={{ maxHeight: 600 }}>
+            <SelectionScreen
+              isHost={selectionParams.isHost}
+              pin={selectionParams.pin}
+              onClose={() => {
+                setShowSelectionModal(false);
+                setSelectionParams(null);
+                setIsCreatingGame(false);
+                setIsJoining(false);
+              }}
+            />
+          </View>
+        </CustomModal>
+      )}
+
+      {/* Media Error Dialog */}
+      <CustomModal
+        visible={showMediaError}
+        onClose={() => setShowMediaError(false)}
+        title={t("common.insufficientMedia")}
+        showCloseButton={true}
+      >
+        <Text className="text-white text-base mb-4 whitespace-pre-line">
+          {mediaErrorText}
+        </Text>
+        <Button
+          title={t("common.close")}
+          onPress={() => setShowMediaError(false)}
+          variant="primary"
+        />
+      </CustomModal>
+
+      {/* Connection Error Dialog */}
+      <CustomModal
+        visible={showConnectionError}
+        onClose={() => setShowConnectionError(false)}
+        title={t("common.connectionError")}
+        showCloseButton={true}
+      >
+        <Text className="text-white text-base mb-4">
+          {t("common.connectionFailed")}
+        </Text>
+        <Button
+          title={t("common.retry")}
+          onPress={() => {
+            setShowConnectionError(false);
+            connect();
+          }}
+          variant="primary"
+        />
+        <View className="mt-3">
+          <Button
+            title={t("common.close")}
+            onPress={() => setShowConnectionError(false)}
+            variant="secondary"
+          />
+        </View>
+      </CustomModal>
     </View>
   );
 }
