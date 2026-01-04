@@ -37,6 +37,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
                 const room = result.room;
                 socket.join(pin);
+                gameManager.updateActivity(pin); // Track activity
 
                 socket.emit("joined-game", {
                     pin: room.pin,
@@ -63,7 +64,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 socket.emit("error", { message: "Failed to join game" });
             }
         });
-        
+
         // Set player state (uploading/ready)
         socket.on("set-player-state", (data) => {
             try {
@@ -78,6 +79,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const player = room.players.find(p => p.socketId === socket.id);
                 if (player) {
                     player.state = state;
+                    gameManager.updateActivity(pin); // Track activity
                     io.to(pin).emit("room-update", room);
                 }
             } catch (error) {
@@ -111,6 +113,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     player.state = "ready";
                 }
 
+                gameManager.updateActivity(pin); // Track activity
                 io.to(pin).emit("room-update", room);
                 socket.emit("media-pool-set", { success: true });
             } catch (error) {
@@ -149,7 +152,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     count: gameMedia.length
                 });
 
-                gameManager.updateGameState(pin, "syncing");
+                gameManager.updateGameState(pin, "syncing"); // This already updates activity
             } catch (error) {
                 console.error("Error preparing game:", error);
                 socket.emit("error", { message: "Failed to prepare game" });
@@ -240,6 +243,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 if (!roundStartTime) return;
 
                 gameManager.submitGuess(pin, socket.id, targetUser, timestamp, roundStartTime);
+                gameManager.updateActivity(pin); // Track activity
                 socket.emit("guess-received", { success: true });
 
                 // Check if ALL players have submitted their guesses (including the owner if they want to guess)
@@ -296,6 +300,8 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     return;
                 }
 
+                gameManager.updateActivity(pin); // Track activity
+
                 // Check if game is finished
                 // Rounds are 1-based. After finishing round N, currentRound is still N.
                 // If currentRound >= rounds, we've completed all rounds
@@ -350,6 +356,26 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const { pin } = data;
                 io.to(pin).emit("hide-media-again");
             } catch (error) { }
+        });
+
+        socket.on("leave-game", (data) => {
+            try {
+                const { pin } = data;
+                const result = gameManager.removePlayer(socket.id);
+                if (result) {
+                    socket.leave(pin);
+                    if (result.roomDeleted) {
+                        roundStartTimes.delete(result.pin);
+                        io.to(result.pin).emit("room-deleted", { message: "Host left the game" });
+                    } else {
+                        io.to(result.pin).emit("player-left", { socketId: socket.id, players: result.room.players });
+                        // Emit room-update to all clients for auto-refresh
+                        io.to(result.pin).emit("room-update", result.room);
+                    }
+                }
+            } catch (error) {
+                console.error("Error in leave-game:", error);
+            }
         });
 
         socket.on("disconnect", () => {

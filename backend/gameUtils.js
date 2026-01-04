@@ -41,6 +41,7 @@ function startNewRound(pin, io, gameManager, roundStartTimes) {
 
     const roundStartTime = Date.now();
     roundStartTimes.set(pin, roundStartTime);
+    gameManager.updateActivity(pin); // Track activity on new round
 
     room.currentMediaIndex = media.index; // Index in the gameMedia array
     room.currentMediaOwnerId = media.ownerId;

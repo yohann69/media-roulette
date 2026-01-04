@@ -136,11 +136,42 @@ app.post("/upload", upload.single("media"), async (req, res) => {
 // Setup socket handlers
 setupSocket(io, gameManager, roundStartTimes);
 
+// Inactivity checker: Clean up abandoned games after 15 minutes of inactivity
+const INACTIVITY_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+const INACTIVITY_CHECK_INTERVAL_MS = 60 * 1000; // Check every minute
+
+setInterval(async () => {
+    const inactiveRooms = gameManager.getInactiveRooms(INACTIVITY_THRESHOLD_MS);
+    
+    for (const { pin, room } of inactiveRooms) {
+        console.log(`[Inactivity Checker] Game ${pin} has been inactive for more than 15 minutes. Cleaning up...`);
+        
+        // Disconnect all players in the room
+        const socketsInRoom = await io.in(pin).fetchSockets();
+        socketsInRoom.forEach(socket => {
+            socket.emit("game-abandoned", { message: "Game was inactive for too long and has been closed" });
+            socket.leave(pin);
+        });
+        
+        // Clean up room files
+        gameManager.cleanupRoomFiles(pin);
+        
+        // Remove from roundStartTimes
+        roundStartTimes.delete(pin);
+        
+        // Delete the room
+        gameManager.rooms.delete(pin);
+        
+        console.log(`[Inactivity Checker] Game ${pin} cleaned up and removed`);
+    }
+}, INACTIVITY_CHECK_INTERVAL_MS);
+
 const PORT = process.env.PORT || 6969;
 
 server.listen(PORT, () => {
     console.log(`🚀 PhotoRoulette Backend Server running on port ${PORT}`);
     console.log(`📡 Socket.io server ready for connections`);
+    console.log(`⏰ Inactivity checker running (15 minute threshold)`);
 });
 
 // Cleanup function to remove old files (optional, but good for long running server)

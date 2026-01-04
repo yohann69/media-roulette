@@ -47,6 +47,7 @@ class GameManager {
       roundResultsCalculated: false, // Flag to prevent duplicate round result calculations
       roundHistory: [], // Store round results for stats calculation
       streaks: new Map(), // socketId -> current streak count
+      lastActivityTime: Date.now(), // Track last activity for inactivity detection
     };
 
     this.rooms.set(pin, room);
@@ -59,7 +60,10 @@ class GameManager {
     if (room.gameState !== "lobby") return { success: false, error: "Game already started" };
 
     const existingPlayer = room.players.find((p) => p.socketId === socketId);
-    if (existingPlayer) return { success: true, room };
+    if (existingPlayer) {
+      room.lastActivityTime = Date.now(); // Update activity on rejoin
+      return { success: true, room };
+    }
 
     room.players.push({
       socketId,
@@ -68,6 +72,7 @@ class GameManager {
       score: 0,
       state: "selecting", // New players start in selecting state
     });
+    room.lastActivityTime = Date.now(); // Update activity on join
 
     return { success: true, room };
   }
@@ -126,12 +131,34 @@ class GameManager {
     const room = this.rooms.get(pin);
     if (room) {
       room.gameState = newState;
+      room.lastActivityTime = Date.now(); // Update activity on state change
       if (newState === "finished") {
         this.cleanupRoomFiles(pin);
       }
       return true;
     }
     return false;
+  }
+
+  updateActivity(pin) {
+    const room = this.rooms.get(pin);
+    if (room) {
+      room.lastActivityTime = Date.now();
+    }
+  }
+
+  getInactiveRooms(inactivityThresholdMs = 15 * 60 * 1000) {
+    const now = Date.now();
+    const inactiveRooms = [];
+    
+    for (const [pin, room] of this.rooms.entries()) {
+      const timeSinceActivity = now - room.lastActivityTime;
+      if (timeSinceActivity >= inactivityThresholdMs) {
+        inactiveRooms.push({ pin, room });
+      }
+    }
+    
+    return inactiveRooms;
   }
 
   resetGame(pin) {
