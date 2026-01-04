@@ -354,8 +354,21 @@ function setupSocket(io, gameManager, roundStartTimes) {
         socket.on("hide-media-again", (data) => {
             try {
                 const { pin } = data;
+                const room = gameManager.getRoom(pin);
+                if (!room) {
+                    console.log(`[hide-media-again] Room ${pin} not found`);
+                    return;
+                }
+                // Verify ownership (same as show-media-again)
+                if (room.currentMediaOwnerId !== socket.id) {
+                    console.log(`[hide-media-again] Unauthorized: socket ${socket.id} is not owner ${room.currentMediaOwnerId}`);
+                    return;
+                }
+                console.log(`[hide-media-again] Broadcasting hide event to room ${pin}`);
                 io.to(pin).emit("hide-media-again");
-            } catch (error) { }
+            } catch (error) {
+                console.error("Error in hide-media-again:", error);
+            }
         });
 
         socket.on("disconnect", () => {

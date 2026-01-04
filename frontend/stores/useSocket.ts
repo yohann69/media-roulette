@@ -310,11 +310,25 @@ function createEventHandlers(get: any, set: any) {
         },
 
         onShowMediaAgain: (callback: (data: any) => void) => {
-            get().socket?.on("show-media-again", callback);
+            const socket = get().socket;
+            if (!socket) return;
+            // Remove any existing listener to avoid duplicates
+            socket.off("show-media-again");
+            socket.on("show-media-again", (data: any) => {
+                console.log("Received show-media-again event", data);
+                callback(data);
+            });
         },
 
         onHideMediaAgain: (callback: () => void) => {
-            get().socket?.on("hide-media-again", callback);
+            const socket = get().socket;
+            if (!socket) return;
+            // Remove any existing listener to avoid duplicates
+            socket.off("hide-media-again");
+            socket.on("hide-media-again", () => {
+                console.log("Received hide-media-again event");
+                callback();
+            });
         },
 
         cleanup: () => {

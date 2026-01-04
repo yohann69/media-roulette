@@ -103,9 +103,11 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
       }
     },
     onShowMediaAgain: () => {
+      console.log("onShowMediaAgain called, setting isShowingMediaAgain to true");
       setIsShowingMediaAgain(true);
     },
     onHideMediaAgain: () => {
+      console.log("onHideMediaAgain called, setting isShowingMediaAgain to false");
       setIsShowingMediaAgain(false);
     },
   });
