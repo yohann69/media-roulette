@@ -138,6 +138,11 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 // Select media for the game
                 const gameMedia = gameManager.prepareGameMedia(pin);
 
+                // Reset the all-players-ready flag when preparing game
+                if (room) {
+                    room.allPlayersReadyEmitted = false;
+                }
+
                 // Send media list to all players to download
                 io.to(pin).emit("sync-media", {
                     media: gameMedia,
@@ -158,6 +163,11 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const room = gameManager.getRoom(pin);
                 if (!room) return;
 
+                // Don't process if game already started
+                if (room.gameState === "playing") {
+                    return;
+                }
+
                 gameManager.setPlayerReady(pin, socket.id);
 
                 // Notify host (or everyone) about progress?
@@ -170,8 +180,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 // Emit room-update when player becomes ready
                 io.to(pin).emit("room-update", room);
 
-                // Check if everyone is ready
-                if (gameManager.areAllPlayersReady(pin)) {
+                // Check if everyone is ready and game is still in syncing state
+                // Only emit once to prevent multiple game starts
+                if (gameManager.areAllPlayersReady(pin) && room.gameState === "syncing" && !room.allPlayersReadyEmitted) {
+                    room.allPlayersReadyEmitted = true;
                     io.to(pin).emit("all-players-ready");
                 }
             } catch (error) {

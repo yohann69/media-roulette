@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
@@ -26,6 +26,7 @@ export function LobbyScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { username } = useUsername();
+  const socketStore = useSocket();
   const { 
     room, 
     currentPlayerId,
@@ -41,7 +42,7 @@ export function LobbyScreen() {
     onSyncMedia,
     onPlayerReady,
     onAllPlayersReady
-  } = useSocket();
+  } = socketStore;
 
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -49,6 +50,7 @@ export function LobbyScreen() {
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState("");
   const [allReady, setAllReady] = useState(false);
+  const hasAutoStartedRef = useRef(false);
 
   const isHost = params.isHost === "true";
   const pin = params.pin || room?.pin || "";
@@ -72,6 +74,8 @@ export function LobbyScreen() {
 
     onGameStarted((data) => {
       console.log("Game started:", data);
+      // Reset the auto-start flag when game actually starts
+      hasAutoStartedRef.current = false;
       router.push({ pathname: "/game", params: { pin, isHost: isHost ? "true" : "false" } });
     });
 
@@ -120,16 +124,39 @@ export function LobbyScreen() {
         console.log("Player ready:", data);
     });
 
-    onAllPlayersReady(() => {
+    onAllPlayersReady(async () => {
+        // Prevent multiple calls
+        if (hasAutoStartedRef.current) {
+            return;
+        }
+
         setAllReady(true);
         setIsSyncing(false); // Reset syncing state when all players are ready
         setSyncStatus(t("lobby.allReady"));
-        if (!isHost) {
-             setSyncStatus(t("lobby.waitingForHostStart"));
+        
+        // Automatically start the game if host and game was prepared (syncing state)
+        // Use ref to prevent multiple starts
+        const currentRoom = socketStore.room;
+        if (isHost && currentRoom?.gameState === "syncing" && !hasAutoStartedRef.current) {
+            hasAutoStartedRef.current = true;
+            setIsStarting(true);
+            // Small delay to ensure UI updates
+            setTimeout(async () => {
+                const roomState = socketStore.room;
+                // Double check game state hasn't changed
+                if (pin && roomState?.gameState === "syncing" && roomState?.gameState !== "playing") {
+                    await startGame(pin);
+                } else {
+                    hasAutoStartedRef.current = false;
+                    setIsStarting(false);
+                }
+            }, 500);
+        } else if (!isHost) {
+            setSyncStatus(t("lobby.waitingForHostStart"));
         }
     });
 
-  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, onRoomUpdate, onSyncMedia, onPlayerReady, onAllPlayersReady, router, pin, isHost, notifySyncComplete, setLocalMediaMap, t]);
+  }, [onPlayerJoined, onPlayerLeft, onGameStarted, onRoomDeleted, onRoomUpdate, onSyncMedia, onPlayerReady, onAllPlayersReady, router, pin, isHost, notifySyncComplete, setLocalMediaMap, startGame, room, t]);
 
   const players: Player[] = room?.players.map((p) => ({
     id: p.socketId,

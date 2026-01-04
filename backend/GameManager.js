@@ -43,6 +43,7 @@ class GameManager {
       roundGuesses: new Map(),
       usedMediaIndices: new Set(),
       readyPlayers: new Set(), // Players who have finished syncing
+      allPlayersReadyEmitted: false, // Flag to prevent emitting all-players-ready multiple times
       roundResultsCalculated: false, // Flag to prevent duplicate round result calculations
       roundHistory: [], // Store round results for stats calculation
       streaks: new Map(), // socketId -> current streak count
