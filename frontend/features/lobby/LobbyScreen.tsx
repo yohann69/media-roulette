@@ -149,8 +149,10 @@ export function LobbyScreen() {
   
   // Check if all players are ready (not selecting or uploading)
   const allPlayersReady = players.length > 0 && players.every(p => p.state === "ready");
-  // Can start if: enough media, all players ready, and either not syncing OR all ready (syncing complete)
-  const canStart = canStartGame && allPlayersReady && (!isSyncing || allReady);
+  // Need at least 2 players to start (host + at least one other player)
+  const hasEnoughPlayers = players.length >= 2;
+  // Can start if: enough media, all players ready, has enough players, and either not syncing OR all ready (syncing complete)
+  const canStart = canStartGame && allPlayersReady && hasEnoughPlayers && (!isSyncing || allReady);
 
   const hostPlayer = players.find((p) => p.isHost);
   const hostName = hostPlayer?.name || t("lobby.host");
