@@ -1,4 +1,4 @@
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 
@@ -21,12 +21,10 @@ interface AnimatedPlayer {
 }
 
 export function PlayerList({ players, currentUserId }: PlayerListProps) {
-  let Clock: any = null;
   let Crown: any = null;
   
   try {
     const lucide = require("lucide-react-native");
-    Clock = lucide.Clock;
     Crown = lucide.Crown;
   } catch {
     // Icons not available, will use text fallback
@@ -104,13 +102,9 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
               <Text className={`${player.state === "selecting" || player.state === "uploading" ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
-              {player.state === "selecting" && Clock ? (
-                <Clock size={12} color="#9ca3af" />
-              ) : player.state === "selecting" ? (
-                <Text className="text-gray-400 text-xs">⏳</Text>
-              ) : player.state === "uploading" ? (
-                <Text className="text-blue-400 text-xs">⬆️</Text>
-              ) : null}
+              {(player.state === "selecting" || player.state === "uploading") && (
+                <ActivityIndicator size="small" color={player.state === "uploading" ? "#60a5fa" : "#9ca3af"} />
+              )}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />
               ) : player.isHost ? (
@@ -139,13 +133,9 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
               <Text className={`${isSelecting || isUploading ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
-              {isSelecting && Clock ? (
-                <Clock size={12} color="#9ca3af" />
-              ) : isSelecting ? (
-                <Text className="text-gray-400 text-xs">⏳</Text>
-              ) : isUploading ? (
-                <Text className="text-blue-400 text-xs">⬆️</Text>
-              ) : null}
+              {(isSelecting || isUploading) && (
+                <ActivityIndicator size="small" color={isUploading ? "#60a5fa" : "#9ca3af"} />
+              )}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />
               ) : player.isHost ? (
