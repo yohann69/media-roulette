@@ -210,5 +210,6 @@ export function useSelectionScreenLogic(
     handleReroll,
     requestPermission,
     blindMode,
+    mediaCount,
   };
 }

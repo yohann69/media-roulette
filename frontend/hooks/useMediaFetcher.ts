@@ -64,7 +64,23 @@ export function useMediaFetcher(
 
     try {
       const fetchedMedia = await fetchRandomMedia(count, type);
-      setMedia(fetchedMedia);
+      
+      // If we already have media (reroll), update incrementally
+      if (media.length > 0 && media.length === fetchedMedia.length) {
+        // Update items one by one with a small delay for smooth animation
+        for (let i = 0; i < fetchedMedia.length; i++) {
+          setTimeout(() => {
+            setMedia(prev => {
+              const updated = [...prev];
+              updated[i] = fetchedMedia[i];
+              return updated;
+            });
+          }, i * 30); // 30ms delay between each item
+        }
+      } else {
+        // Initial load: set all at once
+        setMedia(fetchedMedia);
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch media";

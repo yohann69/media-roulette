@@ -1,7 +1,9 @@
 import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
+import { FullScreenMediaViewer } from "../../components/molecules/FullScreenMediaViewer";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useSelectionScreenLogic } from "./useSelectionScreenLogic";
 
@@ -34,7 +36,21 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
     handleReroll,
     requestPermission,
     blindMode,
+    mediaCount,
   } = useSelectionScreenLogic(actualParams, onClose);
+
+  const [selectedMedia, setSelectedMedia] = useState<{ id: string; uri: string; mediaType: "photo" | "video" } | null>(null);
+  const [showFullScreen, setShowFullScreen] = useState(false);
+
+  const handleLongPressStart = (item: { id: string; uri: string; mediaType: "photo" | "video" }) => {
+    setSelectedMedia(item);
+    setShowFullScreen(true);
+  };
+
+  const handleLongPressEnd = () => {
+    setShowFullScreen(false);
+    setSelectedMedia(null);
+  };
 
   if (loading && media.length === 0) {
     return (
@@ -125,27 +141,48 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
 
       {isModal ? (
         <View>
-          {loading ? (
+          {loading && media.length === 0 ? (
             <View className="py-10 items-center">
               <ActivityIndicator size="large" color="#ffffff" />
               <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
             </View>
           ) : (
-            <MediaGrid items={media} columns={4} />
+            <MediaGrid 
+              items={media} 
+              columns={4}
+              expectedCount={mediaCount}
+              onItemLongPressStart={handleLongPressStart}
+              onItemLongPressEnd={handleLongPressEnd}
+            />
           )}
         </View>
       ) : (
         <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-          {loading ? (
+          {loading && media.length === 0 ? (
             <View className="py-20 items-center">
               <ActivityIndicator size="large" color="#ffffff" />
               <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
             </View>
           ) : (
-            <MediaGrid items={media} columns={4} />
+            <MediaGrid 
+              items={media} 
+              columns={4}
+              expectedCount={mediaCount}
+              onItemLongPressStart={handleLongPressStart}
+              onItemLongPressEnd={handleLongPressEnd}
+            />
           )}
         </ScrollView>
       )}
+
+      <FullScreenMediaViewer
+        visible={showFullScreen}
+        media={selectedMedia}
+        onClose={() => {
+          setShowFullScreen(false);
+          setSelectedMedia(null);
+        }}
+      />
 
       <View className={`${isModal ? "px-0 pt-4 pb-2" : "px-6 py-3 pb-8"} border-t border-gray-800`}>
         <View className="flex-row" style={{ gap: isModal ? 12 : 16 }}>
