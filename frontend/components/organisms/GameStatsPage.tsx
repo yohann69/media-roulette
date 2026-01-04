@@ -49,14 +49,14 @@ export function GameStatsPage({
       {/* Top 3 Podium */}
       {top3.length > 0 && (
         <View className="mb-8">
-          <Text className="text-white text-4xl font-bold mb-6 text-center">🏆 {t("leaderboard.podium")}</Text>
+          <Text className="text-white text-4xl font-bold mb-6 mt-8 text-center">🏆 {t("leaderboard.podium")}</Text>
           <View className="flex-row justify-center items-end gap-3 mb-4">
             {/* 2nd place */}
             {top3[1] && (
               <View className="items-center flex-1">
                 <View className="bg-gray-700 border-2 border-gray-600 rounded-2xl p-5 w-full items-center mb-2">
                   <Text className="text-5xl mb-3">🥈</Text>
-                  <Text className="text-white text-2xl font-bold">{top3[1].playerName}</Text>
+                  <Text className="text-white text-xl font-bold">{top3[1].playerName}</Text>
                   <Text className="text-gray-300 text-lg mt-1">{top3[1].totalScore.toLocaleString()} {t("common.pts")}</Text>
                 </View>
               </View>
@@ -67,7 +67,7 @@ export function GameStatsPage({
               <View className="items-center flex-1">
                 <View className="bg-primary/30 border-2 border-primary rounded-2xl p-6 w-full items-center mb-2">
                   <Text className="text-6xl mb-3">🥇</Text>
-                  <Text className="text-white text-3xl font-bold">{top3[0].playerName}</Text>
+                  <Text className="text-white text-2xl font-bold">{top3[0].playerName}</Text>
                   <Text className="text-primary text-xl font-semibold mt-1">{top3[0].totalScore.toLocaleString()} {t("common.pts")}</Text>
                 </View>
               </View>
@@ -78,7 +78,7 @@ export function GameStatsPage({
               <View className="items-center flex-1">
                 <View className="bg-orange-900/30 border-2 border-orange-600 rounded-2xl p-5 w-full items-center mb-2">
                   <Text className="text-5xl mb-3">🥉</Text>
-                  <Text className="text-white text-2xl font-bold">{top3[2].playerName}</Text>
+                  <Text className="text-white text-xl font-bold">{top3[2].playerName}</Text>
                   <Text className="text-gray-300 text-lg mt-1">{top3[2].totalScore.toLocaleString()} {t("common.pts")}</Text>
                 </View>
               </View>
