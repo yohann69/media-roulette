@@ -65,6 +65,7 @@ export function GameScreen() {
           <GameStatsPage
             leaderboard={finalLeaderboard}
             stats={gameStats}
+            totalRounds={totalRounds}
             onPlayAgain={handlePlayAgain}
           />
         ) : (
