@@ -29,10 +29,10 @@ interface AnimatedLogoProps {
 // - Video (Purple)
 
 const SEGMENT_ANGLES: Record<string, number | null> = {
-  Photo: -22.5, // Yellow/Orange
-  Mix: 67.5,    // Blue
-  Video: 22.5,  // Purple
-  Blind: null,  // Random
+  Photo: 67.5,  // Takes Video's coordinates
+  Video: -22.5,  // Takes Mix's coordinates
+  Mix: 22.5,    // Takes Photo's coordinates
+  Blind: null,  // No spin
   initial: 0,   // Between segments
   random: null,
 };
@@ -65,6 +65,8 @@ export function AnimatedLogo({ targetMode, size = 280 }: AnimatedLogoProps) {
   useEffect(() => {
     // Only animate if targetMode is provided and has changed
     if (targetMode === undefined) return;
+    // Blind mode should not spin
+    if (targetMode === "Blind") return;
     if (lastTargetMode.current === targetMode && targetMode !== "random") return;
     if (isAnimating.current && targetMode !== "initial") return; // Allow resetting to initial
     
@@ -74,13 +76,11 @@ export function AnimatedLogo({ targetMode, size = 280 }: AnimatedLogoProps) {
     // Calculate target angle
     let targetAngle = 0;
     
-    if (targetMode === "Blind" || targetMode === "random") {
+    if (targetMode === "random") {
       // Randomly select one of the valid angles
       const validModes = ["Photo", "Mix", "Video"];
       const randomMode = validModes[Math.floor(Math.random() * validModes.length)];
       targetAngle = SEGMENT_ANGLES[randomMode] as number;
-      // Add extra random rotation to land anywhere within the segment? 
-      // No, user wants to end on a tile.
     } else {
       targetAngle = SEGMENT_ANGLES[targetMode] ?? 0;
     }

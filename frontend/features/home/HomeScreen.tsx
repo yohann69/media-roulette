@@ -17,9 +17,9 @@ import { createSpringAnimation } from "../../utils/wiggleAnimation";
 type ScreenState = "home" | "create-mode" | "create-rounds" | "create-settings" | "create-duration" | "join";
 
 const MODE_COLORS = {
-  Photo: "#f97316", // Orange
-  Video: "#3b82f6", // Blue
-  Mix: "#a855f7", // Purple
+  Photo: "#f97316", // Orange (unchanged)
+  Video: "#a855f7", // Purple (was Mix color)
+  Mix: "#3b82f6", // Blue (was Video color)
   Blind: "#ef4444", // Red
 };
 
@@ -200,7 +200,7 @@ export function HomeScreen() {
                   screenState === "home" || screenState === "join" || screenState === "create-mode" ? "initial" :
                     selectedMode
                 }
-                size={280}
+                size={200}
               />
               {!isConnected && (
                 <Text className="text-orange-400 text-sm mt-2">
