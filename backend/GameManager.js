@@ -441,17 +441,34 @@ class GameManager {
             stats.averageTime = Math.round(sum / allTimes.length);
         }
         
-        // Calculate worst player (lowest score)
+        // Calculate worst player (lowest score) with correct answers ratio
         let minScore = Infinity;
         let worstPlayer = null;
+        let worstPlayerId = null;
         room.players.forEach((player) => {
             if (player.score < minScore) {
                 minScore = player.score;
                 worstPlayer = player.name;
+                worstPlayerId = player.socketId;
             }
         });
-        if (worstPlayer) {
-            stats.worstPlayer = { playerName: worstPlayer, score: minScore };
+        if (worstPlayer && worstPlayerId) {
+            // Calculate correct answers ratio for worst player
+            let correctCount = 0;
+            let totalRounds = history.length;
+            history.forEach((roundData) => {
+                if (!roundData || !roundData.results) return;
+                const playerResult = roundData.results.find(r => r.playerId === worstPlayerId);
+                if (playerResult && playerResult.isCorrect) {
+                    correctCount++;
+                }
+            });
+            stats.worstPlayer = { 
+                playerName: worstPlayer, 
+                score: minScore,
+                correctAnswers: correctCount,
+                totalRounds: totalRounds
+            };
         }
         
         // Calculate hardest round (fewest correct answers)
