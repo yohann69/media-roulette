@@ -7,6 +7,7 @@ import { WiggleButton } from "../../components/molecules/WiggleButton";
 import { CustomSlider } from "../../components/atoms/Slider";
 import { Toggle } from "../../components/atoms/Toggle";
 import { QRScanner } from "../../components/molecules/QRScanner";
+import { AnimatedLogo } from "../../components/molecules/AnimatedLogo";
 import { useUsername } from "../../hooks/useUsername";
 import { useGameSettings, GameSettings } from "../../hooks/useGameSettings";
 import { useSocket } from "../../stores/useSocket";
@@ -86,6 +87,7 @@ export function HomeScreen() {
 
   const handleModeSelect = (mode: "Photo" | "Video" | "Mix" | "Blind") => {
     setSelectedMode(mode);
+    // Trigger logo animation by temporarily resetting targetMode
     setScreenState("create-rounds");
   };
 
@@ -193,10 +195,13 @@ export function HomeScreen() {
             }}
             className="pt-12 items-center mb-8"
           >
-            <Image
-              source={require("../../assets/icon.png")}
-              style={{ width: 280, height: 280 }}
-              resizeMode="contain"
+            <AnimatedLogo 
+              targetMode={
+                screenState === "home" ? "initial" : 
+                screenState === "create-mode" ? selectedMode : 
+                undefined
+              }
+              size={200}
             />
             {!isConnected && (
               <Text className="text-orange-400 text-sm mt-2">
