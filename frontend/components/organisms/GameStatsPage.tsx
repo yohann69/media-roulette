@@ -49,15 +49,15 @@ export function GameStatsPage({
       {/* Top 3 Podium */}
       {top3.length > 0 && (
         <View className="mb-8">
-          <Text className="text-white text-2xl font-bold mb-4 text-center">🏆 {t("leaderboard.podium")}</Text>
+          <Text className="text-white text-4xl font-bold mb-6 text-center">🏆 {t("leaderboard.podium")}</Text>
           <View className="flex-row justify-center items-end gap-3 mb-4">
             {/* 2nd place */}
             {top3[1] && (
               <View className="items-center flex-1">
-                <View className="bg-gray-700 border-2 border-gray-600 rounded-2xl p-4 w-full items-center mb-2">
-                  <Text className="text-4xl mb-2">🥈</Text>
-                  <Text className="text-white text-lg font-bold">{top3[1].playerName}</Text>
-                  <Text className="text-gray-300 text-sm">{top3[1].totalScore.toLocaleString()} {t("common.pts")}</Text>
+                <View className="bg-gray-700 border-2 border-gray-600 rounded-2xl p-5 w-full items-center mb-2">
+                  <Text className="text-5xl mb-3">🥈</Text>
+                  <Text className="text-white text-2xl font-bold">{top3[1].playerName}</Text>
+                  <Text className="text-gray-300 text-lg mt-1">{top3[1].totalScore.toLocaleString()} {t("common.pts")}</Text>
                 </View>
               </View>
             )}
@@ -66,9 +66,9 @@ export function GameStatsPage({
             {top3[0] && (
               <View className="items-center flex-1">
                 <View className="bg-primary/30 border-2 border-primary rounded-2xl p-6 w-full items-center mb-2">
-                  <Text className="text-5xl mb-2">🥇</Text>
-                  <Text className="text-white text-xl font-bold">{top3[0].playerName}</Text>
-                  <Text className="text-primary text-base font-semibold">{top3[0].totalScore.toLocaleString()} {t("common.pts")}</Text>
+                  <Text className="text-6xl mb-3">🥇</Text>
+                  <Text className="text-white text-3xl font-bold">{top3[0].playerName}</Text>
+                  <Text className="text-primary text-xl font-semibold mt-1">{top3[0].totalScore.toLocaleString()} {t("common.pts")}</Text>
                 </View>
               </View>
             )}
@@ -76,10 +76,10 @@ export function GameStatsPage({
             {/* 3rd place */}
             {top3[2] && (
               <View className="items-center flex-1">
-                <View className="bg-orange-900/30 border-2 border-orange-600 rounded-2xl p-4 w-full items-center mb-2">
-                  <Text className="text-4xl mb-2">🥉</Text>
-                  <Text className="text-white text-lg font-bold">{top3[2].playerName}</Text>
-                  <Text className="text-gray-300 text-sm">{top3[2].totalScore.toLocaleString()} {t("common.pts")}</Text>
+                <View className="bg-orange-900/30 border-2 border-orange-600 rounded-2xl p-5 w-full items-center mb-2">
+                  <Text className="text-5xl mb-3">🥉</Text>
+                  <Text className="text-white text-2xl font-bold">{top3[2].playerName}</Text>
+                  <Text className="text-gray-300 text-lg mt-1">{top3[2].totalScore.toLocaleString()} {t("common.pts")}</Text>
                 </View>
               </View>
             )}
@@ -90,10 +90,10 @@ export function GameStatsPage({
             <View className="flex-row gap-3 mb-6">
               {players4and5.map((player, index) => (
                 <View key={player.playerId} className="flex-1">
-                  <View className="bg-gray-800 border-2 border-gray-700 rounded-2xl p-4 items-center">
-                    <Text className="text-gray-500 text-lg mb-2">#{index + 4}</Text>
-                    <Text className="text-white text-base font-bold text-center">{player.playerName}</Text>
-                    <Text className="text-gray-300 text-sm mt-1">{player.totalScore.toLocaleString()} {t("common.pts")}</Text>
+                  <View className="bg-gray-800 border-2 border-gray-700 rounded-2xl p-5 items-center">
+                    <Text className="text-gray-500 text-xl mb-2">#{index + 4}</Text>
+                    <Text className="text-white text-xl font-bold text-center">{player.playerName}</Text>
+                    <Text className="text-gray-300 text-base mt-1">{player.totalScore.toLocaleString()} {t("common.pts")}</Text>
                   </View>
                 </View>
               ))}
@@ -106,13 +106,13 @@ export function GameStatsPage({
       <View className="gap-3 mb-6">
         {/* Longest Streak */}
         {stats.longestStreak.streak > 0 && (
-          <View className="bg-orange-900/30 border-2 border-orange-500 rounded-2xl py-3 px-4">
+          <View className="bg-orange-900/30 border-2 border-orange-500 rounded-2xl py-4 px-5">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
-                <Text className="text-orange-500 text-2xl mr-3">🔥</Text>
-                <Text className="text-gray-300 text-base">{t("stats.longestStreak")}</Text>
+                <Text className="text-orange-500 text-3xl mr-3">🔥</Text>
+                <Text className="text-gray-300 text-xl">{t("stats.longestStreak")}</Text>
               </View>
-              <Text className="text-white text-base font-semibold">
+              <Text className="text-white text-xl font-semibold">
                 {stats.longestStreak.playerName || t("common.nobody")}
               </Text>
             </View>
@@ -121,13 +121,13 @@ export function GameStatsPage({
 
         {/* Fastest Answer */}
         {stats.fastestAnswer.time !== null && stats.fastestAnswer.time !== undefined && (
-          <View className="bg-yellow-900/30 border-2 border-yellow-500 rounded-2xl py-3 px-4">
+          <View className="bg-yellow-900/30 border-2 border-yellow-500 rounded-2xl py-4 px-5">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
-                <Text className="text-yellow-500 text-2xl mr-3">⚡</Text>
-                <Text className="text-gray-300 text-base">{t("stats.fastestAnswer")}</Text>
+                <Text className="text-yellow-500 text-3xl mr-3">⚡</Text>
+                <Text className="text-gray-300 text-xl">{t("stats.fastestAnswer")}</Text>
               </View>
-              <Text className="text-white text-base font-semibold">
+              <Text className="text-white text-xl font-semibold">
                 {stats.fastestAnswer.playerName || t("common.nobody")}
               </Text>
             </View>
@@ -136,13 +136,13 @@ export function GameStatsPage({
 
         {/* Average Time */}
         {stats.averageTime !== null && (
-          <View className="bg-gray-800 border-2 border-gray-700 rounded-2xl py-3 px-4">
+          <View className="bg-gray-800 border-2 border-gray-700 rounded-2xl py-4 px-5">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
-                <Text className="text-blue-400 text-2xl mr-3">📊</Text>
-                <Text className="text-gray-300 text-base">{t("stats.averageTime")}</Text>
+                <Text className="text-blue-400 text-3xl mr-3">📊</Text>
+                <Text className="text-gray-300 text-xl">{t("stats.averageTime")}</Text>
               </View>
-              <Text className="text-white text-base font-semibold">
+              <Text className="text-white text-xl font-semibold">
                 {formatTime(stats.averageTime)}
               </Text>
             </View>
@@ -151,18 +151,18 @@ export function GameStatsPage({
 
         {/* Worst Player */}
         {stats.worstPlayer.playerName && (
-          <View className="bg-gray-800 border-2 border-gray-700 rounded-2xl py-3 px-4">
+          <View className="bg-gray-800 border-2 border-gray-700 rounded-2xl py-4 px-5">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
-                <Text className="text-gray-500 text-2xl mr-3">😅</Text>
-                <Text className="text-gray-300 text-base">{t("stats.worstPlayer")}</Text>
+                <Text className="text-gray-500 text-3xl mr-3">😅</Text>
+                <Text className="text-gray-300 text-xl">{t("stats.worstPlayer")}</Text>
               </View>
               <View className="items-end">
-                <Text className="text-white text-base font-semibold">
+                <Text className="text-white text-xl font-semibold">
                   {stats.worstPlayer.playerName}
                 </Text>
                 {stats.worstPlayer.correctAnswers !== undefined && stats.worstPlayer.totalRounds !== undefined && (
-                  <Text className="text-gray-400 text-xs mt-1">
+                  <Text className="text-gray-400 text-sm mt-1">
                     {stats.worstPlayer.correctAnswers}/{stats.worstPlayer.totalRounds}
                   </Text>
                 )}
@@ -173,18 +173,18 @@ export function GameStatsPage({
 
         {/* Hardest Round */}
         {stats.hardestRound.round !== null && (
-          <View className="bg-red-900/20 border-2 border-red-700 rounded-2xl py-3 px-4">
+          <View className="bg-red-900/20 border-2 border-red-700 rounded-2xl py-4 px-5">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
-                <Text className="text-red-500 text-2xl mr-3">💀</Text>
-                <Text className="text-gray-300 text-base">{t("stats.hardestRound")}</Text>
+                <Text className="text-red-500 text-3xl mr-3">💀</Text>
+                <Text className="text-gray-300 text-xl">{t("stats.hardestRound")}</Text>
               </View>
               <View className="items-end">
-                <Text className="text-white text-base font-semibold">
+                <Text className="text-white text-xl font-semibold">
                   {stats.hardestRound.round ? `Round ${stats.hardestRound.round}` : "-"}
                 </Text>
                 {stats.hardestRound.correctCount !== undefined && stats.hardestRound.correctCount !== Infinity && (
-                  <Text className="text-red-400 text-xs mt-1">
+                  <Text className="text-red-400 text-sm mt-1">
                     {stats.hardestRound.correctCount} {t("stats.correctAnswers")}
                   </Text>
                 )}
@@ -197,18 +197,18 @@ export function GameStatsPage({
       {/* Full Leaderboard (remaining players after top 5) */}
       {sortedPlayers.length > 5 && (
         <View className="mb-6">
-          <Text className="text-white text-xl font-bold mb-4">{t("leaderboard.fullLeaderboard")}</Text>
-          <View className="gap-2">
+          <Text className="text-white text-2xl font-bold mb-5">{t("leaderboard.fullLeaderboard")}</Text>
+          <View className="gap-3">
             {sortedPlayers.slice(5).map((player, index) => (
               <View
                 key={player.playerId}
-                className="flex-row items-center justify-between bg-gray-800 rounded-xl p-4"
+                className="flex-row items-center justify-between bg-gray-800 rounded-xl p-5"
               >
                 <View className="flex-row items-center">
-                  <Text className="text-gray-500 text-base mr-3">#{index + 6}</Text>
-                  <Text className="text-white text-lg font-semibold">{player.playerName}</Text>
+                  <Text className="text-gray-500 text-xl mr-4">#{index + 6}</Text>
+                  <Text className="text-white text-xl font-semibold">{player.playerName}</Text>
                 </View>
-                <Text className="text-gray-300 text-base">
+                <Text className="text-gray-300 text-xl">
                   {player.totalScore.toLocaleString()} {t("common.pts")}
                 </Text>
               </View>
