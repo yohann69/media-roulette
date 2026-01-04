@@ -32,6 +32,7 @@ interface SocketState {
     disconnect: () => void;
     createGame: (hostName: string, settings: any) => Promise<string | null>;
     joinGame: (pin: string, playerName: string) => Promise<boolean>;
+    setPlayerState: (pin: string, state: "selecting" | "uploading" | "ready") => Promise<void>;
     setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
     prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
     notifySyncComplete: (pin: string) => Promise<void>;
@@ -147,6 +148,12 @@ function createGameHandlers(get: any, set: any) {
                 socket.once("error", () => resolve(false));
                 setTimeout(() => resolve(false), 5000);
             });
+        },
+
+        setPlayerState: async (pin: string, state: "selecting" | "uploading" | "ready"): Promise<void> => {
+            const { socket } = get();
+            if (!socket?.connected) return;
+            socket.emit("set-player-state", { pin, state });
         },
 
         setMediaPool: async (pin: string, mediaPool: any[], playAgain?: boolean): Promise<boolean> => {

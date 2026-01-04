@@ -18,7 +18,7 @@ interface Player {
   id: string;
   name: string;
   isHost?: boolean;
-  state?: "selecting" | "ready";
+  state?: "selecting" | "uploading" | "ready";
 }
 
 export function LobbyScreen() {
@@ -147,7 +147,7 @@ export function LobbyScreen() {
   const totalMedia = players.length * 20; 
   const canStartGame = totalMedia >= settings.rounds;
   
-  // Check if all players are ready (not selecting)
+  // Check if all players are ready (not selecting or uploading)
   const allPlayersReady = players.length > 0 && players.every(p => p.state === "ready");
   // Can start if: enough media, all players ready, and either not syncing OR all ready (syncing complete)
   const canStart = canStartGame && allPlayersReady && (!isSyncing || allReady);

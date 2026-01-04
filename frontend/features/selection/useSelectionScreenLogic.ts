@@ -76,123 +76,135 @@ export function useSelectionScreenLogic(
     if (!pin) return;
     if (media.length === 0) return;
 
+    const { setPlayerState } = useSocket.getState();
+    
+    // Set status to uploading and navigate immediately
+    await setPlayerState(pin, "uploading");
     setIsUploading(true);
-    setUploadProgress(0);
-
-    try {
-      // Step 1: Compress all media in parallel (max 20 concurrent)
-      // Get round duration from room settings for video trimming
-      const roundDurationSeconds = room?.settings?.timer || 5;
-      console.log(`-> Starting compression of ${media.length} media items...`);
-      const compressedUris = await compressMediaBatch(
-        media.map((item, index) => ({
-          uri: item.uri,
-          mediaType: item.mediaType,
-          id: item.id,
-          name: `media_${index + 1}_${item.id}`,
-        })),
-        (completed, total) => {
-          setUploadProgress(completed / (total * 2)); // Compression is 50% of total progress
-        },
-        roundDurationSeconds
-      );
-
-      // Step 2: Upload files in parallel (max 20 concurrent)
-      console.log(`-> Starting parallel upload of ${media.length} media items...`);
-      const total = media.length;
-      const MAX_PARALLEL_UPLOAD = 20;
-      let uploadCompleted = 0;
-
-      // Use the same parallel processing utility for uploads
-      const uploadResults = await processInBatches(
-        media.map((item, index) => ({ item, compressedUri: compressedUris[index], index })),
-        async (data, idx) => {
-          const { item, compressedUri } = data;
-          
-          // Upload to backend
-          // For videos, include maxDuration for server-side trimming fallback
-          const uploadOptions: any = {
-            fieldName: "media",
-            httpMethod: "POST",
-            uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          };
-          
-          // Add maxDuration parameter for videos (server-side trimming fallback)
-          if (item.mediaType === "video" && room?.settings?.timer) {
-            const maxDuration = (room.settings.timer + 1).toString();
-            uploadOptions.parameters = { maxDuration };
-          }
-          
-          const uploadResult = await FileSystem.uploadAsync(
-            `${SOCKET_URL}/upload`,
-            compressedUri,
-            uploadOptions
-          );
-
-          if (uploadResult.status !== 200) {
-            console.error(`Failed to upload file ${idx + 1}:`, uploadResult);
-            throw new Error(`Upload failed for media ${idx + 1}`);
-          }
-
-          const response = JSON.parse(uploadResult.body);
-          
-          // Clean up compressed file if it's different from original
-          if (compressedUri !== item.uri) {
-            try {
-              await FileSystem.deleteAsync(compressedUri, { idempotent: true });
-            } catch (e) {
-              // Ignore cleanup errors
-            }
-          }
-
-          // Update progress (upload is 50-100% of total progress)
-          uploadCompleted++;
-          setUploadProgress(0.5 + (uploadCompleted / total) * 0.5);
-
-          return {
-            id: item.id,
-            mediaType: item.mediaType,
-            filename: response.filename,
-          };
-        },
-        MAX_PARALLEL_UPLOAD
-      );
-
-      const uploadedMedia = uploadResults;
-
-      console.log(`Uploaded ${uploadedMedia.length} files`);
-      
-      const success = await setMediaPool(pin, uploadedMedia, playAgain);
-      if (!success) {
-        console.error("Failed to set media pool");
-        setIsUploading(false);
-        return;
-      }
-
-      setIsUploading(false);
-      const updatedIsHost = playAgain ? true : isHost;
-      
-      // If called from modal, close it first, then navigate
-      if (onClose) {
-        onClose();
-        // Small delay to allow modal to close before navigation
-        setTimeout(() => {
-          router.push({ 
-            pathname: "/lobby", 
-            params: { isHost: updatedIsHost ? "true" : "false", pin } 
-          });
-        }, 100);
-      } else {
-        // Otherwise navigate directly
+    
+    const updatedIsHost = playAgain ? true : isHost;
+    
+    // Navigate immediately
+    if (onClose) {
+      onClose();
+      setTimeout(() => {
         router.push({ 
           pathname: "/lobby", 
           params: { isHost: updatedIsHost ? "true" : "false", pin } 
         });
-      }
-    } catch (error) {
-      console.error("Error in handleReady:", error);
-      setIsUploading(false);
+      }, 100);
+    } else {
+      router.push({ 
+        pathname: "/lobby", 
+        params: { isHost: updatedIsHost ? "true" : "false", pin } 
+      });
     }
+
+    // Do compression and upload in background
+    (async () => {
+      try {
+        setUploadProgress(0);
+
+        // Step 1: Compress all media in parallel (max 20 concurrent)
+        // Get round duration from room settings for video trimming
+        const roundDurationSeconds = room?.settings?.timer || 5;
+        console.log(`-> Starting compression of ${media.length} media items...`);
+        const compressedUris = await compressMediaBatch(
+          media.map((item, index) => ({
+            uri: item.uri,
+            mediaType: item.mediaType,
+            id: item.id,
+            name: `media_${index + 1}_${item.id}`,
+          })),
+          (completed, total) => {
+            setUploadProgress(completed / (total * 2)); // Compression is 50% of total progress
+          },
+          roundDurationSeconds
+        );
+
+        // Step 2: Upload files in parallel (max 20 concurrent)
+        console.log(`-> Starting parallel upload of ${media.length} media items...`);
+        const total = media.length;
+        const MAX_PARALLEL_UPLOAD = 20;
+        let uploadCompleted = 0;
+
+        // Use the same parallel processing utility for uploads
+        const uploadResults = await processInBatches(
+          media.map((item, index) => ({ item, compressedUri: compressedUris[index], index })),
+          async (data, idx) => {
+            const { item, compressedUri } = data;
+            
+            // Upload to backend
+            // For videos, include maxDuration for server-side trimming fallback
+            const uploadOptions: any = {
+              fieldName: "media",
+              httpMethod: "POST",
+              uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+            };
+            
+            // Add maxDuration parameter for videos (server-side trimming fallback)
+            if (item.mediaType === "video" && room?.settings?.timer) {
+              const maxDuration = (room.settings.timer + 1).toString();
+              uploadOptions.parameters = { maxDuration };
+            }
+            
+            const uploadResult = await FileSystem.uploadAsync(
+              `${SOCKET_URL}/upload`,
+              compressedUri,
+              uploadOptions
+            );
+
+            if (uploadResult.status !== 200) {
+              console.error(`Failed to upload file ${idx + 1}:`, uploadResult);
+              throw new Error(`Upload failed for media ${idx + 1}`);
+            }
+
+            const response = JSON.parse(uploadResult.body);
+            
+            // Clean up compressed file if it's different from original
+            if (compressedUri !== item.uri) {
+              try {
+                await FileSystem.deleteAsync(compressedUri, { idempotent: true });
+              } catch (e) {
+                // Ignore cleanup errors
+              }
+            }
+
+            // Update progress (upload is 50-100% of total progress)
+            uploadCompleted++;
+            setUploadProgress(0.5 + (uploadCompleted / total) * 0.5);
+
+            return {
+              id: item.id,
+              mediaType: item.mediaType,
+              filename: response.filename,
+            };
+          },
+          MAX_PARALLEL_UPLOAD
+        );
+
+        const uploadedMedia = uploadResults;
+
+        console.log(`Uploaded ${uploadedMedia.length} files`);
+        
+        const success = await setMediaPool(pin, uploadedMedia, playAgain);
+        if (!success) {
+          console.error("Failed to set media pool");
+          setIsUploading(false);
+          // Optionally set state back to selecting on error
+          await setPlayerState(pin, "selecting");
+          return;
+        }
+
+        // Status will be updated to "ready" by setMediaPool in the backend
+        setIsUploading(false);
+      } catch (error) {
+        console.error("Error in background upload:", error);
+        setIsUploading(false);
+        // Set state back to selecting on error
+        await setPlayerState(pin, "selecting");
+      }
+    })();
   };
 
   const handleReroll = async () => {

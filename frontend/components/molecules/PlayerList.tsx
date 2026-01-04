@@ -6,7 +6,7 @@ interface Player {
   id: string;
   name: string;
   isHost?: boolean;
-  state?: "selecting" | "ready";
+  state?: "selecting" | "uploading" | "ready";
 }
 
 interface PlayerListProps {
@@ -101,13 +101,15 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
               key={player.id}
               className="px-3 py-2 bg-gray-800 rounded-lg flex-row items-center gap-1"
             >
-              <Text className={`${player.state === "selecting" ? "text-gray-400" : "text-white"} text-sm`}>
+              <Text className={`${player.state === "selecting" || player.state === "uploading" ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
               {player.state === "selecting" && Clock ? (
                 <Clock size={12} color="#9ca3af" />
               ) : player.state === "selecting" ? (
                 <Text className="text-gray-400 text-xs">⏳</Text>
+              ) : player.state === "uploading" ? (
+                <Text className="text-blue-400 text-xs">⬆️</Text>
               ) : null}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />
@@ -122,6 +124,7 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
         }
         const { scale, opacity } = animated;
         const isSelecting = player.state === "selecting";
+        const isUploading = player.state === "uploading";
         const baseOpacity = isSelecting ? 0.5 : 1;
         
         return (
@@ -133,13 +136,15 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
             }}
           >
             <View className="px-3 py-2 bg-gray-800 rounded-lg flex-row items-center gap-1">
-              <Text className={`${isSelecting ? "text-gray-400" : "text-white"} text-sm`}>
+              <Text className={`${isSelecting || isUploading ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
               {isSelecting && Clock ? (
                 <Clock size={12} color="#9ca3af" />
               ) : isSelecting ? (
                 <Text className="text-gray-400 text-xs">⏳</Text>
+              ) : isUploading ? (
+                <Text className="text-blue-400 text-xs">⬆️</Text>
               ) : null}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />

@@ -64,6 +64,28 @@ function setupSocket(io, gameManager, roundStartTimes) {
             }
         });
 
+        // Set player state (uploading/ready)
+        socket.on("set-player-state", (data) => {
+            try {
+                const { pin, state } = data;
+                const room = gameManager.getRoom(pin);
+
+                if (!room) {
+                    socket.emit("error", { message: "Room not found" });
+                    return;
+                }
+
+                const player = room.players.find(p => p.socketId === socket.id);
+                if (player) {
+                    player.state = state;
+                    io.to(pin).emit("room-update", room);
+                }
+            } catch (error) {
+                socket.emit("error", { message: "Failed to set player state" });
+                console.error("Error setting player state:", error);
+            }
+        });
+
         // Set media pool (after upload)
         socket.on("set-media-pool", (data) => {
             try {
