@@ -2,7 +2,6 @@ import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
-import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useSelectionScreenLogic } from "./useSelectionScreenLogic";
 
@@ -35,7 +34,7 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
     handleReroll,
     requestPermission,
     blindMode,
-  } = useSelectionScreenLogic(actualParams);
+  } = useSelectionScreenLogic(actualParams, onClose);
 
   if (loading && media.length === 0) {
     return (
@@ -80,7 +79,7 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
         <View className="mt-3">
           <Button
             title={t("common.goBack")}
-            onPress={() => router.back()}
+            onPress={onClose || (() => router.back())}
             variant="secondary"
           />
         </View>
@@ -101,7 +100,7 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
         <View className="mt-3">
           <Button
             title={t("common.goBack")}
-            onPress={() => router.back()}
+            onPress={onClose || (() => router.back())}
             variant="secondary"
           />
         </View>
@@ -109,32 +108,47 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
     );
   }
 
+  const isModal = !!onClose;
+
   return (
-    <View className="flex-1 bg-black">
-      <BackgroundSlideshow />
-      <View className="flex-1" style={{ zIndex: 1 }}>
+    <View style={isModal ? undefined : { flex: 1 }}>
+      {!isModal && (
         <View className="px-6 pt-4 pb-4">
-        <Text className="text-white text-3xl font-bold mb-2">
-          {t("selection.title")}
-        </Text>
-        <Text className="text-gray-400 text-base">
-          {t("selection.description", { count: media.length })}
-        </Text>
-      </View>
+          <Text className="text-white text-3xl font-bold mb-2">
+            {t("selection.title")}
+          </Text>
+          <Text className="text-gray-400 text-base">
+            {t("selection.description", { count: media.length })}
+          </Text>
+        </View>
+      )}
 
-      <ScrollView className="flex-1 px-4">
-        {loading ? (
-          <View className="py-20 items-center">
-            <ActivityIndicator size="large" color="#ffffff" />
-            <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
-          </View>
-        ) : (
-          <MediaGrid items={media} columns={4} />
-        )}
+      {isModal ? (
+        <View>
+          {loading ? (
+            <View className="py-10 items-center">
+              <ActivityIndicator size="large" color="#ffffff" />
+              <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
+            </View>
+          ) : (
+            <MediaGrid items={media} columns={4} />
+          )}
+        </View>
+      ) : (
+        <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
+          {loading ? (
+            <View className="py-20 items-center">
+              <ActivityIndicator size="large" color="#ffffff" />
+              <Text className="text-white mt-4">{t("selection.loadingNewItems")}</Text>
+            </View>
+          ) : (
+            <MediaGrid items={media} columns={4} />
+          )}
         </ScrollView>
+      )}
 
-        <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
-        <View className="flex-row" style={{ gap: 16 }}>
+      <View className={`${isModal ? "px-0 pt-4 pb-2" : "px-6 py-3 pb-8"} border-t border-gray-800`}>
+        <View className="flex-row" style={{ gap: isModal ? 12 : 16 }}>
           <View className="flex-1">
             <Button
               title={t("selection.reroll")}
@@ -151,7 +165,6 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
               disabled={loading || media.length === 0 || isUploading}
             />
           </View>
-        </View>
         </View>
       </View>
     </View>

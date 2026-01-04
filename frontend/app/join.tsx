@@ -204,19 +204,18 @@ export default function JoinScreen() {
             hasAutoJoinedRef.current = false;
           }}
           title={t("selection.title")}
+          subtitle={t("selection.description", { count: 20 })}
           showCloseButton={true}
         >
-          <View style={{ maxHeight: 600 }}>
-            <SelectionScreen
-              isHost="false"
-              pin={pin.trim()}
-              onClose={() => {
-                setShowSelectionModal(false);
-                setIsJoining(false);
-                hasAutoJoinedRef.current = false;
-              }}
-            />
-          </View>
+          <SelectionScreen
+            isHost="false"
+            pin={pin.trim()}
+            onClose={() => {
+              setShowSelectionModal(false);
+              setIsJoining(false);
+              hasAutoJoinedRef.current = false;
+            }}
+          />
         </CustomModal>
       )}
 

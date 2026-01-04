@@ -161,10 +161,9 @@ export function HomeScreen() {
     const gamePin = await createGame(username || "Player", settings);
 
     if (gamePin) {
-      router.push({
-        pathname: "/selection",
-        params: { isHost: "true", pin: gamePin }
-      });
+      setSelectionParams({ isHost: "true", pin: gamePin });
+      setShowSelectionModal(true);
+      setIsCreatingGame(false);
     } else {
       setIsCreatingGame(false);
       console.error("Failed to create game");
@@ -517,20 +516,19 @@ export function HomeScreen() {
             setIsJoining(false);
           }}
           title={t("selection.title")}
+          subtitle={t("selection.description", { count: 20 })}
           showCloseButton={true}
         >
-          <View style={{ maxHeight: 600 }}>
-            <SelectionScreen
-              isHost={selectionParams.isHost}
-              pin={selectionParams.pin}
-              onClose={() => {
-                setShowSelectionModal(false);
-                setSelectionParams(null);
-                setIsCreatingGame(false);
-                setIsJoining(false);
-              }}
-            />
-          </View>
+          <SelectionScreen
+            isHost={selectionParams.isHost}
+            pin={selectionParams.pin}
+            onClose={() => {
+              setShowSelectionModal(false);
+              setSelectionParams(null);
+              setIsCreatingGame(false);
+              setIsJoining(false);
+            }}
+          />
         </CustomModal>
       )}
 

@@ -6,7 +6,10 @@ import { useSocket, SOCKET_URL } from "../../stores/useSocket";
 import { compressMediaBatch } from "../../utils/mediaCompression";
 import { processInBatches } from "../../utils/parallelProcessing";
 
-export function useSelectionScreenLogic(params: { isHost?: string; pin?: string; playAgain?: string }) {
+export function useSelectionScreenLogic(
+  params: { isHost?: string; pin?: string; playAgain?: string },
+  onClose?: () => void
+) {
   const router = useRouter();
   const { setMediaPool, room } = useSocket();
   
@@ -169,12 +172,23 @@ export function useSelectionScreenLogic(params: { isHost?: string; pin?: string;
       setIsUploading(false);
       const updatedIsHost = playAgain ? true : isHost;
       
-      // If called from modal, close it and navigate
-      // Otherwise navigate directly
-      router.push({ 
-        pathname: "/lobby", 
-        params: { isHost: updatedIsHost ? "true" : "false", pin } 
-      });
+      // If called from modal, close it first, then navigate
+      if (onClose) {
+        onClose();
+        // Small delay to allow modal to close before navigation
+        setTimeout(() => {
+          router.push({ 
+            pathname: "/lobby", 
+            params: { isHost: updatedIsHost ? "true" : "false", pin } 
+          });
+        }, 100);
+      } else {
+        // Otherwise navigate directly
+        router.push({ 
+          pathname: "/lobby", 
+          params: { isHost: updatedIsHost ? "true" : "false", pin } 
+        });
+      }
     } catch (error) {
       console.error("Error in handleReady:", error);
       setIsUploading(false);
