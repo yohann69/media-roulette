@@ -61,23 +61,30 @@ export default function SettingsScreen() {
   }, [view]);
 
   const renderRoot = () => (
-    <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 24 }}>
-      <Text className="text-white text-3xl font-extrabold mb-6">
-        {t("settings.title", { defaultValue: "Settings" })}
-      </Text>
+    <>
+      <View className="pt-10 pb-3 px-6 flex-row items-center justify-between">
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text className="text-gray-400 text-base">{t("common.back")}</Text>
+        </TouchableOpacity>
+        <Text className="text-white text-lg font-semibold">
+          {t("settings.title", { defaultValue: "Settings" })}
+        </Text>
+        <View className="w-12" />
+      </View>
 
-      <View className="gap-4">
+      <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
+        <View className="gap-4">
         <TouchableOpacity
           onPress={() => setView("albums")}
           className="bg-gray-900 rounded-2xl px-4 py-3 flex-row items-center justify-between"
         >
           <View className="flex-1">
             <Text className="text-white text-base font-semibold">
-              {t("settings.mediaSourcesTitle", { defaultValue: "Media sources" })}
+              {t("settings.mediaSourcesTitle", { defaultValue: "Excluded albums" })}
             </Text>
             <Text className="text-gray-400 text-xs mt-1">
               {t("settings.mediaSourcesSubtitle", {
-                defaultValue: "Choose which albums can be used in games",
+                defaultValue: "Pick albums you never want to use in the game",
               })}
             </Text>
           </View>
@@ -109,18 +116,19 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </>
   );
 
   const renderAlbums = () => (
-    <View className="flex-1 px-6 pt-6">
-      <View className="flex-row items-center justify-between mb-4">
+    <View className="flex-1">
+      <View className="pt-10 pb-3 px-6 flex-row items-center justify-between">
         <TouchableOpacity onPress={() => setView("root")}>
           <Text className="text-gray-400 text-base">{t("common.back")}</Text>
         </TouchableOpacity>
         <Text className="text-white text-lg font-semibold">
-          {t("settings.mediaSourcesTitle", { defaultValue: "Media sources" })}
+          {t("settings.mediaSourcesTitle", { defaultValue: "Excluded albums" })}
         </Text>
         <View className="w-12" />
       </View>
@@ -147,13 +155,13 @@ export default function SettingsScreen() {
           </Text>
         </View>
       ) : albums.length === 0 ? (
-        <View className="bg-gray-900 rounded-2xl p-4 mt-2">
+        <View className="bg-gray-900 rounded-2xl p-4 mt-2 mx-6">
           <Text className="text-gray-400 text-sm text-center">
             {t("settings.noAlbums", { defaultValue: "No albums found on this device." })}
           </Text>
         </View>
       ) : (
-        <ScrollView className="flex-1 mt-1" contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView className="flex-1 mt-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
           <View className="gap-2">
             {albums.map((album) => {
               const isExcluded = excluded.has(album.id);

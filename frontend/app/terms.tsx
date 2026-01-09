@@ -1,15 +1,24 @@
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
 import { useTranslation } from "../hooks/useTranslation";
 
 export default function TermsScreen() {
+  const router = useRouter();
   const { t } = useTranslation();
 
   return (
     <View className="flex-1 bg-black">
-      <ScrollView className="flex-1 px-6 pt-6" contentContainerStyle={{ paddingBottom: 32 }}>
-        <Text className="text-white text-3xl font-extrabold mb-2">
+      <View className="pt-10 pb-3 px-6 flex-row items-center justify-between">
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text className="text-gray-400 text-base">{t("common.back")}</Text>
+        </TouchableOpacity>
+        <Text className="text-white text-lg font-semibold">
           {t("terms.title", { defaultValue: "Terms & Conditions" })}
         </Text>
+        <View className="w-12" />
+      </View>
+
+      <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 32 }}>
         <Text className="text-gray-500 text-xs mb-6">
           {t("terms.lastUpdated", { defaultValue: "Last updated: January 2024" })}
         </Text>

@@ -167,8 +167,8 @@
   },
   "settings": {
     "title": "Settings",
-    "mediaSourcesTitle": "Media sources",
-    "mediaSourcesSubtitle": "Choose which albums can be used in games",
+    "mediaSourcesTitle": "Excluded albums",
+    "mediaSourcesSubtitle": "Pick albums you never want to use in the game",
     "legalSectionTitle": "Legal",
     "terms": "Terms & Conditions",
     "privacy": "Privacy Policy",
