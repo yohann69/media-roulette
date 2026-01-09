@@ -47,11 +47,6 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
     setShowFullScreen(true);
   };
 
-  const handleLongPressEnd = () => {
-    setShowFullScreen(false);
-    setSelectedMedia(null);
-  };
-
   if (loading && media.length === 0) {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
@@ -152,7 +147,6 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
               columns={4}
               expectedCount={mediaCount}
               onItemLongPressStart={handleLongPressStart}
-              onItemLongPressEnd={handleLongPressEnd}
             />
           )}
         </View>
@@ -169,7 +163,6 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
               columns={4}
               expectedCount={mediaCount}
               onItemLongPressStart={handleLongPressStart}
-              onItemLongPressEnd={handleLongPressEnd}
             />
           )}
         </ScrollView>

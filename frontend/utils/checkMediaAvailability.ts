@@ -25,8 +25,10 @@ export async function checkMediaAvailability(mode: "Photo" | "Video" | "Mix" | "
           hasEnough: false,
           photoCount: 0,
           videoCount: 0,
-          requiredPhotos: mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 10 : 0,
-          requiredVideos: mode === "Video" ? 10 : mode === "Mix" ? 10 : 0,
+          // Require at least 20 photos and 20 videos for Mix mode so the
+          // selection grid can always show a full set in each phase.
+          requiredPhotos: mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 20 : 0,
+          requiredVideos: mode === "Video" ? 10 : mode === "Mix" ? 20 : 0,
         };
       }
     }
@@ -50,8 +52,12 @@ export async function checkMediaAvailability(mode: "Photo" | "Video" | "Mix" | "
       videoCount = videos.totalCount;
     }
 
-    const requiredPhotos = mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 10 : 0;
-    const requiredVideos = mode === "Video" ? 10 : mode === "Mix" ? 10 : 0;
+    // Base media requirements per mode:
+    // - Photo / Blind: at least 10 photos
+    // - Video: at least 10 videos
+    // - Mix: at least 20 photos AND 20 videos
+    const requiredPhotos = mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 20 : 0;
+    const requiredVideos = mode === "Video" ? 10 : mode === "Mix" ? 20 : 0;
 
     const hasEnough = photoCount >= requiredPhotos && videoCount >= requiredVideos;
 
