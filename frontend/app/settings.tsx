@@ -7,6 +7,7 @@ import { Button } from "../components/atoms/Button";
 import { loadExcludedAlbums, saveExcludedAlbums } from "../utils/excludedAlbums";
 
 type SettingsView = "root" | "albums";
+type SortMode = "alpha" | "count";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function SettingsScreen() {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [loadingAlbums, setLoadingAlbums] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>("alpha");
 
   useEffect(() => {
     loadExcludedAlbums().then(setExcluded);
@@ -62,14 +64,17 @@ export default function SettingsScreen() {
 
   const renderRoot = () => (
     <>
-      <View className="pt-10 pb-3 px-6 flex-row items-center justify-between">
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-gray-400 text-base">{t("common.back")}</Text>
+      <View className="pt-14 pb-4 px-6 flex-row items-center justify-between">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="items-center justify-center w-10 h-10 rounded-full bg-white/5 border border-white/10"
+        >
+          <Text className="text-2xl text-white">←</Text>
         </TouchableOpacity>
-        <Text className="text-white text-lg font-semibold">
+        <Text className="text-white text-4xl font-extrabold">
           {t("settings.title", { defaultValue: "Settings" })}
         </Text>
-        <View className="w-12" />
+        <View className="w-10" />
       </View>
 
       <ScrollView className="flex-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
@@ -79,10 +84,10 @@ export default function SettingsScreen() {
           className="bg-gray-900 rounded-2xl px-4 py-3 flex-row items-center justify-between"
         >
           <View className="flex-1">
-            <Text className="text-white text-base font-semibold">
+            <Text className="text-white text-xl font-semibold">
               {t("settings.mediaSourcesTitle", { defaultValue: "Excluded albums" })}
             </Text>
-            <Text className="text-gray-400 text-xs mt-1">
+            <Text className="text-gray-400 text-sm mt-2">
               {t("settings.mediaSourcesSubtitle", {
                 defaultValue: "Pick albums you never want to use in the game",
               })}
@@ -92,24 +97,24 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <View className="border-t border-gray-800 pt-4 mt-2">
-          <Text className="text-gray-400 text-xs mb-3">
+          <Text className="text-gray-400 text-sm mb-3">
             {t("settings.legalSectionTitle", { defaultValue: "Legal" })}
           </Text>
           <View className="gap-3">
             <TouchableOpacity
               onPress={() => router.push("/terms")}
-              className="bg-gray-900 rounded-2xl px-4 py-3 flex-row items-center justify-between"
+              className="bg-gray-900 rounded-2xl px-4 py-4 flex-row items-center justify-between"
             >
-              <Text className="text-white text-base font-semibold">
+              <Text className="text-white text-lg font-semibold">
                 {t("settings.terms", { defaultValue: "Terms & Conditions" })}
               </Text>
               <Text className="text-gray-500 text-xl">›</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/privacy")}
-              className="bg-gray-900 rounded-2xl px-4 py-3 flex-row items-center justify-between"
+              className="bg-gray-900 rounded-2xl px-4 py-4 flex-row items-center justify-between"
             >
-              <Text className="text-white text-base font-semibold">
+              <Text className="text-white text-lg font-semibold">
                 {t("settings.privacy", { defaultValue: "Privacy Policy" })}
               </Text>
               <Text className="text-gray-500 text-xl">›</Text>
@@ -123,18 +128,21 @@ export default function SettingsScreen() {
 
   const renderAlbums = () => (
     <View className="flex-1">
-      <View className="pt-10 pb-3 px-6 flex-row items-center justify-between">
-        <TouchableOpacity onPress={() => setView("root")}>
-          <Text className="text-gray-400 text-base">{t("common.back")}</Text>
+      <View className="pt-14 pb-4 px-6 flex-row items-center justify-between">
+        <TouchableOpacity
+          onPress={() => setView("root")}
+          className="items-center justify-center w-10 h-10 rounded-full bg-white/5 border border-white/10"
+        >
+          <Text className="text-2xl text-white">←</Text>
         </TouchableOpacity>
-        <Text className="text-white text-lg font-semibold">
+        <Text className="text-white text-4xl font-extrabold">
           {t("settings.mediaSourcesTitle", { defaultValue: "Excluded albums" })}
         </Text>
-        <View className="w-12" />
+        <View className="w-10" />
       </View>
 
       {!permissionGranted ? (
-        <View className="bg-gray-900 rounded-2xl p-4 mt-2">
+        <View className="bg-gray-900 rounded-2xl p-4 mt-2 mx-6">
           <Text className="text-gray-300 text-sm mb-3">
             {t("settings.permissionExplanation", {
               defaultValue:
@@ -148,7 +156,7 @@ export default function SettingsScreen() {
           />
         </View>
       ) : loadingAlbums ? (
-        <View className="bg-gray-900 rounded-2xl p-6 items-center mt-2">
+        <View className="bg-gray-900 rounded-2xl p-6 items-center mt-2 mx-6">
           <ActivityIndicator size="large" color="#ffffff" />
           <Text className="text-gray-400 text-sm mt-3">
             {t("settings.loadingAlbums", { defaultValue: "Loading albums..." })}
@@ -162,8 +170,59 @@ export default function SettingsScreen() {
         </View>
       ) : (
         <ScrollView className="flex-1 mt-1 px-6" contentContainerStyle={{ paddingBottom: 24 }}>
+          <View className="flex-row items-center justify-end mb-3 gap-2">
+            <TouchableOpacity
+              onPress={() => setSortMode("alpha")}
+              className={`px-3 py-1.5 rounded-full border ${
+                sortMode === "alpha"
+                  ? "bg-white border-white"
+                  : "bg-transparent border-white/30"
+              }`}
+            >
+              <Text
+                className={
+                  sortMode === "alpha"
+                    ? "text-black text-xs font-semibold"
+                    : "text-white text-xs"
+                }
+              >
+                A-Z
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setSortMode("count")}
+              className={`px-3 py-1.5 rounded-full border ${
+                sortMode === "count"
+                  ? "bg-white border-white"
+                  : "bg-transparent border-white/30"
+              }`}
+            >
+              <Text
+                className={
+                  sortMode === "count"
+                    ? "text-black text-xs font-semibold"
+                    : "text-white text-xs"
+                }
+              >
+                #{t("settings.itemsLabel", { defaultValue: "items" })}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View className="gap-2">
-            {albums.map((album) => {
+            {albums
+              .slice()
+              .sort((a, b) => {
+                if (sortMode === "count") {
+                  return (b.assetCount || 0) - (a.assetCount || 0);
+                }
+                const nameA = (a.title || "").toLowerCase();
+                const nameB = (b.title || "").toLowerCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0;
+              })
+              .map((album) => {
               const isExcluded = excluded.has(album.id);
               return (
                 <TouchableOpacity
