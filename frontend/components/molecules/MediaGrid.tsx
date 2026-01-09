@@ -1,6 +1,7 @@
 import { View, Image, ActivityIndicator, TouchableOpacity, Pressable, DimensionValue } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 
 interface MediaItem {
   id: string;
@@ -110,10 +111,14 @@ export function MediaGrid({
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-full h-full items-center justify-center bg-gray-900">
-                    <View className="w-12 h-12 rounded-full bg-secondary items-center justify-center">
-                      <View className="w-0 h-0 border-l-[12px] border-l-white border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent ml-1" />
-                    </View>
+                  <View className="w-full h-full bg-black">
+                    <Video
+                      source={{ uri: item.uri }}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode={ResizeMode.COVER}
+                      shouldPlay={false}
+                      isMuted
+                    />
                   </View>
                 )
               ) : (

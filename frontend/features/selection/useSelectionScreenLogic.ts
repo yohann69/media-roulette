@@ -15,9 +15,16 @@ export function useSelectionScreenLogic(
   
   const gameMode = room?.settings?.mode || "Photo";
   const blindMode = room?.settings?.blindMode || false;
+  const isMixMode = !blindMode && gameMode === "Mix";
   // Blind mode uses photos but with blind mode enabled
-  const mediaType = blindMode ? "photo" : gameMode === "Photo" ? "photo" : gameMode === "Video" ? "video" : "mixed";
-  const mediaCount = mediaType === "mixed" ? 40 : 20;
+  const initialMediaType = blindMode
+    ? "photo"
+    : gameMode === "Photo"
+    ? "photo"
+    : gameMode === "Video"
+    ? "video"
+    : "photo"; // Mix will start with photos
+  const initialMediaCount = 20;
   
   const {
     media,
@@ -26,14 +33,21 @@ export function useSelectionScreenLogic(
     permissionGranted,
     requestPermission,
     fetchMedia,
-  } = useMediaFetcher(mediaCount, mediaType);
-  
-  useEffect(() => {
-    if (room?.settings?.mode && permissionGranted && !loading) {
-      console.log("Room settings updated, media type:", mediaType);
-    }
-  }, [room?.settings?.mode, mediaType, permissionGranted, loading]);
+  } = useMediaFetcher(initialMediaCount, initialMediaType as any);
 
+  const [phase, setPhase] = useState<"single" | "photos" | "videos">(
+    isMixMode ? "photos" : "single"
+  );
+  const [collectedMedia, setCollectedMedia] = useState<typeof media>([]);
+  const mediaCount = initialMediaCount;
+
+  const getCurrentMediaType = () => {
+    if (isMixMode) {
+      return (phase === "videos" ? "video" : "photo") as any;
+    }
+    return initialMediaType as any;
+  };
+  
   const isHost = params.isHost === "true";
   const pin = params.pin || "";
   const playAgain = params.playAgain === "true";
@@ -45,14 +59,16 @@ export function useSelectionScreenLogic(
     const initializeMedia = async () => {
       if (!isHost && !room) return;
       if (permissionGranted && media.length === 0 && !loading) {
-        await fetchMedia(mediaCount, mediaType);
+        await fetchMedia(initialMediaCount, getCurrentMediaType());
       } else if (!permissionGranted && !loading) {
         const granted = await requestPermission();
-        if (granted) await fetchMedia(mediaCount, mediaType);
+        if (granted) {
+          await fetchMedia(initialMediaCount, getCurrentMediaType());
+        }
       }
     };
     initializeMedia();
-  }, [room, isHost, mediaType, mediaCount]);
+  }, [room, isHost, isMixMode, phase, initialMediaType]);
 
   // Auto-upload in blind mode when media is loaded
   useEffect(() => {
@@ -75,6 +91,14 @@ export function useSelectionScreenLogic(
   const handleReady = async () => {
     if (!pin) return;
     if (media.length === 0) return;
+
+    // Mix mode: first confirm photos, then videos
+    if (isMixMode && phase === "photos") {
+      setCollectedMedia(media);
+      setPhase("videos");
+      await fetchMedia(initialMediaCount, "video" as any);
+      return;
+    }
 
     const { setPlayerState } = useSocket.getState();
     
@@ -100,6 +124,10 @@ export function useSelectionScreenLogic(
       });
     }
 
+    // Prepare media to upload (combine photos + videos in mix mode)
+    const mediaToUpload =
+      isMixMode && phase === "videos" ? [...collectedMedia, ...media] : media;
+
     // Do compression and upload in background
     (async () => {
       try {
@@ -108,9 +136,9 @@ export function useSelectionScreenLogic(
         // Step 1: Compress all media in parallel (max 20 concurrent)
         // Get round duration from room settings for video trimming
         const roundDurationSeconds = room?.settings?.timer || 5;
-        console.log(`-> Starting compression of ${media.length} media items...`);
+        console.log(`-> Starting compression of ${mediaToUpload.length} media items...`);
         const compressedUris = await compressMediaBatch(
-          media.map((item, index) => ({
+          mediaToUpload.map((item, index) => ({
             uri: item.uri,
             mediaType: item.mediaType,
             id: item.id,
@@ -123,14 +151,14 @@ export function useSelectionScreenLogic(
         );
 
         // Step 2: Upload files in parallel (max 20 concurrent)
-        console.log(`-> Starting parallel upload of ${media.length} media items...`);
-        const total = media.length;
+        console.log(`-> Starting parallel upload of ${mediaToUpload.length} media items...`);
+        const total = mediaToUpload.length;
         const MAX_PARALLEL_UPLOAD = 20;
         let uploadCompleted = 0;
 
         // Use the same parallel processing utility for uploads
         const uploadResults = await processInBatches(
-          media.map((item, index) => ({ item, compressedUri: compressedUris[index], index })),
+          mediaToUpload.map((item, index) => ({ item, compressedUri: compressedUris[index], index })),
           async (data, idx) => {
             const { item, compressedUri } = data;
             
@@ -208,7 +236,7 @@ export function useSelectionScreenLogic(
   };
 
   const handleReroll = async () => {
-    await fetchMedia(mediaCount, mediaType);
+    await fetchMedia(mediaCount, getCurrentMediaType());
   };
 
   return {
