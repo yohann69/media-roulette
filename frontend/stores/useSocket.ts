@@ -44,6 +44,7 @@ interface SocketState {
   notifyTimeExpired: (pin: string) => Promise<void>;
   showMediaAgain: (pin: string) => void;
   hideMediaAgain: (pin: string) => void;
+  playAgain: (pin: string) => Promise<boolean>;
   onPlayerJoined: (callback: (data: any) => void) => void;
     onPlayerLeft: (callback: (data: any) => void) => void;
     onSyncMedia: (callback: (data: any) => void) => void;
@@ -57,6 +58,7 @@ interface SocketState {
            onRoomUpdate: (callback: (data: any) => void) => void;
     onShowMediaAgain: (callback: (data: any) => void) => void;
     onHideMediaAgain: (callback: () => void) => void;
+    onPlayAgainInitiated: (callback: (data: any) => void) => void;
            cleanup: () => void;
 }
 
@@ -246,6 +248,18 @@ function createGameHandlers(get: any, set: any) {
             if (!socket?.connected) return;
             socket.emit("hide-media-again", { pin });
         },
+
+        playAgain: async (pin: string): Promise<boolean> => {
+            const { socket } = get();
+            if (!socket?.connected) return false;
+
+            return new Promise((resolve) => {
+                socket.emit("play-again", { pin });
+                socket.once("play-again-initiated", () => resolve(true));
+                socket.once("error", () => resolve(false));
+                setTimeout(() => resolve(false), 5000);
+            });
+        },
     };
 }
 
@@ -328,6 +342,16 @@ function createEventHandlers(get: any, set: any) {
             socket.on("hide-media-again", () => {
                 console.log("Received hide-media-again event");
                 callback();
+            });
+        },
+
+        onPlayAgainInitiated: (callback: (data: any) => void) => {
+            const socket = get().socket;
+            if (!socket) return;
+            socket.off("play-again-initiated");
+            socket.on("play-again-initiated", (data: any) => {
+                console.log("Received play-again-initiated event", data);
+                callback(data);
             });
         },
 

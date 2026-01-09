@@ -371,6 +371,43 @@ function setupSocket(io, gameManager, roundStartTimes) {
             }
         });
 
+        // Play again - reset game and make first player to click the new host
+        socket.on("play-again", (data) => {
+            try {
+                const { pin } = data;
+                const room = gameManager.getRoom(pin);
+                
+                if (!room) {
+                    socket.emit("error", { message: "Room not found" });
+                    return;
+                }
+
+                // Only allow play again if game is finished
+                if (room.gameState !== "finished") {
+                    socket.emit("error", { message: "Game is not finished yet" });
+                    return;
+                }
+
+                // Reset the game
+                gameManager.resetGame(pin);
+                
+                // Set the first person who clicks play again as the new host
+                gameManager.setNewHost(pin, socket.id);
+                
+                // Broadcast to all players that game was reset and they should go to lobby
+                io.to(pin).emit("play-again-initiated", {
+                    newHostSocketId: socket.id,
+                    newHostName: room.players.find(p => p.socketId === socket.id)?.name || "Unknown"
+                });
+                
+                // Emit room update so all clients refresh
+                io.to(pin).emit("room-update", room);
+            } catch (error) {
+                console.error("Error in play-again:", error);
+                socket.emit("error", { message: "Failed to initiate play again" });
+            }
+        });
+
         socket.on("disconnect", () => {
             const result = gameManager.removePlayer(socket.id);
             if (result) {

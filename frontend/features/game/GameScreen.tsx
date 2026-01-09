@@ -40,6 +40,7 @@ export function GameScreen() {
     handleShowAgainEnd,
     handleContinueFromLeaderboard,
     handlePlayAgain,
+    handleExit,
   } = useGameScreenLogic(pin, isHost);
 
   const isOwner = actualOwnerId === currentPlayerId;
@@ -75,11 +76,16 @@ export function GameScreen() {
         ) : (
           <Podium players={finalLeaderboard} />
         )}
-        <View className="px-6 py-3 border-t border-gray-800 bg-black">
+        <View className="px-6 py-3 border-t border-gray-800 bg-black gap-3">
           <Button
             title={t("game.playAgain")}
             onPress={handlePlayAgain}
             variant="primary"
+          />
+          <Button
+            title={t("common.goBack")}
+            onPress={handleExit}
+            variant="secondary"
           />
         </View>
       </View>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import { useSocket } from "../../stores/useSocket";
@@ -28,8 +28,11 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     notifyTimeExpired,
     showMediaAgain,
     hideMediaAgain,
+    playAgain,
+    leaveGame,
     localMediaMap,
-    setLocalMediaMap
+    setLocalMediaMap,
+    onPlayAgainInitiated
   } = useSocket();
 
   const [gameState, setGameState] = useState<GameState>("reveal");
@@ -148,11 +151,37 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     await handleContinue();
   };
 
-  const handlePlayAgain = () => {
-    router.push({
-      pathname: "/selection",
-      params: { isHost: "false", pin, playAgain: "true" }
+  // Listen for play-again-initiated event from any player
+  useEffect(() => {
+    onPlayAgainInitiated(() => {
+      // Navigate all players back to lobby
+      router.push({
+        pathname: "/lobby",
+        params: { pin }
+      });
     });
+  }, [pin, router, onPlayAgainInitiated]);
+
+  const handlePlayAgain = async () => {
+    if (!pin) return;
+    // Emit play-again event - first person to click becomes new host
+    const success = await playAgain(pin);
+    if (success) {
+      // Navigation will happen via the play-again-initiated event
+      // Navigate to lobby immediately for the person who clicked
+      router.push({
+        pathname: "/lobby",
+        params: { pin }
+      });
+    }
+  };
+
+  const handleExit = async () => {
+    // Leave the game and go back to home
+    if (pin) {
+      await leaveGame(pin);
+    }
+    router.push("/");
   };
 
   return {
@@ -178,6 +207,7 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     handleShowAgainEnd,
     handleContinueFromLeaderboard,
     handlePlayAgain,
+    handleExit,
     setShowLeaderboard,
     setGameState,
   };

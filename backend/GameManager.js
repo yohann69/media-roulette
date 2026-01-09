@@ -181,7 +181,10 @@ class GameManager {
     room.roundHistory = [];
     room.streaks.clear();
     
-    room.players.forEach((player) => { player.score = 0; });
+    room.players.forEach((player) => { 
+      player.score = 0;
+      player.state = "selecting"; // Reset player states so they can select media again
+    });
     return true;
   }
 
