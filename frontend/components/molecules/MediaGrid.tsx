@@ -119,6 +119,11 @@ export function MediaGrid({
                       shouldPlay={false}
                       isMuted
                     />
+                    <View className="absolute inset-0 items-center justify-center">
+                      <View className="w-10 h-10 rounded-full bg-black/70 items-center justify-center border border-white/60">
+                        <View className="w-0 h-0 border-l-[12px] border-l-white border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent ml-1" />
+                      </View>
+                    </View>
                   </View>
                 )
               ) : (
