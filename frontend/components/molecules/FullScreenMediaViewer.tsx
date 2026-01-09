@@ -1,6 +1,6 @@
-import { Modal, View, Image, TouchableOpacity, Text } from "react-native";
+import { Modal, View, Image, TouchableOpacity } from "react-native";
 import { Video } from "expo-av";
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 interface MediaItem {
   id: string;
@@ -22,13 +22,33 @@ export function FullScreenMediaViewer({
   const videoRef = useRef<Video>(null);
 
   useEffect(() => {
-    if (visible && media?.mediaType === "video" && videoRef.current) {
-      videoRef.current.playAsync().catch(() => {});
-    }
-    return () => {
-      if (videoRef.current) {
-        videoRef.current.pauseAsync().catch(() => {});
+    const playVideo = async () => {
+      try {
+        if (visible && media?.mediaType === "video" && videoRef.current) {
+          await videoRef.current.playAsync();
+        }
+      } catch {
+        // Ignore playback errors
       }
+    };
+
+    playVideo();
+
+    return () => {
+      const cleanup = async () => {
+        if (!videoRef.current) return;
+        try {
+          await videoRef.current.pauseAsync();
+        } catch {
+          // ignore
+        }
+        try {
+          await videoRef.current.unloadAsync();
+        } catch {
+          // ignore
+        }
+      };
+      cleanup();
     };
   }, [visible, media]);
 

@@ -1,7 +1,6 @@
-import { View, Image, ActivityIndicator, TouchableOpacity, Pressable, DimensionValue } from "react-native";
+import { View, Image, ActivityIndicator, Pressable, DimensionValue } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
-import { Video, ResizeMode } from "expo-av";
 
 interface MediaItem {
   id: string;
@@ -51,7 +50,7 @@ export function MediaGrid({
 
     items.forEach((newItem, index) => {
       if (index >= displayItems.length) return;
-      
+
       const currentItem = displayItems[index];
       // Only update if the item changed
       if (!currentItem || currentItem.id !== newItem.id) {
@@ -60,7 +59,7 @@ export function MediaGrid({
           fadeAnims.set(newItem.id, new Animated.Value(0));
         }
         const anim = fadeAnims.get(newItem.id)!;
-        
+
         // Update the item
         setDisplayItems(prev => {
           const updated = [...prev];
@@ -99,7 +98,7 @@ export function MediaGrid({
             style={{ width: itemSize, aspectRatio: 1 }}
             className="p-1"
           >
-            <Animated.View 
+            <Animated.View
               className="flex-1 bg-gray-800 rounded-lg overflow-hidden"
               style={{ opacity }}
             >
@@ -111,13 +110,14 @@ export function MediaGrid({
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-full h-full bg-black">
-                    <Video
+                  <View className="w-full h-full bg-black items-center justify-center">
+                    {/* Use a lightweight thumbnail-style preview for videos in the grid
+                        instead of mounting many Video components, which can cause
+                        crashes and memory pressure on some devices. */}
+                    <Image
                       source={{ uri: item.uri }}
-                      style={{ width: "100%", height: "100%" }}
-                      resizeMode={ResizeMode.COVER}
-                      shouldPlay={false}
-                      isMuted
+                      className="w-full h-full opacity-70"
+                      resizeMode="cover"
                     />
                     <View className="absolute inset-0 items-center justify-center">
                       <View className="w-10 h-10 rounded-full bg-black/70 items-center justify-center border border-white/60">
