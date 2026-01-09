@@ -11,7 +11,6 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerShown: false,
           headerStyle: {
             backgroundColor: "#000000",
           },
@@ -43,6 +42,24 @@ export default function RootLayout() {
           name="game"
           options={{
             headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="settings"
+          options={{
+            title: "Settings",
+          }}
+        />
+        <Stack.Screen
+          name="terms"
+          options={{
+            title: "Terms & Conditions",
+          }}
+        />
+        <Stack.Screen
+          name="privacy"
+          options={{
+            title: "Privacy Policy",
           }}
         />
       </Stack>

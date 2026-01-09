@@ -18,6 +18,15 @@ import { createSpringAnimation } from "../../utils/wiggleAnimation";
 import { checkMediaAvailability } from "../../utils/checkMediaAvailability";
 import { SelectionScreen } from "../selection/SelectionScreen";
 
+// Safely import lucide-react-native icons
+let CameraIcon: any = null;
+try {
+  const lucide = require("lucide-react-native");
+  CameraIcon = lucide.Camera;
+} catch {
+  // Icon not available, will use text fallback
+}
+
 type ScreenState = "home" | "create-mode" | "create-rounds" | "create-settings" | "create-duration" | "join";
 
 const MODE_COLORS = {
@@ -356,6 +365,17 @@ export function HomeScreen() {
                 if (screenState !== "home") handleBackgroundPress();
               }}
             >
+              {/* Settings button */}
+              {screenState === "home" && (
+                <View className="absolute top-12 right-6 z-20">
+                  <TouchableOpacity
+                    onPress={() => router.push("/settings")}
+                    className="w-10 h-10 rounded-full bg-black/60 border border-gray-800 items-center justify-center"
+                  >
+                    <Text className="text-white text-lg">⚙️</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               {/* Logo */}
               <Animated.View
                 style={{
@@ -572,14 +592,11 @@ export function HomeScreen() {
                           activeOpacity={0.7}
                         >
                           <View className="items-center justify-center">
-                            {(() => {
-                              try {
-                                const { Camera } = require("lucide-react-native");
-                                return <Camera size={24} color="#ffffff" />;
-                              } catch {
-                                return <Text className="text-2xl">📷</Text>;
-                              }
-                            })()}
+                            {CameraIcon ? (
+                              <CameraIcon size={24} color="#ffffff" />
+                            ) : (
+                              <Text className="text-2xl">📷</Text>
+                            )}
                           </View>
                         </TouchableOpacity>
                       </View>
@@ -684,6 +701,6 @@ export function HomeScreen() {
           />
         </View>
       </CustomModal>
-    </View>
-  );
+      </View>
+    );
 }

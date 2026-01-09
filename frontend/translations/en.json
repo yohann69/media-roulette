@@ -164,5 +164,49 @@
     "rounds": "Rounds: {count}",
     "timer": "Timer: {seconds}s",
     "mode": "Mode: {emoji} {mode}"
+  },
+  "settings": {
+    "title": "Settings",
+    "mediaSourcesTitle": "Media sources",
+    "mediaSourcesSubtitle": "Choose which albums can be used in games",
+    "legalSectionTitle": "Legal",
+    "terms": "Terms & Conditions",
+    "privacy": "Privacy Policy",
+    "permissionExplanation": "We need access to your albums so you can exclude private folders from the game.",
+    "grantPermission": "Grant permission",
+    "loadingAlbums": "Loading albums...",
+    "noAlbums": "No albums found on this device.",
+    "untitledAlbum": "Untitled album",
+    "itemsLabel": "items"
+  },
+  "terms": {
+    "title": "Terms & Conditions",
+    "lastUpdated": "Last updated: January 2024",
+    "section1Title": "1. What this app does",
+    "section1Body": "PhotoRoulette is a casual party game. It randomly selects photos and videos from the devices of players in a room and shows them to everyone so they can guess who took them.",
+    "section2Title": "2. Your responsibilities",
+    "section2Body": "You are fully responsible for the media stored on your device and for what you choose to show in the game. Do not use content that is illegal, offensive, harmful, or that you do not have the right to share.",
+    "section3Title": "3. No storage of your media",
+    "section3Body": "The game uses your device gallery locally to pick media. The server does not permanently store your personal photos or videos. Temporary technical copies may be created in memory for the duration of a game and then discarded.",
+    "section4Title": "4. Online features",
+    "section4Body": "Multiplayer games use an online connection to sync players, scores and game state. Do not attempt to cheat, disrupt games, or attack the service or other players.",
+    "section5Title": "5. No warranty",
+    "section5Body": "PhotoRoulette is provided “as is” without any guarantees. Use it at your own risk. The developer cannot be held liable for any loss, damage or issues arising from the use of the app.",
+    "disclaimer": "This text is a general description and may not cover all legal requirements in your country. For full legal compliance, please have it reviewed by a qualified lawyer."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: January 2024",
+    "section1Title": "1. Media access",
+    "section1Body": "The app requests access to your photo and video library only so it can randomly select media for the game. Your media stay on your device during normal use.",
+    "section2Title": "2. What is stored",
+    "section2Body": "We may store limited technical data such as game room IDs, usernames, scores and timestamps needed for gameplay. We do not build advertising profiles and we do not sell your data.",
+    "section3Title": "3. Multiplayer data",
+    "section3Body": "During an online game, basic information like your username, answers and scores are shared with other players in the same room so the game can work. Media content is only visible to players in that room for the duration of the game.",
+    "section4Title": "4. Permissions and control",
+    "section4Body": "You can revoke photo and video permissions at any time in your device settings. In the app settings you can also exclude specific albums so they are never used in the game.",
+    "section5Title": "5. Security",
+    "section5Body": "We use standard technical measures to protect data in transit between players and the server. However, no online service can be 100% secure, and you should avoid using the app on untrusted networks.",
+    "disclaimer": "This policy is a simplified explanation of how the app handles data and may not cover all legal requirements in your country. For full legal compliance, please have it reviewed by a qualified lawyer."
   }
 }

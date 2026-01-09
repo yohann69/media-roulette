@@ -1,4 +1,5 @@
 import * as MediaLibrary from "expo-media-library";
+import { loadExcludedAlbums } from "./excludedAlbums";
 
 export type MediaType = "photo" | "video" | "mixed";
 
@@ -34,6 +35,30 @@ export async function fetchRandomMedia(
   type: MediaType = "mixed"
 ): Promise<MediaAsset[]> {
   try {
+    // Load excluded albums and build a set of excluded asset IDs
+    const excludedAlbumIds = await loadExcludedAlbums();
+    const excludedAssetIds = new Set<string>();
+
+    if (excludedAlbumIds.size > 0) {
+      const allAlbums = await MediaLibrary.getAlbumsAsync();
+      const targetAlbums = allAlbums.filter((a) => excludedAlbumIds.has(a.id));
+
+      if (targetAlbums.length > 0) {
+        const results = await Promise.all(
+          targetAlbums.map((album) =>
+            MediaLibrary.getAssetsAsync({
+              album,
+              first: 10000,
+            })
+          )
+        );
+
+        results.forEach((res) => {
+          res.assets.forEach((asset) => excludedAssetIds.add(asset.id));
+        });
+      }
+    }
+
     let allAssets: MediaLibrary.Asset[] = [];
 
     if (type === "photo" || type === "mixed") {
@@ -42,7 +67,10 @@ export async function fetchRandomMedia(
         first: 1000, // Fetch a large batch
         sortBy: MediaLibrary.SortBy.creationTime,
       });
-      allAssets = [...allAssets, ...photos.assets];
+      const filtered = photos.assets.filter(
+        (asset) => !excludedAssetIds.has(asset.id)
+      );
+      allAssets = [...allAssets, ...filtered];
     }
 
     if (type === "video" || type === "mixed") {
@@ -51,7 +79,10 @@ export async function fetchRandomMedia(
         first: 1000, // Fetch a large batch
         sortBy: MediaLibrary.SortBy.creationTime,
       });
-      allAssets = [...allAssets, ...videos.assets];
+      const filtered = videos.assets.filter(
+        (asset) => !excludedAssetIds.has(asset.id)
+      );
+      allAssets = [...allAssets, ...filtered];
     }
 
     // Shuffle all assets
@@ -63,7 +94,7 @@ export async function fetchRandomMedia(
         (asset) => asset.mediaType === MediaLibrary.MediaType.photo
       );
       const selected = shuffleArray(photos).slice(0, Math.min(count, photos.length));
-      
+
       return selected.map((asset) => ({
         id: asset.id,
         uri: asset.uri,
@@ -80,7 +111,7 @@ export async function fetchRandomMedia(
         (asset) => asset.mediaType === MediaLibrary.MediaType.video
       );
       const selected = shuffleArray(videos).slice(0, Math.min(count, videos.length));
-      
+
       return selected.map((asset) => ({
         id: asset.id,
         uri: asset.uri,
