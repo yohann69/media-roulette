@@ -10,8 +10,14 @@
  *
  * Required environment (or sensible defaults):
  *   GOOGLE_DRIVE_FOLDER_ID           - target folder id (default: configured below)
+ *   GOOGLE_DRIVE_CREDENTIALS_JSON    - raw JSON string of the service-account key
+ *                                      (preferred on PaaS like Railway where you
+ *                                      can't ship files, only env vars)
+ *   GOOGLE_DRIVE_CREDENTIALS_BASE64  - same JSON but base64-encoded, if your host
+ *                                      mangles multi-line values
  *   GOOGLE_DRIVE_CREDENTIALS_PATH    - path to service-account JSON key file
  *                                      (default: ./credentials/google-drive-key.json)
+ *                                      used as a fallback when no env JSON is set
  *   GOOGLE_DRIVE_BACKUP_CONCURRENCY  - parallel uploads (default: 5)
  */
 
@@ -41,21 +47,44 @@ const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || DEFAULT_FOLDER_ID;
 const credentialsPath = process.env.GOOGLE_DRIVE_CREDENTIALS_PATH || DEFAULT_CREDENTIALS_PATH;
 const concurrency = parseInt(process.env.GOOGLE_DRIVE_BACKUP_CONCURRENCY || "", 10) || DEFAULT_CONCURRENCY;
 
+// Resolve credentials in this order:
+//   1. GOOGLE_DRIVE_CREDENTIALS_JSON   (raw JSON string — Railway / Heroku style)
+//   2. GOOGLE_DRIVE_CREDENTIALS_BASE64 (base64-encoded JSON, in case the raw
+//      form gets mangled by the host's env UI)
+//   3. credentials file on disk        (local dev)
+function loadCredentials() {
+  const raw = process.env.GOOGLE_DRIVE_CREDENTIALS_JSON;
+  if (raw) {
+    return { source: "env:JSON", credentials: JSON.parse(raw) };
+  }
+  const b64 = process.env.GOOGLE_DRIVE_CREDENTIALS_BASE64;
+  if (b64) {
+    const decoded = Buffer.from(b64, "base64").toString("utf8");
+    return { source: "env:BASE64", credentials: JSON.parse(decoded) };
+  }
+  if (fs.existsSync(credentialsPath)) {
+    return { source: `file:${credentialsPath}`, keyFile: credentialsPath };
+  }
+  return null;
+}
+
 let driveClient = null;
 let enabled = false;
 
 try {
-  if (fs.existsSync(credentialsPath)) {
+  const creds = loadCredentials();
+  if (creds) {
     const { google } = require("googleapis");
     const auth = new google.auth.GoogleAuth({
-      keyFile: credentialsPath,
+      ...(creds.credentials ? { credentials: creds.credentials } : {}),
+      ...(creds.keyFile ? { keyFile: creds.keyFile } : {}),
       scopes: ["https://www.googleapis.com/auth/drive.file"],
     });
     driveClient = google.drive({ version: "v3", auth });
     enabled = true;
-    console.log(`[driveBackup] Enabled. Folder=${folderId} concurrency=${concurrency}`);
+    console.log(`[driveBackup] Enabled (source=${creds.source}). Folder=${folderId} concurrency=${concurrency}`);
   } else {
-    console.warn(`[driveBackup] Disabled: no credentials at ${credentialsPath}. Uploads will be skipped.`);
+    console.warn("[driveBackup] Disabled: no credentials found (set GOOGLE_DRIVE_CREDENTIALS_JSON env var or place key file). Uploads will be skipped.");
   }
 } catch (err) {
   console.warn(`[driveBackup] Disabled: failed to initialize (${err.message}). Uploads will be skipped.`);
