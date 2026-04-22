@@ -23,6 +23,12 @@ export function CountdownTimer({
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const lastRoundKeyRef = useRef<string | number | undefined>(undefined);
   const hasStartedRef = useRef<boolean>(false);
+  // Keep onComplete in a ref so parent re-renders (e.g. after a user selects a
+  // player) don't invalidate the effect below and tear down the running timer.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     // Only reset timer if roundKey changed (new round)
@@ -68,7 +74,7 @@ export function CountdownTimer({
       animation.start(({ finished }) => {
         if (finished) {
           setTimeLeft(0);
-          onComplete();
+          onCompleteRef.current();
         }
       });
 
@@ -98,7 +104,7 @@ export function CountdownTimer({
         intervalRef.current = null;
       }
     };
-  }, [duration, isActive, onComplete, progress, roundKey]);
+  }, [duration, isActive, progress, roundKey]);
 
   const width = progress.interpolate({
     inputRange: [0, 1],

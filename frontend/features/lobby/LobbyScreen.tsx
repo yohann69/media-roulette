@@ -9,10 +9,11 @@ import { WarningModal } from "../../components/molecules/WarningModal";
 import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
 import { CustomModal } from "../../components/molecules/Modal";
 import { UploadProgress } from "../../components/molecules/UploadProgress";
-import { Button } from "../../components/atoms/Button";
 import { BackButton } from "../../components/atoms/BackButton";
 import { SelectionScreen } from "../selection/SelectionScreen";
 import { BlindModeAutoUploader } from "../../components/molecules/BlindModeAutoUploader";
+import { ExitConfirmModal } from "../../components/molecules/ExitConfirmModal";
+import { LobbyFooter } from "./LobbyFooter";
 import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useLobbySync } from "../../hooks/useLobbySync";
@@ -50,13 +51,13 @@ export function LobbyScreen() {
 
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const currentPlayer = room?.players.find((p) => p.socketId === currentPlayerId);
   const currentPlayerState = currentPlayer?.state || "selecting";
   const blindMode = room?.settings?.blindMode || false;
 
-  // Auto-open the selection modal as long as the local player still has to pick media.
-  // Blind mode skips the modal entirely — upload happens silently via BlindModeAutoUploader.
+  // Open selection modal while the local player picks media (blind mode skips it; upload runs silently).
   useEffect(() => {
     if (!room) return;
     if (currentPlayerState === "selecting" && !blindMode) {
@@ -114,6 +115,11 @@ export function LobbyScreen() {
     router.push("/");
   };
 
+  const handleConfirmExit = async () => {
+    setShowExitConfirm(false);
+    await handleExitLobby();
+  };
+
   const handleCloseSelectionModal = async () => {
     // Closing the selection modal without having picked media = leave the game.
     await handleExitLobby();
@@ -124,7 +130,7 @@ export function LobbyScreen() {
       <BackgroundSlideshow />
       <View className="flex-1" style={{ zIndex: 1 }}>
         <View className="pt-5 px-4">
-          <BackButton onPress={handleExitLobby} />
+          <BackButton onPress={() => setShowExitConfirm(true)} />
         </View>
         <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 8 }}>
           <Text className="text-white text-4xl font-bold mb-2 text-center">
@@ -144,12 +150,10 @@ export function LobbyScreen() {
 
           {isHost && <WarningBanner totalMedia={totalMedia} requiredRounds={settings.rounds} />}
 
-          {/* Progress for the current user while compressing/uploading their own media. */}
           {uploadStage !== "idle" && currentPlayerState !== "ready" && (
             <UploadProgress stage={uploadStage} progress={uploadProgress} />
           )}
 
-          {/* Progress for the sync phase after the host presses Start. */}
           {isSyncing && (
             <View className="mt-4 p-4 bg-gray-900 rounded-lg">
               <Text className="text-white text-center mb-2">{syncStatus}</Text>
@@ -163,25 +167,17 @@ export function LobbyScreen() {
           )}
         </ScrollView>
 
-        {isHost ? (
-          <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
-            <Button
-              title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
-              onPress={allReady ? handleStartGame : handlePrepareGame}
-              variant="primary"
-              disabled={isStarting || !canStart}
-            />
-          </View>
-        ) : (
-          <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
-            <Button
-              title={isSyncing ? syncStatus : t("lobby.waitingForHost", { hostName })}
-              onPress={() => {}}
-              variant="secondary"
-              disabled
-            />
-          </View>
-        )}
+        <LobbyFooter
+          isHost={isHost}
+          isStarting={isStarting}
+          canStart={canStart}
+          allReady={allReady}
+          isSyncing={isSyncing}
+          syncStatus={syncStatus}
+          hostName={hostName}
+          onPrepareGame={handlePrepareGame}
+          onStartGame={handleStartGame}
+        />
 
         <WarningModal
           visible={showWarningModal}
@@ -192,7 +188,13 @@ export function LobbyScreen() {
           requiredRounds={settings.rounds}
         />
 
-        {/* Media selection modal — opens automatically whenever the local player still has to pick. */}
+        <ExitConfirmModal
+          visible={showExitConfirm}
+          isHost={isHost}
+          onCancel={() => setShowExitConfirm(false)}
+          onConfirm={handleConfirmExit}
+        />
+
         <CustomModal
           visible={showSelectionModal}
           onClose={handleCloseSelectionModal}

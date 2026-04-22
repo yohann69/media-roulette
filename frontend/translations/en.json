@@ -68,7 +68,12 @@
     "compressingMedia": "Compressing your media...",
     "uploadingMedia": "Uploading your media...",
     "disconnectedTitle": "Disconnected",
-    "disconnectedMessage": "You lost connection and were removed from the game. You'll need to rejoin to play again."
+    "disconnectedMessage": "You lost connection and were removed from the game. You'll need to rejoin to play again.",
+    "exitWarningTitle": "Leave the game?",
+    "exitWarningMessage": "Are you sure you want to leave the game?",
+    "exitWarningHostMessage": "Are you sure you want to leave? A random player will become the new host.",
+    "confirmLeave": "Yes, leave",
+    "stayInGame": "Stay"
   },
   "gameSettings": {
     "title": "Game Settings",

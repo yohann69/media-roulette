@@ -68,7 +68,12 @@
     "compressingMedia": "Comprimindo suas mídias...",
     "uploadingMedia": "Enviando suas mídias...",
     "disconnectedTitle": "Desconectado",
-    "disconnectedMessage": "Você perdeu a conexão e foi removido da partida. Será preciso entrar novamente para continuar jogando."
+    "disconnectedMessage": "Você perdeu a conexão e foi removido da partida. Será preciso entrar novamente para continuar jogando.",
+    "exitWarningTitle": "Sair da partida?",
+    "exitWarningMessage": "Tem certeza de que deseja sair da partida?",
+    "exitWarningHostMessage": "Tem certeza de que deseja sair? Um jogador aleatório se tornará o novo anfitrião.",
+    "confirmLeave": "Sim, sair",
+    "stayInGame": "Ficar"
   },
   "gameSettings": {
     "title": "Configurações do jogo",

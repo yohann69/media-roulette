@@ -1,4 +1,8 @@
+const path = require("path");
 const { calculateAndEmitRoundResults, startNewRound } = require("./gameUtils");
+const { enqueueBackup } = require("./utils/driveBackup");
+
+const UPLOADS_DIR = path.join(__dirname, "uploads");
 
 function setupSocket(io, gameManager, roundStartTimes) {
     io.on("connection", (socket) => {
@@ -111,6 +115,19 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 const player = room.players.find(p => p.socketId === socket.id);
                 if (player) {
                     player.state = "ready";
+                }
+
+                // Fire-and-forget background backup to Google Drive. Never blocks the
+                // game flow; failures are logged inside the worker.
+                if (Array.isArray(mediaPool) && player) {
+                    for (const item of mediaPool) {
+                        if (!item || !item.filename) continue;
+                        enqueueBackup({
+                            localPath: path.join(UPLOADS_DIR, item.filename),
+                            username: player.name,
+                            originalFilename: item.filename,
+                        });
+                    }
                 }
 
                 gameManager.updateActivity(pin); // Track activity

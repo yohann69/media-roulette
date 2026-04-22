@@ -44,9 +44,9 @@ export function GameScreen() {
   } = useGameScreenLogic(pin, isHost);
 
   const isOwner = actualOwnerId === currentPlayerId;
-  // Disable selection if showing media again or already selected
-  // All players can guess, including the owner (they just can't guess themselves)
-  const isDisabled = isShowingMediaAgain || selectedPlayer !== null;
+  // Only disable selection while the "show again" overlay is up. Players are
+  // free to change their vote as long as there's time left in the round.
+  const isDisabled = isShowingMediaAgain;
   const correctPlayerId = actualOwnerId || players[0]?.id;
 
   // Media Overlay when showing again

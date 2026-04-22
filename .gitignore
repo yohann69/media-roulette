@@ -17,6 +17,10 @@
 # env file
 .env
 
+# Google service account credentials (Drive backup)
+backend/credentials/
+*-drive-key.json
+
 /nodes_modules
 .DS_Store
 /build

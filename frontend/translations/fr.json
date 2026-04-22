@@ -68,7 +68,12 @@
     "compressingMedia": "Compression de vos médias...",
     "uploadingMedia": "Envoi de vos médias...",
     "disconnectedTitle": "Déconnecté",
-    "disconnectedMessage": "Connexion perdue : vous avez été retiré de la partie. Vous devez la rejoindre pour continuer à jouer."
+    "disconnectedMessage": "Connexion perdue : vous avez été retiré de la partie. Vous devez la rejoindre pour continuer à jouer.",
+    "exitWarningTitle": "Quitter la partie ?",
+    "exitWarningMessage": "Êtes-vous sûr de vouloir quitter la partie ?",
+    "exitWarningHostMessage": "Êtes-vous sûr de vouloir quitter ? Un joueur aléatoire deviendra le nouvel hôte.",
+    "confirmLeave": "Oui, quitter",
+    "stayInGame": "Rester"
   },
   "gameSettings": {
     "title": "Paramètres du jeu",

@@ -116,12 +116,14 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   });
 
   const handlePlayerSelect = async (playerId: string) => {
-    if (timeExpired || selectedPlayer || !pin) return;
-    
-    // All players can select anyone, including themselves
+    if (timeExpired || !pin) return;
+
+    // All players can select anyone, including themselves; they can also
+    // change their mind as long as the round is still running. The backend
+    // overwrites previous guesses and rejects resubmits once results are
+    // calculated, so this is safe.
     const timestamp = Date.now();
     setSelectedPlayer(playerId);
-    // Don't stop the timer - it should continue until the round ends
     await submitGuess(pin, playerId, timestamp);
   };
 

@@ -87,9 +87,17 @@ class GameManager {
         room.readyPlayers.delete(socketId);
 
         if (player.isHost) {
-          this.cleanupRoomFiles(pin);
-          this.rooms.delete(pin);
-          return { pin, roomDeleted: true };
+          // Only tear the room down when nobody is left. If other players
+          // are still here, promote a random one to host so the game / lobby
+          // can keep going instead of being disbanded.
+          if (room.players.length === 0) {
+            this.cleanupRoomFiles(pin);
+            this.rooms.delete(pin);
+            return { pin, roomDeleted: true };
+          }
+          const randomIndex = Math.floor(Math.random() * room.players.length);
+          this.setNewHost(pin, room.players[randomIndex].socketId);
+          return { pin, room, hostChanged: true };
         }
         return { pin, room };
       }

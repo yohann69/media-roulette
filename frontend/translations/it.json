@@ -68,7 +68,12 @@
     "compressingMedia": "Compressione dei tuoi media...",
     "uploadingMedia": "Caricamento dei tuoi media...",
     "disconnectedTitle": "Disconnesso",
-    "disconnectedMessage": "Hai perso la connessione e sei stato rimosso dalla partita. Dovrai rientrare per continuare a giocare."
+    "disconnectedMessage": "Hai perso la connessione e sei stato rimosso dalla partita. Dovrai rientrare per continuare a giocare.",
+    "exitWarningTitle": "Abbandonare la partita?",
+    "exitWarningMessage": "Sei sicuro di voler abbandonare la partita?",
+    "exitWarningHostMessage": "Sei sicuro di voler uscire? Un giocatore casuale diventerà il nuovo host.",
+    "confirmLeave": "Sì, esci",
+    "stayInGame": "Resta"
   },
   "gameSettings": {
     "title": "Impostazioni gioco",

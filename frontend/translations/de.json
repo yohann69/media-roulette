@@ -68,7 +68,12 @@
     "compressingMedia": "Deine Medien werden komprimiert...",
     "uploadingMedia": "Deine Medien werden hochgeladen...",
     "disconnectedTitle": "Verbindung getrennt",
-    "disconnectedMessage": "Du hast die Verbindung verloren und wurdest aus dem Spiel entfernt. Bitte tritt erneut bei, um weiterzuspielen."
+    "disconnectedMessage": "Du hast die Verbindung verloren und wurdest aus dem Spiel entfernt. Bitte tritt erneut bei, um weiterzuspielen.",
+    "exitWarningTitle": "Spiel verlassen?",
+    "exitWarningMessage": "Möchtest du das Spiel wirklich verlassen?",
+    "exitWarningHostMessage": "Möchtest du wirklich gehen? Ein zufälliger Spieler wird zum neuen Host.",
+    "confirmLeave": "Ja, verlassen",
+    "stayInGame": "Bleiben"
   },
   "gameSettings": {
     "title": "Spieleinstellungen",

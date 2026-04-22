@@ -68,7 +68,12 @@
     "compressingMedia": "正在压缩你的媒体...",
     "uploadingMedia": "正在上传你的媒体...",
     "disconnectedTitle": "连接已断开",
-    "disconnectedMessage": "你已掉线并被移出游戏。需要重新加入才能继续游戏。"
+    "disconnectedMessage": "你已掉线并被移出游戏。需要重新加入才能继续游戏。",
+    "exitWarningTitle": "退出游戏？",
+    "exitWarningMessage": "确定要退出游戏吗？",
+    "exitWarningHostMessage": "确定要离开吗？将随机选择一名玩家成为新房主。",
+    "confirmLeave": "是的，退出",
+    "stayInGame": "留下"
   },
   "gameSettings": {
     "title": "游戏设置",
