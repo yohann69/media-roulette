@@ -6,8 +6,15 @@ interface Player {
   id: string;
   name: string;
   isHost?: boolean;
-  state?: "selecting" | "uploading" | "ready";
+  state?: "selecting" | "compressing" | "uploading" | "ready";
 }
+
+// Colors per in-progress state (keeps the tailwind palette already in use).
+const STATE_SPINNER_COLOR: Record<string, string> = {
+  selecting: "#9ca3af",
+  compressing: "#f59e0b",
+  uploading: "#60a5fa",
+};
 
 interface PlayerListProps {
   players: Player[];
@@ -89,6 +96,12 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
     <View className="flex-row flex-wrap gap-2">
       {players.map((player) => {
         const animated = animatedPlayersRef.current.get(player.id);
+        const isSelecting = player.state === "selecting";
+        const isCompressing = player.state === "compressing";
+        const isUploading = player.state === "uploading";
+        const isBusy = isSelecting || isCompressing || isUploading;
+        const spinnerColor = STATE_SPINNER_COLOR[player.state || "selecting"] || "#9ca3af";
+
         if (!animated) {
           // If player doesn't have animation yet, create it immediately
           const scale = new Animated.Value(1);
@@ -99,11 +112,11 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
               key={player.id}
               className="px-3 py-2 bg-gray-800 rounded-lg flex-row items-center gap-1"
             >
-              <Text className={`${player.state === "selecting" || player.state === "uploading" ? "text-gray-400" : "text-white"} text-sm`}>
+              <Text className={`${isBusy ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
-              {(player.state === "selecting" || player.state === "uploading") && (
-                <ActivityIndicator size="small" color={player.state === "uploading" ? "#60a5fa" : "#9ca3af"} />
+              {isBusy && (
+                <ActivityIndicator size="small" color={spinnerColor} />
               )}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />
@@ -117,10 +130,8 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
           );
         }
         const { scale, opacity } = animated;
-        const isSelecting = player.state === "selecting";
-        const isUploading = player.state === "uploading";
         const baseOpacity = isSelecting ? 0.5 : 1;
-        
+
         return (
           <Animated.View
             key={player.id}
@@ -130,11 +141,11 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
             }}
           >
             <View className="px-3 py-2 bg-gray-800 rounded-lg flex-row items-center gap-1">
-              <Text className={`${isSelecting || isUploading ? "text-gray-400" : "text-white"} text-sm`}>
+              <Text className={`${isBusy ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
-              {(isSelecting || isUploading) && (
-                <ActivityIndicator size="small" color={isUploading ? "#60a5fa" : "#9ca3af"} />
+              {isBusy && (
+                <ActivityIndicator size="small" color={spinnerColor} />
               )}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />

@@ -64,7 +64,11 @@
     "waitingForOthers": "Esperando a otros jugadores...",
     "allReady": "¡Todos listos!",
     "waitingForHostStart": "Esperando que el anfitrión inicie...",
-    "preparingGame": "Preparando partida..."
+    "preparingGame": "Preparando partida...",
+    "compressingMedia": "Comprimiendo tus medios...",
+    "uploadingMedia": "Subiendo tus medios...",
+    "disconnectedTitle": "Desconectado",
+    "disconnectedMessage": "Perdiste la conexión y fuiste eliminado de la partida. Tendrás que volver a unirte para seguir jugando."
   },
   "gameSettings": {
     "title": "Configuración del juego",

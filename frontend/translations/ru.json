@@ -64,7 +64,11 @@
     "waitingForOthers": "Ожидание других игроков...",
     "allReady": "Все готовы!",
     "waitingForHostStart": "Ожидание запуска хостом...",
-    "preparingGame": "Подготовка игры..."
+    "preparingGame": "Подготовка игры...",
+    "compressingMedia": "Сжатие ваших медиафайлов...",
+    "uploadingMedia": "Загрузка ваших медиафайлов...",
+    "disconnectedTitle": "Соединение потеряно",
+    "disconnectedMessage": "Вы потеряли соединение и были удалены из игры. Чтобы продолжить, нужно присоединиться снова."
   },
   "gameSettings": {
     "title": "Настройки игры",

@@ -11,7 +11,7 @@ export function useSelectionScreenLogic(
   onClose?: () => void
 ) {
   const router = useRouter();
-  const { setMediaPool, room } = useSocket();
+  const { setMediaPool, room, setUploadStatus } = useSocket();
   
   const gameMode = room?.settings?.mode || "Photo";
   const blindMode = room?.settings?.blindMode || false;
@@ -101,22 +101,22 @@ export function useSelectionScreenLogic(
     }
 
     const { setPlayerState } = useSocket.getState();
-    
-    // Set status to uploading and navigate immediately
-    await setPlayerState(pin, "uploading");
+
+    // Announce local compression to the rest of the lobby right away, then
+    // navigate. We switch to "uploading" once compression finishes below so
+    // the other players' lobby reflects the real phase the current user is in.
+    await setPlayerState(pin, "compressing");
     setIsUploading(true);
     
     const updatedIsHost = playAgain ? true : isHost;
     
-    // Navigate immediately
+    // Navigate immediately.
+    // When `onClose` is provided the SelectionScreen is mounted as a modal from
+    // within the lobby, so we just close the modal and stay on the lobby route.
+    // Without `onClose` we are on the standalone /selection route and need to
+    // push the lobby screen.
     if (onClose) {
       onClose();
-      setTimeout(() => {
-        router.push({ 
-          pathname: "/lobby", 
-          params: { isHost: updatedIsHost ? "true" : "false", pin } 
-        });
-      }, 100);
     } else {
       router.push({ 
         pathname: "/lobby", 
@@ -132,6 +132,7 @@ export function useSelectionScreenLogic(
     (async () => {
       try {
         setUploadProgress(0);
+        setUploadStatus("compressing", 0);
 
         // Step 1: Compress all media in parallel (max 20 concurrent)
         // Get round duration from room settings for video trimming
@@ -146,6 +147,7 @@ export function useSelectionScreenLogic(
           })),
           (completed, total) => {
             setUploadProgress(completed / (total * 2)); // Compression is 50% of total progress
+            setUploadStatus("compressing", completed / total);
           },
           roundDurationSeconds
         );
@@ -155,6 +157,10 @@ export function useSelectionScreenLogic(
         const total = mediaToUpload.length;
         const MAX_PARALLEL_UPLOAD = 20;
         let uploadCompleted = 0;
+        setUploadStatus("uploading", 0);
+        // Flip the shared player state from "compressing" to "uploading" so
+        // the player list in every lobby reflects the current phase.
+        await setPlayerState(pin, "uploading");
 
         // Use the same parallel processing utility for uploads
         const uploadResults = await processInBatches(
@@ -201,6 +207,7 @@ export function useSelectionScreenLogic(
             // Update progress (upload is 50-100% of total progress)
             uploadCompleted++;
             setUploadProgress(0.5 + (uploadCompleted / total) * 0.5);
+            setUploadStatus("uploading", uploadCompleted / total);
 
             return {
               id: item.id,
@@ -219,6 +226,7 @@ export function useSelectionScreenLogic(
         if (!success) {
           console.error("Failed to set media pool");
           setIsUploading(false);
+          setUploadStatus("idle", 0);
           // Optionally set state back to selecting on error
           await setPlayerState(pin, "selecting");
           return;
@@ -226,9 +234,11 @@ export function useSelectionScreenLogic(
 
         // Status will be updated to "ready" by setMediaPool in the backend
         setIsUploading(false);
+        setUploadStatus("idle", 1);
       } catch (error) {
         console.error("Error in background upload:", error);
         setIsUploading(false);
+        setUploadStatus("idle", 0);
         // Set state back to selecting on error
         await setPlayerState(pin, "selecting");
       }

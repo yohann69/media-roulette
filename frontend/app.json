@@ -49,6 +49,15 @@
         {
           "cameraPermission": "Allow PhotoRoulette to access your camera to scan QR codes."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "PhotoRoulette needs access to your photos to play the game.",
+          "savePhotosPermission": "PhotoRoulette needs access to save photos.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo", "video"]
+        }
       ]
     ],
     "scheme": "photoroulette",

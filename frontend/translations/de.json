@@ -64,7 +64,11 @@
     "waitingForOthers": "Warten auf andere Spieler...",
     "allReady": "Alle bereit!",
     "waitingForHostStart": "Warten auf Start durch Gastgeber...",
-    "preparingGame": "Spiel wird vorbereitet..."
+    "preparingGame": "Spiel wird vorbereitet...",
+    "compressingMedia": "Deine Medien werden komprimiert...",
+    "uploadingMedia": "Deine Medien werden hochgeladen...",
+    "disconnectedTitle": "Verbindung getrennt",
+    "disconnectedMessage": "Du hast die Verbindung verloren und wurdest aus dem Spiel entfernt. Bitte tritt erneut bei, um weiterzuspielen."
   },
   "gameSettings": {
     "title": "Spieleinstellungen",

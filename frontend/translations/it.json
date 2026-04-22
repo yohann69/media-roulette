@@ -64,7 +64,11 @@
     "waitingForOthers": "In attesa di altri giocatori...",
     "allReady": "Tutti pronti!",
     "waitingForHostStart": "In attesa dell'avvio da parte dell'host...",
-    "preparingGame": "Preparazione partita..."
+    "preparingGame": "Preparazione partita...",
+    "compressingMedia": "Compressione dei tuoi media...",
+    "uploadingMedia": "Caricamento dei tuoi media...",
+    "disconnectedTitle": "Disconnesso",
+    "disconnectedMessage": "Hai perso la connessione e sei stato rimosso dalla partita. Dovrai rientrare per continuare a giocare."
   },
   "gameSettings": {
     "title": "Impostazioni gioco",

@@ -16,7 +16,6 @@ import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 import { createSpringAnimation } from "../../utils/wiggleAnimation";
 import { checkMediaAvailability } from "../../utils/checkMediaAvailability";
-import { SelectionScreen } from "../selection/SelectionScreen";
 
 // Safely import lucide-react-native icons
 let CameraIcon: any = null;
@@ -43,7 +42,7 @@ export function HomeScreen() {
   const { t } = useTranslation();
   const { username, setUsername, isLoading } = useUsername();
   const { saveSettings } = useGameSettings();
-  const { connect, createGame, joinGame, leaveGame, isConnected, connectionFailed, room } = useSocket();
+  const { connect, createGame, joinGame, isConnected, connectionFailed, room } = useSocket();
 
   const [screenState, setScreenState] = useState<ScreenState>("home");
   const [selectedMode, setSelectedMode] = useState<"Photo" | "Video" | "Mix" | "Blind">("Photo");
@@ -55,8 +54,6 @@ export function HomeScreen() {
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
-  const [showSelectionModal, setShowSelectionModal] = useState(false);
-  const [selectionParams, setSelectionParams] = useState<{ isHost: string; pin: string } | null>(null);
   const [showMediaError, setShowMediaError] = useState(false);
   const [mediaErrorText, setMediaErrorText] = useState("");
   const [showConnectionError, setShowConnectionError] = useState(false);
@@ -143,13 +140,15 @@ export function HomeScreen() {
     } else if (screenState === "create-rounds") {
       setScreenState("create-mode");
     } else if (screenState === "create-settings") {
-      setScreenState("create-rounds");
+      // Video mode skips the rounds step entirely, so back from settings
+      // should return to mode selection rather than the hidden rounds screen.
+      setScreenState(selectedMode === "Video" ? "create-mode" : "create-rounds");
     } else if (screenState === "create-duration") {
       setScreenState("create-settings");
     } else if (screenState === "join") {
       setScreenState("home");
     }
-  }, [screenState]);
+  }, [screenState, selectedMode]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -172,7 +171,13 @@ export function HomeScreen() {
 
   const handleModeSelect = (mode: "Photo" | "Video" | "Mix" | "Blind") => {
     setSelectedMode(mode);
-    // Trigger logo animation by temporarily resetting targetMode
+    // Video mode has a fixed round count of 10 because processing videos is
+    // already heavy; skip the rounds picker and go straight to settings.
+    if (mode === "Video") {
+      setRounds(10);
+      setScreenState("create-settings");
+      return;
+    }
     setScreenState("create-rounds");
   };
 
@@ -217,9 +222,11 @@ export function HomeScreen() {
     const gamePin = await createGame(username || "Player", settings);
 
     if (gamePin) {
-      setSelectionParams({ isHost: "true", pin: gamePin });
-      setShowSelectionModal(true);
       setIsCreatingGame(false);
+      router.push({
+        pathname: "/lobby",
+        params: { isHost: "true", pin: gamePin },
+      });
     } else {
       setIsCreatingGame(false);
       console.error("Failed to create game");
@@ -270,8 +277,11 @@ export function HomeScreen() {
           return;
         }
 
-        setSelectionParams({ isHost: "false", pin: pinToUse.trim() });
-        setShowSelectionModal(true);
+        setIsJoining(false);
+        router.push({
+          pathname: "/lobby",
+          params: { isHost: "false", pin: pinToUse.trim() },
+        });
       } else {
         setIsJoining(false);
         hasAutoJoinedRef.current = false;
@@ -498,15 +508,16 @@ export function HomeScreen() {
                         <Text className="text-white text-3xl font-bold text-center mb-8">
                           {t("gameSettings.playVideoWithSound")}
                         </Text>
+                        {/* Sound toggle – only flips the value, does NOT advance, so the user can pick. */}
                         <WiggleButton
                           title={playVideoWithSound ? t("gameSettings.withSound") : t("gameSettings.withoutSound")}
-                          onPress={() => {
-                            setPlayVideoWithSound(!playVideoWithSound);
-                            // Auto-continue to duration selection
-                            setTimeout(() => {
-                              setScreenState("create-duration");
-                            }, 200);
-                          }}
+                          onPress={() => setPlayVideoWithSound(!playVideoWithSound)}
+                          color={currentColor}
+                          visible={true}
+                        />
+                        <WiggleButton
+                          title={t("common.continue")}
+                          onPress={() => setScreenState("create-duration")}
                           color={currentColor}
                           visible={true}
                         />
@@ -622,41 +633,6 @@ export function HomeScreen() {
         onClose={() => setShowScanner(false)}
         onScan={handleQRScan}
       />
-
-      {/* Media Selection Modal */}
-      {selectionParams && (
-        <CustomModal
-          visible={showSelectionModal}
-          onClose={async () => {
-            // Leave the game if player was already in a room
-            if (selectionParams.pin && room && room.pin === selectionParams.pin) {
-              await leaveGame(selectionParams.pin);
-            }
-            setShowSelectionModal(false);
-            setSelectionParams(null);
-            setIsCreatingGame(false);
-            setIsJoining(false);
-          }}
-          title={t("selection.title")}
-          subtitle={t("selection.description", { count: 20 })}
-          showCloseButton={true}
-        >
-          <SelectionScreen
-            isHost={selectionParams.isHost}
-            pin={selectionParams.pin}
-            onClose={async () => {
-              // Leave the game if player was already in a room
-              if (selectionParams.pin && room && room.pin === selectionParams.pin) {
-                await leaveGame(selectionParams.pin);
-              }
-              setShowSelectionModal(false);
-              setSelectionParams(null);
-              setIsCreatingGame(false);
-              setIsJoining(false);
-            }}
-          />
-        </CustomModal>
-      )}
 
       {/* Media Error Dialog */}
       <CustomModal

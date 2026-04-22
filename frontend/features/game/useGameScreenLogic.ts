@@ -164,16 +164,11 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
 
   const handlePlayAgain = async () => {
     if (!pin) return;
-    // Emit play-again event - first person to click becomes new host
-    const success = await playAgain(pin);
-    if (success) {
-      // Navigation will happen via the play-again-initiated event
-      // Navigate to lobby immediately for the person who clicked
-      router.push({
-        pathname: "/lobby",
-        params: { pin }
-      });
-    }
+    // Emit play-again event - first person to click becomes new host.
+    // Navigation for everyone (including the clicker) is handled by the
+    // `onPlayAgainInitiated` broadcast listener above, so we don't push here
+    // to avoid stacking /lobby twice on the first clicker.
+    await playAgain(pin);
   };
 
   const handleExit = async () => {

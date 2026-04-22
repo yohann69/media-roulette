@@ -64,7 +64,11 @@
     "waitingForOthers": "等待其他玩家...",
     "allReady": "全部準備就緒！",
     "waitingForHostStart": "等待主持人開始...",
-    "preparingGame": "正在準備遊戲..."
+    "preparingGame": "正在準備遊戲...",
+    "compressingMedia": "正在壓縮你的媒體...",
+    "uploadingMedia": "正在上傳你的媒體...",
+    "disconnectedTitle": "連線已中斷",
+    "disconnectedMessage": "你已離線並被移出遊戲。需要重新加入才能繼續遊玩。"
   },
   "gameSettings": {
     "title": "遊戲設置",

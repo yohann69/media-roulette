@@ -112,9 +112,14 @@ export function GameStatsPage({
                 <Text className="text-orange-500 text-3xl mr-3">🔥</Text>
                 <Text className="text-gray-300 text-xl">{t("stats.longestStreak")}</Text>
               </View>
-              <Text className="text-white text-xl font-semibold">
-                {stats.longestStreak.playerName || t("common.nobody")}
-              </Text>
+              <View className="items-end">
+                <Text className="text-white text-xl font-semibold">
+                  {stats.longestStreak.playerName || t("common.nobody")}
+                </Text>
+                <Text className="text-orange-400 text-sm mt-1">
+                  {stats.longestStreak.streak} {t("stats.consecutive")}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -127,9 +132,14 @@ export function GameStatsPage({
                 <Text className="text-yellow-500 text-3xl mr-3">⚡</Text>
                 <Text className="text-gray-300 text-xl">{t("stats.fastestAnswer")}</Text>
               </View>
-              <Text className="text-white text-xl font-semibold">
-                {stats.fastestAnswer.playerName || t("common.nobody")}
-              </Text>
+              <View className="items-end">
+                <Text className="text-white text-xl font-semibold">
+                  {stats.fastestAnswer.playerName || t("common.nobody")}
+                </Text>
+                <Text className="text-yellow-400 text-sm mt-1">
+                  {formatTime(stats.fastestAnswer.time)}
+                </Text>
+              </View>
             </View>
           </View>
         )}

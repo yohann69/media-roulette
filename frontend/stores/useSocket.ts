@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { io, Socket } from "socket.io-client";
 import { processMediaPool } from "../utils/mediaConverter";
 
+export type PlayerState = "selecting" | "compressing" | "uploading" | "ready";
+
 interface Room {
     pin: string;
     players: Array<{
@@ -9,7 +11,7 @@ interface Room {
         name: string;
         isHost: boolean;
         score: number;
-        state?: "selecting" | "ready";
+        state?: PlayerState;
     }>;
     settings: {
         rounds: number;
@@ -21,6 +23,8 @@ interface Room {
     gameState: "lobby" | "syncing" | "playing" | "finished";
 }
 
+export type UploadStage = "idle" | "compressing" | "uploading";
+
 interface SocketState {
     socket: Socket | null;
     isConnected: boolean;
@@ -28,12 +32,17 @@ interface SocketState {
     room: Room | null;
     currentPlayerId: string | null;
     localMediaMap: Map<number, string>; // index -> local file URI
+    uploadStage: UploadStage;
+    uploadProgress: number; // 0..1
+    wasKicked: boolean; // true when socket reconnected while we had a room (server already removed us)
+    setUploadStatus: (stage: UploadStage, progress: number) => void;
+    clearKicked: () => void;
     connect: () => void;
     disconnect: () => void;
     createGame: (hostName: string, settings: any) => Promise<string | null>;
     joinGame: (pin: string, playerName: string) => Promise<boolean>;
     leaveGame: (pin: string) => Promise<void>;
-    setPlayerState: (pin: string, state: "selecting" | "uploading" | "ready") => Promise<void>;
+    setPlayerState: (pin: string, state: PlayerState) => Promise<void>;
     setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
     prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
     notifySyncComplete: (pin: string) => Promise<void>;
@@ -66,6 +75,7 @@ export const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";
 
 function createSocketHandlers(set: any, get: any) {
     let connectionErrorCount = 0;
+    let hasConnectedOnce = false;
     const MAX_CONNECTION_ERRORS = 3;
 
     return {
@@ -85,7 +95,33 @@ function createSocketHandlers(set: any, get: any) {
 
             newSocket.on("connect", () => {
                 connectionErrorCount = 0; // Reset on successful connection
-                set({ socket: newSocket, isConnected: true, connectionFailed: false, currentPlayerId: newSocket.id });
+                const isReconnect = hasConnectedOnce;
+                hasConnectedOnce = true;
+                const currentRoom = get().room;
+
+                // If we reconnect while we still think we have a room, the backend
+                // has already removed us (server kicks on disconnect). Surface this
+                // to the UI so the user is sent home instead of seeing a stale lobby.
+                if (isReconnect && currentRoom) {
+                    set({
+                        socket: newSocket,
+                        isConnected: true,
+                        connectionFailed: false,
+                        currentPlayerId: newSocket.id,
+                        room: null,
+                        localMediaMap: new Map(),
+                        uploadStage: "idle",
+                        uploadProgress: 0,
+                        wasKicked: true,
+                    });
+                } else {
+                    set({
+                        socket: newSocket,
+                        isConnected: true,
+                        connectionFailed: false,
+                        currentPlayerId: newSocket.id,
+                    });
+                }
             });
 
             newSocket.on("disconnect", () => {
@@ -114,8 +150,17 @@ function createSocketHandlers(set: any, get: any) {
             const { socket } = get();
             if (socket) {
                 socket.disconnect();
-                set({ socket: null, isConnected: false, connectionFailed: false, room: null, currentPlayerId: null, localMediaMap: new Map() });
+                hasConnectedOnce = false;
+                set({ socket: null, isConnected: false, connectionFailed: false, room: null, currentPlayerId: null, localMediaMap: new Map(), uploadStage: "idle", uploadProgress: 0, wasKicked: false });
             }
+        },
+
+        setUploadStatus: (stage: UploadStage, progress: number) => {
+            set({ uploadStage: stage, uploadProgress: Math.max(0, Math.min(1, progress)) });
+        },
+
+        clearKicked: () => {
+            set({ wasKicked: false });
         },
     };
 }
@@ -162,7 +207,7 @@ function createGameHandlers(get: any, set: any) {
             set({ room: null });
         },
 
-        setPlayerState: async (pin: string, state: "selecting" | "uploading" | "ready"): Promise<void> => {
+        setPlayerState: async (pin: string, state: PlayerState): Promise<void> => {
             const { socket } = get();
             if (!socket?.connected) return;
             socket.emit("set-player-state", { pin, state });
@@ -368,6 +413,9 @@ export const useSocket = create<SocketState>((set, get) => ({
     room: null,
     currentPlayerId: null,
     localMediaMap: new Map(),
+    uploadStage: "idle",
+    uploadProgress: 0,
+    wasKicked: false,
     ...createSocketHandlers(set, get),
     ...createGameHandlers(get, set),
     ...createEventHandlers(get, set),

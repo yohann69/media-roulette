@@ -1,6 +1,7 @@
-import { Modal, View, Image, TouchableOpacity } from "react-native";
-import { Video } from "expo-av";
-import { useRef, useEffect } from "react";
+import { Modal, View, Image, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Video, ResizeMode } from "expo-av";
+import * as MediaLibrary from "expo-media-library";
+import { useRef, useEffect, useState } from "react";
 
 interface MediaItem {
   id: string;
@@ -20,11 +21,40 @@ export function FullScreenMediaViewer({
   onClose,
 }: FullScreenMediaViewerProps) {
   const videoRef = useRef<Video>(null);
+  // Resolved playable URI for videos – on iOS the raw `ph://` asset URI
+  // from MediaLibrary cannot be played by expo-av; we need the file:// path
+  // returned by getAssetInfoAsync.
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      if (!visible || !media || media.mediaType !== "video") {
+        setVideoUri(null);
+        return;
+      }
+      setResolving(true);
+      try {
+        const info = await MediaLibrary.getAssetInfoAsync(media.id);
+        if (cancelled) return;
+        setVideoUri(info.localUri || media.uri);
+      } catch {
+        if (!cancelled) setVideoUri(media.uri);
+      } finally {
+        if (!cancelled) setResolving(false);
+      }
+    };
+    resolve();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, media]);
 
   useEffect(() => {
     const playVideo = async () => {
       try {
-        if (visible && media?.mediaType === "video" && videoRef.current) {
+        if (visible && media?.mediaType === "video" && videoUri && videoRef.current) {
           await videoRef.current.playAsync();
         }
       } catch {
@@ -50,7 +80,7 @@ export function FullScreenMediaViewer({
       };
       cleanup();
     };
-  }, [visible, media]);
+  }, [visible, media, videoUri]);
 
   if (!media) return null;
 
@@ -72,19 +102,20 @@ export function FullScreenMediaViewer({
             className="w-full h-full"
             resizeMode="contain"
           />
-        ) : (
+        ) : videoUri ? (
           <Video
             ref={videoRef}
-            source={{ uri: media.uri }}
-            className="w-full h-full"
-            resizeMode="contain"
+            source={{ uri: videoUri }}
+            style={{ width: "100%", height: "100%" }}
+            resizeMode={ResizeMode.CONTAIN}
             shouldPlay={true}
             isLooping
             isMuted={false}
           />
+        ) : (
+          <ActivityIndicator size="large" color="#ffffff" />
         )}
       </TouchableOpacity>
     </Modal>
   );
 }
-

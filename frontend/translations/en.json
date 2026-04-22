@@ -64,7 +64,11 @@
     "waitingForOthers": "Waiting for others...",
     "allReady": "All ready!",
     "waitingForHostStart": "Waiting for host to start...",
-    "preparingGame": "Preparing game..."
+    "preparingGame": "Preparing game...",
+    "compressingMedia": "Compressing your media...",
+    "uploadingMedia": "Uploading your media...",
+    "disconnectedTitle": "Disconnected",
+    "disconnectedMessage": "You lost connection and were removed from the game. You'll need to rejoin to play again."
   },
   "gameSettings": {
     "title": "Game Settings",

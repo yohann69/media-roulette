@@ -64,7 +64,11 @@
     "waitingForOthers": "En attente des autres joueurs...",
     "allReady": "Tous prêts !",
     "waitingForHostStart": "En attente du démarrage par l'hôte...",
-    "preparingGame": "Préparation de la partie..."
+    "preparingGame": "Préparation de la partie...",
+    "compressingMedia": "Compression de vos médias...",
+    "uploadingMedia": "Envoi de vos médias...",
+    "disconnectedTitle": "Déconnecté",
+    "disconnectedMessage": "Connexion perdue : vous avez été retiré de la partie. Vous devez la rejoindre pour continuer à jouer."
   },
   "gameSettings": {
     "title": "Paramètres du jeu",
