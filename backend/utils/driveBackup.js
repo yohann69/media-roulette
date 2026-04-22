@@ -2,6 +2,10 @@
  * Google Drive backup worker.
  *
  * Uploads copies of player media to a shared Drive folder in the background.
+ * Layout in Drive:
+ *   <root folder>/<sanitized-username>/<username>-<date>-<suffix>.<ext>
+ *   Per-user subfolders are created lazily (find-or-create, cached in-memory).
+ *
  * Designed to be completely transparent to the game flow:
  *   - enqueueBackup() returns immediately (fire-and-forget)
  *   - Uploads are streamed from disk (no RAM buffering for large videos)
@@ -93,8 +97,60 @@ try {
 const queue = [];
 let activeWorkers = 0;
 
+// Per-user folder id cache. `folderCreationInFlight` dedupes concurrent
+// lookups so a burst of uploads for the same user never creates duplicates.
+const userFolderIdCache = new Map();
+const folderCreationInFlight = new Map();
+
 function isEnabled() {
   return enabled;
+}
+
+const FOLDER_MIME = "application/vnd.google-apps.folder";
+
+async function getOrCreateUserFolder(sanitizedUsername) {
+  const cached = userFolderIdCache.get(sanitizedUsername);
+  if (cached) return cached;
+
+  const inFlight = folderCreationInFlight.get(sanitizedUsername);
+  if (inFlight) return inFlight;
+
+  const promise = (async () => {
+    try {
+      const escapedName = sanitizedUsername.replace(/'/g, "\\'");
+      const q = `name='${escapedName}' and mimeType='${FOLDER_MIME}' and '${folderId}' in parents and trashed=false`;
+      const list = await driveClient.files.list({
+        q,
+        fields: "files(id, name)",
+        pageSize: 1,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      });
+      if (list.data.files && list.data.files.length > 0) {
+        const id = list.data.files[0].id;
+        userFolderIdCache.set(sanitizedUsername, id);
+        return id;
+      }
+      const created = await driveClient.files.create({
+        requestBody: {
+          name: sanitizedUsername,
+          mimeType: FOLDER_MIME,
+          parents: [folderId],
+        },
+        fields: "id",
+        supportsAllDrives: true,
+      });
+      const id = created.data.id;
+      userFolderIdCache.set(sanitizedUsername, id);
+      console.log(`[driveBackup] Created user folder "${sanitizedUsername}" (id=${id})`);
+      return id;
+    } finally {
+      folderCreationInFlight.delete(sanitizedUsername);
+    }
+  })();
+
+  folderCreationInFlight.set(sanitizedUsername, promise);
+  return promise;
 }
 
 function sanitizeUsername(name) {
@@ -125,11 +181,13 @@ function sleep(ms) {
 }
 
 async function uploadOnce(job) {
+  const sanitized = sanitizeUsername(job.username);
+  const parentId = await getOrCreateUserFolder(sanitized);
   const driveName = buildDriveName(job.username, job.localPath);
   const res = await driveClient.files.create({
     requestBody: {
       name: driveName,
-      parents: [folderId],
+      parents: [parentId],
     },
     media: {
       mimeType: mimeFor(job.localPath),
