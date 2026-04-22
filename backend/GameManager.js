@@ -214,27 +214,41 @@ class GameManager {
     const room = this.rooms.get(pin);
     if (!room) return false;
 
-    // Aggregate all media
-    let allMedia = [];
+    // A plain Fisher–Yates on the whole pool still clusters media by owner
+    // too often (same player showing up 3-4 rounds in a row). Instead we
+    // shuffle each owner's list, then draw from owners round-robin with a
+    // randomized owner order each cycle. That guarantees no owner appears
+    // twice within the same cycle while still feeling random across cycles.
+    const perOwnerQueues = [];
     room.uploadedMedia.forEach((mediaList, ownerId) => {
-        const mediaWithOwner = mediaList.map(m => ({ ...m, ownerId }));
-        allMedia = [...allMedia, ...mediaWithOwner];
+        const withOwner = mediaList.map(m => ({ ...m, ownerId }));
+        for (let i = withOwner.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [withOwner[i], withOwner[j]] = [withOwner[j], withOwner[i]];
+        }
+        if (withOwner.length > 0) perOwnerQueues.push(withOwner);
     });
 
-    // Shuffle
-    for (let i = allMedia.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [allMedia[i], allMedia[j]] = [allMedia[j], allMedia[i]];
+    const interleaved = [];
+    while (perOwnerQueues.some(q => q.length > 0)) {
+        // Randomize owner order every cycle so the pattern never settles
+        // into a predictable A-B-C-A-B-C rotation.
+        const cycleOrder = perOwnerQueues
+            .filter(q => q.length > 0)
+            .map(q => ({ q, r: Math.random() }))
+            .sort((a, b) => a.r - b.r)
+            .map(x => x.q);
+        for (const queue of cycleOrder) {
+            const item = queue.shift();
+            if (item) interleaved.push(item);
+        }
     }
 
     // Select subset based on rounds
     // If not enough media, take all
-    const count = Math.min(room.settings.rounds, allMedia.length);
-    room.gameMedia = allMedia.slice(0, count);
-    
-    // Assign indices for the game
-    room.gameMedia = room.gameMedia.map((m, index) => ({ ...m, index }));
-    
+    const count = Math.min(room.settings.rounds, interleaved.length);
+    room.gameMedia = interleaved.slice(0, count).map((m, index) => ({ ...m, index }));
+
     return room.gameMedia;
   }
 
