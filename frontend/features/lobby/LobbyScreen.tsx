@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, Alert } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GamePIN } from "../../components/molecules/GamePIN";
@@ -24,6 +24,7 @@ interface Player {
   isHost?: boolean;
   state?: "selecting" | "compressing" | "uploading" | "ready";
   connected?: boolean;
+  seriesWins?: number;
 }
 
 export function LobbyScreen() {
@@ -31,7 +32,7 @@ export function LobbyScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
-  const { room, currentPlayerId, prepareGame, leaveGame, uploadStage, uploadProgress } = useSocket();
+  const { room, currentPlayerId, prepareGame, leaveGame, kickPlayer, uploadStage, uploadProgress } = useSocket();
 
   // Derive host status from the room when available (e.g. after play-again, the
   // new host never re-navigates with an updated `isHost` param).
@@ -77,6 +78,7 @@ export function LobbyScreen() {
     isHost: p.isHost,
     state: p.state || "selecting",
     connected: p.connected,
+    seriesWins: p.seriesWins,
   })) || [];
 
   const settings = room?.settings || { rounds: 10, timer: 5, mode: "Photo" };
@@ -112,6 +114,13 @@ export function LobbyScreen() {
     initiateGameStart({ rounds: totalMedia });
   };
 
+  const handleKick = (player: Player) => {
+    Alert.alert(t("lobby.removePlayerTitle", { name: player.name }), t("lobby.removePlayerMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("lobby.remove"), style: "destructive", onPress: () => pin && kickPlayer(pin, player.id) },
+    ]);
+  };
+
   const handleExitLobby = async () => {
     if (pin && room?.pin === pin) await leaveGame(pin);
     router.replace("/");
@@ -145,10 +154,15 @@ export function LobbyScreen() {
             <Text className="text-white text-xl font-semibold mb-4">
               {t("lobby.players")} ({players.length})
             </Text>
-            <PlayerList players={players} currentUserId={currentPlayerId || undefined} />
+            <PlayerList
+              players={players}
+              currentUserId={currentPlayerId || undefined}
+              onKick={isHost && !isSyncing && !isStarting ? handleKick : undefined}
+            />
           </View>
 
-          {isHost && <GameSettingsDisplay settings={settings} />}
+          {/* Everyone sees what they're signing up for. */}
+          <GameSettingsDisplay settings={settings} />
 
           {isHost && allPlayersReady && <WarningBanner totalMedia={totalMedia} requiredRounds={settings.rounds} />}
 

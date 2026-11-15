@@ -9,7 +9,7 @@ import { useTranslation } from "../../hooks/useTranslation";
 export function DisconnectedModal() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { wasKicked, clearKicked } = useSocket();
+  const { wasKicked, removedByHost, clearKicked } = useSocket();
 
   // Navigate to home as soon as the disconnect is detected so the stale
   // lobby/game screen is replaced. The modal then sits on top of home.
@@ -25,12 +25,12 @@ export function DisconnectedModal() {
     <CustomModal
       visible={wasKicked}
       onClose={handleClose}
-      title={t("lobby.disconnectedTitle")}
+      title={removedByHost ? t("lobby.removedTitle") : t("lobby.disconnectedTitle")}
       showCloseButton={false}
     >
       <View>
         <Text className="text-white text-base mb-4">
-          {t("lobby.disconnectedMessage")}
+          {removedByHost ? t("lobby.removedMessage") : t("lobby.disconnectedMessage")}
         </Text>
         <Button title={t("common.close")} onPress={handleClose} variant="primary" />
       </View>

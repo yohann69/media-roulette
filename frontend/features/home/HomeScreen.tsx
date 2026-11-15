@@ -37,7 +37,10 @@ const MODE_COLORS = {
   Video: "#a855f7", // Purple (was Mix color)
   Mix: "#3b82f6", // Blue (was Video color)
   Blind: "#ef4444", // Red
+  TimeMachine: "#14b8a6", // Teal
 };
+
+type CreateMode = keyof typeof MODE_COLORS;
 
 const ROUND_OPTIONS = [10, 25, 50, 100];
 
@@ -51,7 +54,7 @@ export function HomeScreen() {
   const { connect, createGame, joinGame, leaveGame, isConnected, connectionFailed } = useSocket();
 
   const [screenState, setScreenState] = useState<ScreenState>("home");
-  const [selectedMode, setSelectedMode] = useState<"Photo" | "Video" | "Mix" | "Blind">("Photo");
+  const [selectedMode, setSelectedMode] = useState<CreateMode>("Photo");
   const [rounds, setRounds] = useState(10);
   const [timer, setTimer] = useState(5);
   const [playVideoWithSound, setPlayVideoWithSound] = useState(true);
@@ -194,7 +197,7 @@ export function HomeScreen() {
     }
   };
 
-  const handleModeSelect = (mode: "Photo" | "Video" | "Mix" | "Blind") => {
+  const handleModeSelect = (mode: CreateMode) => {
     setSelectedMode(mode);
     // Video mode has a fixed round count of 10 because processing videos is
     // already heavy; skip the rounds picker and go straight to settings.
@@ -233,28 +236,31 @@ export function HomeScreen() {
   };
 
   const handleSettingsConfirm = async (selectedTimer: number) => {
+    // Blind and Time Machine are photo games with an extra rule.
     const settings: any = {
       rounds,
       timer: selectedTimer,
-      mode: selectedMode === "Blind" ? "Photo" : selectedMode, // Blind mode uses Photo mode but with blindMode flag
+      mode: selectedMode === "Blind" || selectedMode === "TimeMachine" ? "Photo" : selectedMode,
       playVideoWithSound: (selectedMode === "Video" || selectedMode === "Mix") ? playVideoWithSound : undefined,
-      blindMode: selectedMode === "Blind", // Set blindMode flag if Blind mode is selected
+      blindMode: selectedMode === "Blind",
+      timeMachine: selectedMode === "TimeMachine",
     };
+    const mediaMode = selectedMode === "TimeMachine" ? "Photo" : selectedMode;
 
     // Check media availability before creating game
     await explainPermissionIfNeeded();
-    const mediaCheck = await checkMediaAvailability(selectedMode);
+    const mediaCheck = await checkMediaAvailability(mediaMode);
 
     if (!mediaCheck.hasEnough) {
-      const required = selectedMode === "Photo" || selectedMode === "Blind"
+      const required = mediaMode === "Photo" || mediaMode === "Blind"
         ? `• ${mediaCheck.requiredPhotos} photos`
-        : selectedMode === "Video"
+        : mediaMode === "Video"
           ? `• ${mediaCheck.requiredVideos} videos`
           : `• ${mediaCheck.requiredPhotos} photos\n• ${mediaCheck.requiredVideos} videos`;
 
-      const available = selectedMode === "Photo" || selectedMode === "Blind"
+      const available = mediaMode === "Photo" || mediaMode === "Blind"
         ? `• ${mediaCheck.photoCount} photos`
-        : selectedMode === "Video"
+        : mediaMode === "Video"
           ? `• ${mediaCheck.videoCount} videos`
           : `• ${mediaCheck.photoCount} photos\n• ${mediaCheck.videoCount} videos`;
 
@@ -541,6 +547,12 @@ export function HomeScreen() {
                       title={t("gameSettings.blind")}
                       onPress={() => handleModeSelect("Blind")}
                       color={MODE_COLORS.Blind}
+                      visible={true}
+                    />
+                    <WiggleButton
+                      title={t("gameSettings.timeMachine")}
+                      onPress={() => handleModeSelect("TimeMachine")}
+                      color={MODE_COLORS.TimeMachine}
                       visible={true}
                     />
                   </View>

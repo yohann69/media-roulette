@@ -1,9 +1,10 @@
 import { View, Text, Pressable } from "react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
 import { CountdownTimer } from "../molecules/CountdownTimer";
 import { MediaDisplay } from "../molecules/MediaDisplay";
 import { PlayerSelection } from "../molecules/PlayerSelection";
+import { YearPicker } from "../molecules/YearPicker";
 import { useTranslation } from "../../hooks/useTranslation";
 
 interface Player {
@@ -36,6 +37,40 @@ interface RevealViewProps {
   /** Long-press on the media (owners use it to hide their own media). */
   onMediaLongPress?: () => void;
   playVideoWithSound?: boolean;
+  /** Slow Reveal round: the photo starts blurred and sharpens as time runs out. */
+  slowReveal?: boolean;
+  /** Time Machine: years to pick from, the year picked, and the handler. */
+  yearRange?: { min: number; max: number } | null;
+  selectedYear?: number | null;
+  onYearSelect?: (year: number) => void;
+}
+
+/** Blur at the start of a Slow Reveal round; it reaches 0 at SHARP_AT of the round. */
+const SLOW_REVEAL_MAX_BLUR = 40;
+const SLOW_REVEAL_SHARP_AT = 0.8;
+const SLOW_REVEAL_STEP_MS = 150;
+
+/** Blur radius for a Slow Reveal round, decreasing while the countdown runs. */
+function useSlowRevealBlur(enabled: boolean, running: boolean, durationSeconds: number, roundKey: string) {
+  const [blur, setBlur] = useState(enabled ? SLOW_REVEAL_MAX_BLUR : 0);
+
+  useEffect(() => {
+    setBlur(enabled ? SLOW_REVEAL_MAX_BLUR : 0);
+  }, [enabled, roundKey]);
+
+  useEffect(() => {
+    if (!enabled || !running) return;
+    const startedAt = Date.now();
+    const sharpAfterMs = Math.max(1, durationSeconds * 1000 * SLOW_REVEAL_SHARP_AT);
+    const timer = setInterval(() => {
+      const progress = Math.min(1, (Date.now() - startedAt) / sharpAfterMs);
+      setBlur(Math.round(SLOW_REVEAL_MAX_BLUR * (1 - progress)));
+      if (progress >= 1) clearInterval(timer);
+    }, SLOW_REVEAL_STEP_MS);
+    return () => clearInterval(timer);
+  }, [enabled, running, durationSeconds, roundKey]);
+
+  return blur;
 }
 
 export function RevealView({
@@ -52,8 +87,14 @@ export function RevealView({
   onMediaShown,
   onMediaLongPress,
   playVideoWithSound = true,
+  slowReveal = false,
+  yearRange,
+  selectedYear = null,
+  onYearSelect,
 }: RevealViewProps) {
   const { t } = useTranslation();
+  const roundKey = `${currentRound}-${currentMedia?.id}`;
+  const blur = useSlowRevealBlur(slowReveal, timerActive, timerDuration, roundKey);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -66,8 +107,8 @@ export function RevealView({
 
   return (
     <View className="flex-1 bg-black">
-      {/* Blurred background */}
-      {currentMedia && <MediaDisplay media={currentMedia} showAsBackground />}
+      {/* Blurred background (hidden in Slow Reveal rounds: it would give the photo away) */}
+      {currentMedia && !slowReveal && <MediaDisplay media={currentMedia} showAsBackground />}
       
       <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
         <View className="flex-1 justify-between p-6 pt-16">
@@ -79,11 +120,16 @@ export function RevealView({
             <Text className="text-gray-300 text-sm mb-4">
               {currentMedia?.mediaType === "video" ? t("game.whoTookVideo") : t("game.whoTookPhoto")}
             </Text>
+            {slowReveal && (
+              <Text className="text-amber-300 text-sm font-semibold mb-3" accessibilityLiveRegion="polite">
+                {t("game.slowReveal")}
+              </Text>
+            )}
             <CountdownTimer
               duration={timerDuration}
               onComplete={onTimeExpired}
               isActive={timerActive}
-              roundKey={`${currentRound}-${currentMedia?.id}`}
+              roundKey={roundKey}
             />
           </View>
 
@@ -91,13 +137,27 @@ export function RevealView({
           <View className="items-center justify-center flex-1">
             {currentMedia && (
               <Pressable onLongPress={onMediaLongPress} delayLongPress={700} accessible={false}>
-                <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} onReady={onMediaShown} />
+                <MediaDisplay
+                  media={currentMedia}
+                  playVideoWithSound={playVideoWithSound}
+                  onReady={onMediaShown}
+                  blurRadius={blur}
+                />
               </Pressable>
             )}
           </View>
 
           {/* Bottom: Player selection - always at bottom */}
           <View className="pb-4">
+            {yearRange && onYearSelect && (
+              <YearPicker
+                min={yearRange.min}
+                max={yearRange.max}
+                selected={selectedYear}
+                disabled={disabled}
+                onSelect={onYearSelect}
+              />
+            )}
             <PlayerSelection
               players={players}
               selectedPlayer={selectedPlayer}

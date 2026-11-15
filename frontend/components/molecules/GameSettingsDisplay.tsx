@@ -7,6 +7,7 @@ interface GameSettingsDisplayProps {
     timer: number;
     mode: string;
     blindMode?: boolean;
+    timeMachine?: boolean;
   };
 }
 
@@ -15,6 +16,7 @@ export function GameSettingsDisplay({ settings }: GameSettingsDisplayProps) {
 
   const getModeLabel = (mode: string) => {
     if (settings.blindMode) return t("gameSettings.blind");
+    if (settings.timeMachine) return t("gameSettings.timeMachine");
     if (mode === "Photo") return t("gameSettings.photo");
     if (mode === "Video") return t("gameSettings.video");
     return t("gameSettings.mix");

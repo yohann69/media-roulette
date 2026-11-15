@@ -61,6 +61,14 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
       }
     }
     
+    // Invite link (https://<server>/j/123456), as shown in the lobby.
+    const inviteMatch = data.match(/\/j\/(\d{6})(?:[/?#]|$)/);
+    if (inviteMatch) {
+      onScan(inviteMatch[1]);
+      onClose();
+      return;
+    }
+
     const pinMatch = data.match(/\d{6}/);
     if (pinMatch && pinMatch[0].length === 6) {
       onScan(pinMatch[0]);

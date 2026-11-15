@@ -173,7 +173,19 @@ export function useSelectionScreenLogic(
         if (prepared.size === 0) throw new Error("No media could be prepared");
         useSocket.getState().setPreparedMedia(prepared);
 
-        const uploadedMedia = Array.from(prepared, ([id, { mediaType }]) => ({ id, mediaType }));
+        // Time Machine: the year each item was taken, the only metadata ever shared.
+        // The server keeps it to itself until the round's reveal.
+        const timeMachine = !!room?.settings?.timeMachine;
+        const yearById = new Map<string, number>();
+        mediaToUpload.forEach((item, index) => {
+          const year = item.creationTime ? new Date(item.creationTime).getFullYear() : NaN;
+          if (timeMachine && Number.isInteger(year) && year >= 1900) yearById.set(`m${index}`, year);
+        });
+        const uploadedMedia = Array.from(prepared, ([id, { mediaType }]) => ({
+          id,
+          mediaType,
+          ...(yearById.has(id) ? { year: yearById.get(id) } : {}),
+        }));
         const success = await setMediaPool(pin, uploadedMedia, playAgain);
         if (!success) {
           console.error("Failed to set media pool");

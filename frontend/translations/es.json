@@ -76,7 +76,17 @@
     "exitWarningMessage": "¿Seguro que quieres salir de la partida?",
     "exitWarningHostMessage": "¿Seguro que quieres salir? Un jugador aleatorio se convertirá en el nuevo anfitrión.",
     "confirmLeave": "Sí, salir",
-    "stayInGame": "Quedarse"
+    "stayInGame": "Quedarse",
+    "shareInvite": "Compartir invitación",
+    "inviteMessage": "¡Únete a mi partida de Media Roulette! PIN: {pin}\n{link}",
+    "you": "Tú",
+    "seriesWins": "{count} partidas ganadas",
+    "removePlayer": "Quitar a {name}",
+    "removePlayerTitle": "¿Quitar a {name}?",
+    "removePlayerMessage": "Saldrá de la sala. Podrá volver a unirse con el PIN.",
+    "remove": "Quitar",
+    "removedTitle": "Te han quitado de la partida",
+    "removedMessage": "El anfitrión te ha quitado de la sala."
   },
   "gameSettings": {
     "title": "Configuración del juego",
@@ -96,7 +106,8 @@
     "withSound": "Con sonido",
     "withoutSound": "Sin sonido",
     "blindMode": "Modo ciego",
-    "blindModeDescription": "Omitir selección de medios - ¡los medios aleatorios serán una sorpresa para todos! 🎲"
+    "blindModeDescription": "Omitir selección de medios - ¡los medios aleatorios serán una sorpresa para todos! 🎲",
+    "timeMachine": "⏳ Máquina del tiempo"
   },
   "game": {
     "round": "Ronda {current} de {total}",
@@ -107,7 +118,10 @@
     "playAgain": "Jugar de nuevo",
     "owner": "Propietario",
     "whoTookVideo": "¿Quién grabó este video?",
-    "skipped": "Su dueño lo ocultó. ¡Siguiente!"
+    "skipped": "Su dueño lo ocultó. ¡Siguiente!",
+    "shareRecap": "Compartir",
+    "whenWasItTaken": "¿Cuándo se tomó?",
+    "slowReveal": "🔍 Revelación lenta: se va aclarando…"
   },
   "result": {
     "greatGuess": "🎉 ¡Buen intento!",
@@ -135,16 +149,23 @@
     "total": "Total",
     "responseTime": "Tiempo de respuesta",
     "waitingForOwner": "Esperando a {ownerName} para continuar",
-    "correctAnswer": "La respuesta correcta era:"
+    "correctAnswer": "La respuesta correcta era:",
+    "yearGuess": "📅 {year} (+{points})",
+    "noYearGuess": "📅 Sin año elegido"
   },
   "stats": {
     "longestStreak": "Racha más larga",
     "fastestAnswer": "Respuesta más rápida",
     "averageTime": "Tiempo de respuesta promedio",
-    "worstPlayer": "Necesita mejorar",
+    "worstPlayer": "Más suerte la próxima vez",
     "hardestRound": "Ronda más difícil",
     "consecutive": "consecutivos",
-    "correctAnswers": "respuestas correctas"
+    "correctAnswers": "respuestas correctas",
+    "masterOfDisguise": "Maestro del disfraz",
+    "fooled": "engañó {count}×",
+    "roundNumber": "Ronda {round}",
+    "seriesTitle": "Serie",
+    "seriesSubtitle": "Tras {count} partidas en esta sala"
   },
   "warning": {
     "waitForPlayers": "Esperar jugadores",
@@ -207,5 +228,9 @@
   },
   "terms": {
     "title": "Términos y condiciones"
+  },
+  "reactions": {
+    "label": "Reacciones",
+    "send": "Reaccionar con {emoji}"
   }
 }

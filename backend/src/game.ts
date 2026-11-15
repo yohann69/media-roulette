@@ -6,6 +6,7 @@ import type {
   Room,
   RoundResult,
   RoundResultPayload,
+  RoundTwist,
 } from "./types.js";
 
 /** Pure game rules. No I/O, no timers: easy to unit-test. */
@@ -24,6 +25,23 @@ export function calculateScore(timeTakenMs: number, roundDurationMs: number): nu
 /** +10% per consecutive correct answer after the first, capped at +50%. */
 export function streakMultiplier(streak: number): number {
   return 1 + Math.min(0.5, Math.max(0, streak - 1) * 0.1);
+}
+
+/**
+ * Time Machine bonus for guessing the year the media was taken: full points for
+ * the exact year, fewer the further off. Independent of answer speed.
+ */
+export function yearBonus(guess: number | undefined, actual: number | undefined): number {
+  if (guess === undefined || actual === undefined) return 0;
+  const off = Math.abs(guess - actual);
+  return [300, 200, 100, 50][off] ?? 0;
+}
+
+/** Every few rounds a photo is revealed slowly (it starts blurred and sharpens). */
+export const SLOW_REVEAL_EVERY = 4;
+
+export function twistFor(round: number, mediaType: "photo" | "video"): RoundTwist | null {
+  return mediaType === "photo" && round > 0 && round % SLOW_REVEAL_EVERY === 0 ? "slowReveal" : null;
 }
 
 /** Upper bounds on what a client may subtract from its answer time. */
@@ -96,62 +114,57 @@ export function leaderboard(room: Room): LeaderboardEntry[] {
 
 /** Scores the current round and records it in the history. */
 export function scoreRound(room: Room): RoundResultPayload {
-  const actualOwnerId = room.currentMedia!.ownerId;
+  const media = room.currentMedia!;
+  const actualOwnerId = media.ownerId;
+  const actualYear = room.settings.timeMachine ? (media.year ?? null) : null;
+
   const results: RoundResult[] = room.players.map((player) => {
     const guess = room.guesses.get(player.id);
-    let streak = room.streaks.get(player.id) ?? 0;
+    const guessedPlayerId = guess?.guessedPlayerId ?? null;
+    const yearGuess = actualYear !== null ? (guess?.year ?? null) : null;
+    const bonus = actualYear !== null ? yearBonus(guess?.year, actualYear) : 0;
 
-    if (!guess) {
-      room.streaks.set(player.id, 0);
-      room.roundScores.set(player.id, { roundScore: 0, timeTaken: null });
-      return {
-        playerId: player.id,
-        playerName: player.name,
-        guessedPlayerId: null,
-        isCorrect: false,
-        roundScore: 0,
-        timeTaken: null,
-        totalScore: player.score,
-        tooSlow: true,
-        streak: 0,
-      };
-    }
-
-    const isCorrect = guess.guessedPlayerId === actualOwnerId;
-    streak = isCorrect ? streak + 1 : 0;
-    const roundScore = isCorrect
-      ? Math.round(calculateScore(guess.timeTaken, room.settings.timer * 1000) * streakMultiplier(streak))
+    const isCorrect = guessedPlayerId !== null && guessedPlayerId === actualOwnerId;
+    const streak = isCorrect ? (room.streaks.get(player.id) ?? 0) + 1 : 0;
+    const speedScore = isCorrect
+      ? Math.round(calculateScore(guess!.timeTaken, room.settings.timer * 1000) * streakMultiplier(streak))
       : 0;
+    const roundScore = speedScore + bonus;
+    const timeTaken = guessedPlayerId !== null ? guess!.timeTaken : null;
+
     room.streaks.set(player.id, streak);
     player.score += roundScore;
-    room.roundScores.set(player.id, { roundScore, timeTaken: guess.timeTaken });
+    room.roundScores.set(player.id, { roundScore, timeTaken });
 
     return {
       playerId: player.id,
       playerName: player.name,
-      guessedPlayerId: guess.guessedPlayerId,
+      guessedPlayerId,
       isCorrect,
       roundScore,
-      timeTaken: guess.timeTaken,
+      timeTaken,
       totalScore: player.score,
-      tooSlow: false,
+      tooSlow: guessedPlayerId === null,
       streak,
+      yearGuess,
+      yearBonus: bonus,
     };
   });
 
   room.roundHistory.push({
     round: room.currentRound,
     actualOwnerId,
-    results: results.map(({ playerId, playerName, isCorrect, timeTaken, streak }) => ({
+    results: results.map(({ playerId, playerName, isCorrect, timeTaken, streak, guessedPlayerId }) => ({
       playerId,
       playerName,
       isCorrect,
       timeTaken,
       streak,
+      guessed: guessedPlayerId !== null,
     })),
   });
 
-  return { actualOwnerId, results, leaderboard: leaderboard(room) };
+  return { actualOwnerId, actualYear, results, leaderboard: leaderboard(room) };
 }
 
 export function calculateGameStats(room: Room): GameStats {
@@ -161,6 +174,7 @@ export function calculateGameStats(room: Room): GameStats {
     averageTime: null,
     worstPlayer: { playerName: null, score: Infinity },
     hardestRound: { round: null, correctCount: Infinity },
+    masterOfDisguise: { playerName: null, fooled: 0 },
   };
   const nameOf = (id: string) => room.players.find((p) => p.id === id)?.name ?? null;
 
@@ -201,6 +215,17 @@ export function calculateGameStats(room: Room): GameStats {
       correctAnswers,
       totalRounds: room.roundHistory.length,
     };
+  }
+
+  // Whose media fooled the most people (wrong guesses by others).
+  const fooled = new Map<string, number>();
+  for (const round of room.roundHistory) {
+    const wrong = round.results.filter((r) => r.playerId !== round.actualOwnerId && r.guessed && !r.isCorrect).length;
+    fooled.set(round.actualOwnerId, (fooled.get(round.actualOwnerId) ?? 0) + wrong);
+  }
+  for (const [ownerId, count] of fooled) {
+    const name = nameOf(ownerId);
+    if (name && count > stats.masterOfDisguise.fooled) stats.masterOfDisguise = { playerName: name, fooled: count };
   }
 
   for (const round of room.roundHistory) {

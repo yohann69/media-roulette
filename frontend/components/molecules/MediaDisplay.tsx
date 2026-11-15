@@ -18,6 +18,8 @@ interface MediaDisplayProps {
   playVideoWithSound?: boolean;
   /** Called once the photo or the first video frame is visible. */
   onReady?: () => void;
+  /** Blurs a photo (Slow Reveal rounds). */
+  blurRadius?: number;
 }
 
 function getSourceUri(media: MediaItem): string | null {
@@ -59,7 +61,13 @@ function GameVideo({
   );
 }
 
-export function MediaDisplay({ media, showAsBackground = false, playVideoWithSound = true, onReady }: MediaDisplayProps) {
+export function MediaDisplay({
+  media,
+  showAsBackground = false,
+  playVideoWithSound = true,
+  onReady,
+  blurRadius = 0,
+}: MediaDisplayProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { width: screenWidth } = useWindowDimensions();
   const [aspectRatio, setAspectRatio] = useState<number>(
@@ -109,6 +117,7 @@ export function MediaDisplay({ media, showAsBackground = false, playVideoWithSou
             style={{ width: displayWidth, height: displayHeight }}
             contentFit="cover"
             transition={0}
+            blurRadius={blurRadius}
             onLoad={(event) => {
               const { width, height } = event.source;
               if (width && height) setAspectRatio(width / height);

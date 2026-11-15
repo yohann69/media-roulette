@@ -21,6 +21,9 @@ export interface RoomPlayer {
   publicKey: string | null;
   /** Whether the player can decrypt this game's media yet. */
   hasRoomKey: boolean;
+  /** Games won and points scored across rematches in this room. */
+  seriesWins?: number;
+  seriesScore?: number;
 }
 
 export interface Room {
@@ -32,9 +35,16 @@ export interface Room {
     mode: string;
     playVideoWithSound?: boolean;
     blindMode?: boolean;
+    timeMachine?: boolean;
   };
   gameState: "lobby" | "syncing" | "playing" | "finished";
+  /** Games finished in this room (rematches keep the room). */
+  gamesPlayed?: number;
 }
+
+/** The reactions players can send (must match the server's list). */
+export const REACTIONS = ["😂", "😮", "😍", "🔥", "👀"] as const;
+export type Reaction = (typeof REACTIONS)[number];
 
 /** What the server needs to let us back into a game after a disconnect. */
 interface Session {
@@ -76,6 +86,8 @@ interface SocketState {
   uploadProgress: number; // 0..1
   /** True when we lost our seat in a game (resume failed or the room is gone). */
   wasKicked: boolean;
+  /** True when the host removed us from the lobby. */
+  removedByHost: boolean;
 
   connect: () => void;
   disconnect: () => void;
@@ -94,6 +106,11 @@ interface SocketState {
   prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
   notifySyncComplete: (pin: string) => Promise<void>;
   submitGuess: (pin: string, targetUser: string, displayDelayMs?: number) => Promise<boolean>;
+  /** Time Machine: our guess of the year the media was taken. */
+  submitYear: (pin: string, year: number, displayDelayMs?: number) => void;
+  /** Host only: removes a player from the lobby. */
+  kickPlayer: (pin: string, playerId: string) => void;
+  sendReaction: (pin: string, emoji: Reaction) => void;
   continueGame: (pin: string) => Promise<boolean>;
   showMediaAgain: (pin: string) => void;
   /** Hides our own media during its round (the round is dropped). */
@@ -185,6 +202,7 @@ export const useSocket = create<SocketState>((set, get) => {
     isConnected: false,
     connectionFailed: false,
     wasKicked: false,
+    removedByHost: false,
     ...EMPTY_GAME_STATE,
 
     connect: () => {
@@ -231,6 +249,7 @@ export const useSocket = create<SocketState>((set, get) => {
       socket.on("session-resumed", (data: JoinPayload) => enterRoom(data));
       socket.on("resume-failed", loseRoom);
       socket.on("game-abandoned", loseRoom);
+      socket.on("kicked", () => resetGame({ wasKicked: true, removedByHost: true }));
       // Remember when the round arrived: time spent before it's on screen (e.g. while
       // switching to the game screen) is reported to the server.
       socket.on("new-round", (data: any) => set({ lastNewRound: { ...data, receivedAt: Date.now() } }));
@@ -301,7 +320,7 @@ export const useSocket = create<SocketState>((set, get) => {
 
     setPreparedMedia: (media) => set({ preparedMedia: media, myUploads: new Map() }),
 
-    clearKicked: () => set({ wasKicked: false }),
+    clearKicked: () => set({ wasKicked: false, removedByHost: false }),
 
     createGame: async (hostName, settings) => {
       const { socket } = get();
@@ -366,6 +385,18 @@ export const useSocket = create<SocketState>((set, get) => {
         "guess-received"
       );
       return res.ok && res.data.success;
+    },
+
+    submitYear: (pin, year, displayDelayMs) => {
+      get().socket?.emit("submit-guess", { pin, year, displayDelayMs });
+    },
+
+    kickPlayer: (pin, playerId) => {
+      get().socket?.emit("kick-player", { pin, playerId });
+    },
+
+    sendReaction: (pin, emoji) => {
+      get().socket?.emit("send-reaction", { pin, emoji });
     },
 
     continueGame: async (pin) => {

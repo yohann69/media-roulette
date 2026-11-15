@@ -2,6 +2,7 @@ import { View, Text, ScrollView } from "react-native";
 import { useTranslation } from "../../hooks/useTranslation";
 import { Button } from "../../components/atoms/Button";
 import { MediaDisplay } from "../../components/molecules/MediaDisplay";
+import { ReactionBar } from "../../components/molecules/Reactions";
 
 interface PlayerScore {
   playerId: string;
@@ -21,6 +22,9 @@ interface RoundResult {
   totalScore: number;
   tooSlow?: boolean;
   streak?: number;
+  /** Time Machine: the year guessed and the points it earned. */
+  yearGuess?: number | null;
+  yearBonus?: number;
 }
 
 interface MediaItem {
@@ -37,6 +41,8 @@ interface RoundResultsPageProps {
   totalRounds: number;
   roundResults: {
     actualOwnerId: string;
+    /** Time Machine: the year the media was taken. */
+    actualYear?: number | null;
     results: RoundResult[];
     leaderboard: PlayerScore[];
   };
@@ -47,6 +53,8 @@ interface RoundResultsPageProps {
   onShowAgainEnd?: () => void;
   allPlayers: Array<{ id: string; name: string }>;
   currentMedia?: MediaItem | null;
+  /** Room PIN, for reactions. */
+  pin?: string;
 }
 
 function formatTime(ms: number | null): string {
@@ -69,6 +77,7 @@ export function RoundResultsPage({
   onShowAgainEnd,
   allPlayers,
   currentMedia,
+  pin,
 }: RoundResultsPageProps) {
   const { t } = useTranslation();
 
@@ -113,6 +122,7 @@ export function RoundResultsPage({
             </Text>
             <Text className="text-primary text-2xl font-bold text-center">
               {correctOwner.name}
+              {roundResults.actualYear ? ` · ${roundResults.actualYear}` : ""}
             </Text>
           </View>
         )}
@@ -186,6 +196,13 @@ export function RoundResultsPage({
                         </Text>
                       )}
                     </View>
+                    {!!roundResults.actualYear && (
+                      <Text className="text-teal-300 text-sm mb-1">
+                        {playerResult?.yearGuess
+                          ? t("leaderboard.yearGuess", { year: playerResult.yearGuess, points: playerResult.yearBonus ?? 0 })
+                          : t("leaderboard.noYearGuess")}
+                      </Text>
+                    )}
                     {timeTaken !== null && timeTaken !== undefined && !didNotGuess && (
                       <Text className="text-gray-400 text-xs">
                         {t("leaderboard.responseTime")}: {formatTime(timeTaken)}
@@ -229,6 +246,11 @@ export function RoundResultsPage({
       </ScrollView>
 
       <View className="px-6 py-3 border-t border-gray-800 bg-black">
+        {!!pin && (
+          <View className="mb-3">
+            <ReactionBar pin={pin} />
+          </View>
+        )}
         {isOwner ? (
           <View className="gap-3">
             <Button

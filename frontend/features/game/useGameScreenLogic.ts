@@ -27,6 +27,7 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
   const {
     currentPlayerId,
     submitGuess,
+    submitYear,
     continueGame,
     showMediaAgain,
     hideMediaAgain,
@@ -51,6 +52,11 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
   const [gameStats, setGameStats] = useState<any>(null);
   const [actualOwnerId, setActualOwnerId] = useState<string | null>(null);
   const [isShowingMediaAgain, setIsShowingMediaAgain] = useState(false);
+  /** Special rule of the current round, if any ("slowReveal"). */
+  const [twist, setTwist] = useState<string | null>(null);
+  /** Time Machine: years to pick from (null outside Time Machine rounds) and our pick. */
+  const [yearRange, setYearRange] = useState<{ min: number; max: number } | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   // When the round arrived and when its media became visible on this phone.
   // The difference is sent with the guess so slow loading isn't penalized.
@@ -75,6 +81,9 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     setTimerDuration(Math.max(0, data.duration));
     setPlayers(data.options);
     setSelectedPlayer(null);
+    setTwist(data.twist ?? null);
+    setYearRange(data.yearRange ?? null);
+    setSelectedYear(null);
     setTimeExpired(data.duration <= 0);
     setTimerActive(false); // starts once the media is on screen (see handleMediaShown)
     setGameState("reveal");
@@ -171,6 +180,15 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     await submitGuess(pin, playerId, displayDelayMs);
   };
 
+  /** Time Machine: the year can be changed while the round runs, like the vote. */
+  const handleYearSelect = (year: number) => {
+    if (timeExpired || !pin) return;
+    setSelectedYear(year);
+    Haptics.selectionAsync().catch(() => {});
+    const displayDelayMs = Math.max(0, (mediaShownAt.current ?? Date.now()) - roundReceivedAt.current);
+    submitYear(pin, year, displayDelayMs);
+  };
+
   // The server ends the round on its own timer; locally we only stop voting.
   const handleTimeExpired = () => {
     setTimeExpired(true);
@@ -225,6 +243,10 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     actualOwnerId,
     isShowingMediaAgain,
     currentPlayerId,
+    twist,
+    yearRange,
+    selectedYear,
+    handleYearSelect,
     handlePlayerSelect,
     handleTimeExpired,
     handleMediaShown,

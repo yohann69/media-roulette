@@ -23,8 +23,15 @@ export const settingsSchema = z
     mode: z.enum(["Photo", "Video", "Mix"]).catch("Photo"),
     playVideoWithSound: z.boolean().optional().catch(true),
     blindMode: z.boolean().optional().catch(false),
+    timeMachine: z.boolean().optional().catch(false),
   })
   .partial();
+
+/** A plausible year a photo was taken. */
+const year = z.number().int().min(1900).max(2100);
+
+/** The reactions players can send. */
+export const REACTIONS = ["😂", "😮", "😍", "🔥", "👀"] as const;
 
 export const schemas = {
   "create-game": z.object({ hostName: playerName, settings: settingsSchema.optional(), publicKey: publicKey.optional() }),
@@ -35,7 +42,14 @@ export const schemas = {
   "set-media-pool": z.object({
     pin,
     mediaPool: z
-      .array(z.object({ id: z.string().min(1).max(64), mediaType: z.enum(["photo", "video"]) }))
+      .array(
+        z.object({
+          id: z.string().min(1).max(64),
+          mediaType: z.enum(["photo", "video"]),
+          /** Only sent in Time Machine games. Kept on the server until the reveal. */
+          year: year.optional().catch(undefined),
+        })
+      )
       .max(100),
     playAgain: z.boolean().optional(),
   }),
@@ -51,7 +65,9 @@ export const schemas = {
   "start-game": z.object({ pin }),
   "submit-guess": z.object({
     pin,
-    targetUser: z.string().min(1).max(64),
+    /** Who took it. Optional so a Time Machine year can be sent on its own. */
+    targetUser: z.string().min(1).max(64).optional(),
+    year: year.optional(),
     /** Time between the client receiving the round and the media becoming visible. */
     displayDelayMs: z.number().min(0).max(60_000).optional(),
   }),
@@ -61,6 +77,9 @@ export const schemas = {
   "show-media-again": z.object({ pin }),
   "hide-media-again": z.object({ pin }),
   "play-again": z.object({ pin }),
+  /** The host removes a player from the lobby. */
+  "kick-player": z.object({ pin, playerId: z.string().min(1).max(64) }),
+  "send-reaction": z.object({ pin, emoji: z.enum(REACTIONS) }),
 } as const;
 
 export type ClientEvent = keyof typeof schemas;

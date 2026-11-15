@@ -76,7 +76,17 @@
     "exitWarningMessage": "Êtes-vous sûr de vouloir quitter la partie ?",
     "exitWarningHostMessage": "Êtes-vous sûr de vouloir quitter ? Un joueur aléatoire deviendra le nouvel hôte.",
     "confirmLeave": "Oui, quitter",
-    "stayInGame": "Rester"
+    "stayInGame": "Rester",
+    "shareInvite": "Partager l'invitation",
+    "inviteMessage": "Rejoins ma partie de Media Roulette ! PIN : {pin}\n{link}",
+    "you": "Toi",
+    "seriesWins": "{count} parties gagnées",
+    "removePlayer": "Retirer {name}",
+    "removePlayerTitle": "Retirer {name} ?",
+    "removePlayerMessage": "Ce joueur quittera le salon. Il pourra revenir avec le PIN.",
+    "remove": "Retirer",
+    "removedTitle": "Retiré de la partie",
+    "removedMessage": "L'hôte t'a retiré du salon."
   },
   "gameSettings": {
     "title": "Paramètres du jeu",
@@ -96,7 +106,8 @@
     "withSound": "Avec son",
     "withoutSound": "Sans son",
     "blindMode": "Mode aveugle",
-    "blindModeDescription": "Ignorer la sélection de médias - les médias aléatoires seront une surprise pour tout le monde ! 🎲"
+    "blindModeDescription": "Ignorer la sélection de médias - les médias aléatoires seront une surprise pour tout le monde ! 🎲",
+    "timeMachine": "⏳ Machine à remonter le temps"
   },
   "game": {
     "round": "Manche {current} sur {total}",
@@ -107,7 +118,10 @@
     "playAgain": "Rejouer",
     "owner": "Propriétaire",
     "whoTookVideo": "Qui a pris cette vidéo ?",
-    "skipped": "Son propriétaire l'a masquée. Suivante !"
+    "skipped": "Son propriétaire l'a masquée. Suivante !",
+    "shareRecap": "Partager",
+    "whenWasItTaken": "Prise en quelle année ?",
+    "slowReveal": "🔍 Révélation lente : l'image devient nette…"
   },
   "result": {
     "greatGuess": "🎉 Bonne réponse !",
@@ -135,16 +149,23 @@
     "total": "Total",
     "responseTime": "Temps de réponse",
     "waitingForOwner": "En attente de {ownerName} pour continuer",
-    "correctAnswer": "La bonne réponse était :"
+    "correctAnswer": "La bonne réponse était :",
+    "yearGuess": "📅 {year} (+{points})",
+    "noYearGuess": "📅 Aucune année choisie"
   },
   "stats": {
     "longestStreak": "Série la plus longue",
     "fastestAnswer": "Réponse la plus rapide",
     "averageTime": "Temps de réponse moyen",
-    "worstPlayer": "À améliorer",
+    "worstPlayer": "Plus de chance la prochaine fois",
     "hardestRound": "Manche la plus difficile",
     "consecutive": "consécutifs",
-    "correctAnswers": "bonnes réponses"
+    "correctAnswers": "bonnes réponses",
+    "masterOfDisguise": "Maître du déguisement",
+    "fooled": "a piégé {count}×",
+    "roundNumber": "Manche {round}",
+    "seriesTitle": "Série",
+    "seriesSubtitle": "Après {count} parties dans ce salon"
   },
   "warning": {
     "waitForPlayers": "Attendre les joueurs",
@@ -207,5 +228,9 @@
   },
   "terms": {
     "title": "Conditions d'utilisation"
+  },
+  "reactions": {
+    "label": "Réactions",
+    "send": "Réagir avec {emoji}"
   }
 }

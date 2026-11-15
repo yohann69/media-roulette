@@ -76,7 +76,17 @@
     "exitWarningMessage": "確定要離開遊戲嗎？",
     "exitWarningHostMessage": "確定要離開嗎？將隨機選擇一名玩家成為新房主。",
     "confirmLeave": "是的，離開",
-    "stayInGame": "留下"
+    "stayInGame": "留下",
+    "shareInvite": "分享邀請",
+    "inviteMessage": "來玩我的 Media Roulette 遊戲！PIN：{pin}\n{link}",
+    "you": "你",
+    "seriesWins": "贏了 {count} 局",
+    "removePlayer": "移除 {name}",
+    "removePlayerTitle": "移除 {name}？",
+    "removePlayerMessage": "對方將離開大廳，可以用 PIN 重新加入。",
+    "remove": "移除",
+    "removedTitle": "已被移出遊戲",
+    "removedMessage": "房主已將你移出大廳。"
   },
   "gameSettings": {
     "title": "遊戲設置",
@@ -96,7 +106,8 @@
     "withSound": "帶聲音",
     "withoutSound": "無聲音",
     "blindMode": "盲選模式",
-    "blindModeDescription": "跳過媒體選擇 - 隨機媒體對所有人來說都是驚喜！🎲"
+    "blindModeDescription": "跳過媒體選擇 - 隨機媒體對所有人來說都是驚喜！🎲",
+    "timeMachine": "⏳ 時光機"
   },
   "game": {
     "round": "第 {current} 回合，共 {total} 回合",
@@ -107,7 +118,10 @@
     "playAgain": "再玩一次",
     "owner": "所有者",
     "whoTookVideo": "這個影片是誰拍的？",
-    "skipped": "它的主人隱藏了它。下一個！"
+    "skipped": "它的主人隱藏了它。下一個！",
+    "shareRecap": "分享",
+    "whenWasItTaken": "這是哪一年拍的？",
+    "slowReveal": "🔍 慢慢揭曉：畫面會越來越清晰…"
   },
   "result": {
     "greatGuess": "🎉 猜對了！",
@@ -135,16 +149,23 @@
     "total": "總計",
     "responseTime": "響應時間",
     "waitingForOwner": "等待 {ownerName} 繼續",
-    "correctAnswer": "正確答案是："
+    "correctAnswer": "正確答案是：",
+    "yearGuess": "📅 {year}（+{points}）",
+    "noYearGuess": "📅 未選擇年份"
   },
   "stats": {
     "longestStreak": "最長連勝",
     "fastestAnswer": "最快回答",
     "averageTime": "平均響應時間",
-    "worstPlayer": "需要改進",
+    "worstPlayer": "下次好運",
     "hardestRound": "最難的回合",
     "consecutive": "連續",
-    "correctAnswers": "正確答案"
+    "correctAnswers": "正確答案",
+    "masterOfDisguise": "偽裝大師",
+    "fooled": "騙過 {count} 次",
+    "roundNumber": "第 {round} 輪",
+    "seriesTitle": "系列賽",
+    "seriesSubtitle": "本房間已進行 {count} 局"
   },
   "warning": {
     "waitForPlayers": "等待玩家",
@@ -207,5 +228,9 @@
   },
   "terms": {
     "title": "條款與條件"
+  },
+  "reactions": {
+    "label": "表情回應",
+    "send": "用 {emoji} 回應"
   }
 }

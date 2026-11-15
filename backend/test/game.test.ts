@@ -8,6 +8,8 @@ import {
   MAX_DISPLAY_DELAY_CREDIT_MS,
   MAX_LATENCY_CREDIT_MS,
   scoreRound,
+  twistFor,
+  yearBonus,
 } from "../src/game.js";
 import { RoomRegistry } from "../src/rooms.js";
 import { TokenBucket } from "../src/rateLimit.js";
@@ -44,6 +46,20 @@ describe("calculateScore", () => {
 describe("streakMultiplier", () => {
   it("adds 10% per consecutive correct answer, capped at 50%", () => {
     expect([1, 2, 3, 6, 10].map(streakMultiplier)).toEqual([1, 1.1, 1.2, 1.5, 1.5]);
+  });
+});
+
+describe("yearBonus", () => {
+  it("rewards the exact year most, and nothing beyond 3 years off", () => {
+    expect([2020, 2021, 2018, 2023, 2024].map((g) => yearBonus(g, 2020))).toEqual([300, 200, 100, 50, 0]);
+    expect(yearBonus(undefined, 2020)).toBe(0);
+  });
+});
+
+describe("twistFor", () => {
+  it("slow-reveals every fourth round, photos only", () => {
+    expect([1, 2, 3, 4, 8].map((r) => twistFor(r, "photo"))).toEqual([null, null, null, "slowReveal", "slowReveal"]);
+    expect(twistFor(4, "video")).toBeNull();
   });
 });
 
@@ -117,6 +133,24 @@ describe("calculateGameStats", () => {
       scoreRound(room);
     });
     expect(calculateGameStats(room).longestStreak).toEqual({ playerName: "P0", streak: 3 });
+  });
+});
+
+describe("masterOfDisguise", () => {
+  it("names the owner whose media fooled the most guesses", () => {
+    const room = makeRoom(3, 2);
+    const [a, b, c] = room.players;
+    room.currentRound = 1;
+    room.currentMedia = { ...a.mediaPool[0], ownerId: a.id, index: 0 };
+    room.guesses.set(b.id, { guessedPlayerId: c.id, timeTaken: 500 });
+    room.guesses.set(c.id, { guessedPlayerId: b.id, timeTaken: 500 });
+    scoreRound(room);
+    room.currentRound = 2;
+    room.currentMedia = { ...b.mediaPool[0], ownerId: b.id, index: 1 };
+    room.guesses.clear();
+    room.guesses.set(a.id, { guessedPlayerId: b.id, timeTaken: 500 });
+    scoreRound(room);
+    expect(calculateGameStats(room).masterOfDisguise).toEqual({ playerName: "P0", fooled: 2 });
   });
 });
 

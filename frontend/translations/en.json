@@ -76,7 +76,17 @@
     "exitWarningMessage": "Are you sure you want to leave the game?",
     "exitWarningHostMessage": "Are you sure you want to leave? A random player will become the new host.",
     "confirmLeave": "Yes, leave",
-    "stayInGame": "Stay"
+    "stayInGame": "Stay",
+    "shareInvite": "Share invite",
+    "inviteMessage": "Join my Media Roulette game! PIN: {pin}\n{link}",
+    "you": "You",
+    "seriesWins": "{count} games won",
+    "removePlayer": "Remove {name}",
+    "removePlayerTitle": "Remove {name}?",
+    "removePlayerMessage": "They'll leave the lobby. They can join again with the PIN.",
+    "remove": "Remove",
+    "removedTitle": "Removed from the game",
+    "removedMessage": "The host removed you from the lobby."
   },
   "gameSettings": {
     "title": "Game Settings",
@@ -96,7 +106,8 @@
     "withSound": "With Sound",
     "withoutSound": "Without Sound",
     "blindMode": "Blind Mode",
-    "blindModeDescription": "Skip media selection - random medias will be a surprise for everyone! 🎲"
+    "blindModeDescription": "Skip media selection - random medias will be a surprise for everyone! 🎲",
+    "timeMachine": "⏳ Time Machine"
   },
   "game": {
     "round": "Round {current} of {total}",
@@ -107,7 +118,10 @@
     "playAgain": "Play Again",
     "owner": "Owner",
     "whoTookVideo": "Who took this video?",
-    "skipped": "Its owner hid this one. Next!"
+    "skipped": "Its owner hid this one. Next!",
+    "shareRecap": "Share",
+    "whenWasItTaken": "When was it taken?",
+    "slowReveal": "🔍 Slow reveal: it gets sharper…"
   },
   "result": {
     "greatGuess": "🎉 Great guess!",
@@ -135,16 +149,23 @@
     "total": "Total",
     "responseTime": "Response time",
     "waitingForOwner": "Waiting for {ownerName} to continue",
-    "correctAnswer": "The correct answer was:"
+    "correctAnswer": "The correct answer was:",
+    "yearGuess": "📅 {year} (+{points})",
+    "noYearGuess": "📅 No year picked"
   },
   "stats": {
     "longestStreak": "Longest Streak",
     "fastestAnswer": "Fastest Answer",
     "averageTime": "Average Response Time",
-    "worstPlayer": "Needs Improvement",
+    "worstPlayer": "Better luck next time",
     "hardestRound": "Hardest Round",
     "consecutive": "consecutive",
-    "correctAnswers": "correct answers"
+    "correctAnswers": "correct answers",
+    "masterOfDisguise": "Master of disguise",
+    "fooled": "fooled {count}×",
+    "roundNumber": "Round {round}",
+    "seriesTitle": "Series",
+    "seriesSubtitle": "After {count} games in this room"
   },
   "warning": {
     "waitForPlayers": "Wait for players",
@@ -231,5 +252,9 @@
     "point4": "Hold your own photo during a round to hide it. Everything is deleted after the game.",
     "limitedAccess": "You only gave access to some photos. Choose more to play.",
     "chooseMore": "Choose more photos"
+  },
+  "reactions": {
+    "label": "Reactions",
+    "send": "React with {emoji}"
   }
 }

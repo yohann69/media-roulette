@@ -14,6 +14,8 @@ export interface GameSettings {
   mode: "Photo" | "Video" | "Mix";
   playVideoWithSound: boolean;
   blindMode: boolean;
+  /** Time Machine: players also guess the year the media was taken. */
+  timeMachine: boolean;
 }
 
 export interface Player {
@@ -44,12 +46,17 @@ export interface Player {
   roomKeyShare: { from: string; sealed: string } | null;
   /** True once the player has uploaded the media the server asked them for. */
   uploadsDone: boolean;
+  /** Games won and points scored across rematches in this room. */
+  seriesWins: number;
+  seriesScore: number;
 }
 
 export interface PoolItem {
   /** Opaque id chosen by the owner's phone. */
   id: string;
   mediaType: MediaType;
+  /** Year the media was taken (Time Machine). Only revealed with the round result. */
+  year?: number;
 }
 
 export interface DeckItem extends PoolItem {
@@ -60,9 +67,14 @@ export interface DeckItem extends PoolItem {
 }
 
 export interface Guess {
-  guessedPlayerId: string;
+  /** Null while only a year has been guessed (Time Machine). */
+  guessedPlayerId: string | null;
   timeTaken: number;
+  year?: number;
 }
+
+/** A special rule applied to one round. */
+export type RoundTwist = "slowReveal";
 
 export interface RoundResult {
   playerId: string;
@@ -74,6 +86,9 @@ export interface RoundResult {
   totalScore: number;
   tooSlow: boolean;
   streak: number;
+  /** Time Machine: the year guessed and the points it earned. */
+  yearGuess: number | null;
+  yearBonus: number;
 }
 
 export interface LeaderboardEntry {
@@ -86,6 +101,8 @@ export interface LeaderboardEntry {
 
 export interface RoundResultPayload {
   actualOwnerId: string;
+  /** Time Machine: the year the media was taken. */
+  actualYear: number | null;
   results: RoundResult[];
   leaderboard: LeaderboardEntry[];
 }
@@ -93,7 +110,7 @@ export interface RoundResultPayload {
 export interface RoundHistoryEntry {
   round: number;
   actualOwnerId: string;
-  results: Array<Pick<RoundResult, "playerId" | "playerName" | "isCorrect" | "timeTaken" | "streak">>;
+  results: Array<Pick<RoundResult, "playerId" | "playerName" | "isCorrect" | "timeTaken" | "streak"> & { guessed: boolean }>;
 }
 
 export interface Room {
@@ -113,6 +130,7 @@ export interface Room {
   /** Rounds that will actually be played (≤ settings.rounds, ≤ deck size). */
   totalRounds: number;
   currentMedia: DeckItem | null;
+  currentTwist: RoundTwist | null;
   roundStartedAt: number;
   guesses: Map<string, Guess>;
   readyPlayers: Set<string>;
@@ -122,6 +140,8 @@ export interface Room {
   lastRoundResult: RoundResultPayload | null;
   finalResult: { leaderboard: LeaderboardEntry[]; stats: GameStats | null } | null;
   lastActivityTime: number;
+  /** Games finished in this room (rematches keep the room). */
+  gamesPlayed: number;
 }
 
 export interface GameStats {
@@ -130,6 +150,8 @@ export interface GameStats {
   averageTime: number | null;
   worstPlayer: { playerName: string | null; score: number; correctAnswers?: number; totalRounds?: number };
   hardestRound: { round: number | null; correctCount: number };
+  /** The owner whose media fooled the most guesses. */
+  masterOfDisguise: { playerName: string | null; fooled: number };
 }
 
 /** The only room representation ever sent to clients. */
@@ -138,6 +160,7 @@ export interface PublicRoom {
   players: PublicPlayer[];
   settings: GameSettings;
   gameState: GameState;
+  gamesPlayed: number;
 }
 
 export interface PublicPlayer {
@@ -152,4 +175,6 @@ export interface PublicPlayer {
   /** X25519 public key (base64), so others can seal the room key for this player. */
   publicKey: string | null;
   hasRoomKey: boolean;
+  seriesWins: number;
+  seriesScore: number;
 }

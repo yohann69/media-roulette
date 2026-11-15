@@ -6,7 +6,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "node:crypto";
 import { arrives, FAKE_ENCRYPTED, sleep, TestEnv, waitFor, waitForMatch } from "./helpers.js";
 
-const PUBLIC_ROOM_KEYS = ["gameState", "pin", "players", "settings"];
+const PUBLIC_ROOM_KEYS = ["gameState", "gamesPlayed", "pin", "players", "settings"];
 
 let env: TestEnv;
 

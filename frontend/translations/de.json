@@ -76,7 +76,17 @@
     "exitWarningMessage": "Möchtest du das Spiel wirklich verlassen?",
     "exitWarningHostMessage": "Möchtest du wirklich gehen? Ein zufälliger Spieler wird zum neuen Host.",
     "confirmLeave": "Ja, verlassen",
-    "stayInGame": "Bleiben"
+    "stayInGame": "Bleiben",
+    "shareInvite": "Einladung teilen",
+    "inviteMessage": "Spiel mit mir Media Roulette! PIN: {pin}\n{link}",
+    "you": "Du",
+    "seriesWins": "{count} Spiele gewonnen",
+    "removePlayer": "{name} entfernen",
+    "removePlayerTitle": "{name} entfernen?",
+    "removePlayerMessage": "Die Person verlässt die Lobby und kann mit der PIN wieder beitreten.",
+    "remove": "Entfernen",
+    "removedTitle": "Aus dem Spiel entfernt",
+    "removedMessage": "Der Host hat dich aus der Lobby entfernt."
   },
   "gameSettings": {
     "title": "Spieleinstellungen",
@@ -96,7 +106,8 @@
     "withSound": "Mit Ton",
     "withoutSound": "Ohne Ton",
     "blindMode": "Blindmodus",
-    "blindModeDescription": "Medienauswahl überspringen - zufällige Medien werden für alle eine Überraschung sein! 🎲"
+    "blindModeDescription": "Medienauswahl überspringen - zufällige Medien werden für alle eine Überraschung sein! 🎲",
+    "timeMachine": "⏳ Zeitmaschine"
   },
   "game": {
     "round": "Runde {current} von {total}",
@@ -107,7 +118,10 @@
     "playAgain": "Erneut spielen",
     "owner": "Besitzer",
     "whoTookVideo": "Wer hat dieses Video aufgenommen?",
-    "skipped": "Der Besitzer hat es ausgeblendet. Weiter!"
+    "skipped": "Der Besitzer hat es ausgeblendet. Weiter!",
+    "shareRecap": "Teilen",
+    "whenWasItTaken": "Wann wurde es aufgenommen?",
+    "slowReveal": "🔍 Langsame Enthüllung: das Bild wird schärfer…"
   },
   "result": {
     "greatGuess": "🎉 Gute Antwort!",
@@ -135,16 +149,23 @@
     "total": "Gesamt",
     "responseTime": "Reaktionszeit",
     "waitingForOwner": "Warten auf {ownerName}, um fortzufahren",
-    "correctAnswer": "Die richtige Antwort war:"
+    "correctAnswer": "Die richtige Antwort war:",
+    "yearGuess": "📅 {year} (+{points})",
+    "noYearGuess": "📅 Kein Jahr gewählt"
   },
   "stats": {
     "longestStreak": "Längste Serie",
     "fastestAnswer": "Schnellste Antwort",
     "averageTime": "Durchschnittliche Reaktionszeit",
-    "worstPlayer": "Braucht Verbesserung",
+    "worstPlayer": "Nächstes Mal klappt's",
     "hardestRound": "Schwierigste Runde",
     "consecutive": "aufeinanderfolgend",
-    "correctAnswers": "richtige Antworten"
+    "correctAnswers": "richtige Antworten",
+    "masterOfDisguise": "Meister der Tarnung",
+    "fooled": "{count}× getäuscht",
+    "roundNumber": "Runde {round}",
+    "seriesTitle": "Serie",
+    "seriesSubtitle": "Nach {count} Spielen in diesem Raum"
   },
   "warning": {
     "waitForPlayers": "Auf Spieler warten",
@@ -207,5 +228,9 @@
   },
   "terms": {
     "title": "Nutzungsbedingungen"
+  },
+  "reactions": {
+    "label": "Reaktionen",
+    "send": "Mit {emoji} reagieren"
   }
 }

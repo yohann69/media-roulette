@@ -76,7 +76,17 @@
     "exitWarningMessage": "Вы уверены, что хотите покинуть игру?",
     "exitWarningHostMessage": "Вы уверены, что хотите выйти? Случайный игрок станет новым хостом.",
     "confirmLeave": "Да, выйти",
-    "stayInGame": "Остаться"
+    "stayInGame": "Остаться",
+    "shareInvite": "Поделиться приглашением",
+    "inviteMessage": "Присоединяйся к моей игре Media Roulette! PIN: {pin}\n{link}",
+    "you": "Вы",
+    "seriesWins": "Побед: {count}",
+    "removePlayer": "Удалить {name}",
+    "removePlayerTitle": "Удалить {name}?",
+    "removePlayerMessage": "Игрок покинет лобби. Он сможет вернуться по PIN-коду.",
+    "remove": "Удалить",
+    "removedTitle": "Вы удалены из игры",
+    "removedMessage": "Хост удалил вас из лобби."
   },
   "gameSettings": {
     "title": "Настройки игры",
@@ -96,7 +106,8 @@
     "withSound": "Со звуком",
     "withoutSound": "Без звука",
     "blindMode": "Режим вслепую",
-    "blindModeDescription": "Пропустить выбор медиа - случайные медиа будут сюрпризом для всех! 🎲"
+    "blindModeDescription": "Пропустить выбор медиа - случайные медиа будут сюрпризом для всех! 🎲",
+    "timeMachine": "⏳ Машина времени"
   },
   "game": {
     "round": "Раунд {current} из {total}",
@@ -107,7 +118,10 @@
     "playAgain": "Играть снова",
     "owner": "Владелец",
     "whoTookVideo": "Кто снял это видео?",
-    "skipped": "Владелец скрыл это. Дальше!"
+    "skipped": "Владелец скрыл это. Дальше!",
+    "shareRecap": "Поделиться",
+    "whenWasItTaken": "Когда это снято?",
+    "slowReveal": "🔍 Медленное раскрытие: изображение проясняется…"
   },
   "result": {
     "greatGuess": "🎉 Отличная догадка!",
@@ -135,16 +149,23 @@
     "total": "Всего",
     "responseTime": "Время ответа",
     "waitingForOwner": "Ожидание {ownerName} для продолжения",
-    "correctAnswer": "Правильный ответ был:"
+    "correctAnswer": "Правильный ответ был:",
+    "yearGuess": "📅 {year} (+{points})",
+    "noYearGuess": "📅 Год не выбран"
   },
   "stats": {
     "longestStreak": "Самая длинная серия",
     "fastestAnswer": "Самый быстрый ответ",
     "averageTime": "Среднее время ответа",
-    "worstPlayer": "Требует улучшения",
+    "worstPlayer": "В следующий раз повезёт",
     "hardestRound": "Самый сложный раунд",
     "consecutive": "подряд",
-    "correctAnswers": "правильных ответов"
+    "correctAnswers": "правильных ответов",
+    "masterOfDisguise": "Мастер маскировки",
+    "fooled": "обманул {count}×",
+    "roundNumber": "Раунд {round}",
+    "seriesTitle": "Серия",
+    "seriesSubtitle": "После {count} игр в этой комнате"
   },
   "warning": {
     "waitForPlayers": "Ждать игроков",
@@ -207,5 +228,9 @@
   },
   "terms": {
     "title": "Условия использования"
+  },
+  "reactions": {
+    "label": "Реакции",
+    "send": "Отреагировать {emoji}"
   }
 }

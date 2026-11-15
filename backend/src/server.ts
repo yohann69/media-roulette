@@ -53,6 +53,23 @@ export function createAppServer(options: GameServerOptions = {}): AppServer {
     next();
   };
 
+  // Invite link (shared from the lobby): opens the app on the join screen with the PIN filled in.
+  app.get("/j/:pin", (req, res) => {
+    const pin = String(req.params.pin);
+    if (!/^\d{6}$/.test(pin)) {
+      res.status(404).send("Not found");
+      return;
+    }
+    res.set({
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'",
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+    });
+    res.send(invitePage(pin));
+  });
+
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", message: "Media Roulette Backend Server" });
   });
@@ -119,6 +136,37 @@ export function createAppServer(options: GameServerOptions = {}): AppServer {
       await io.close();
     },
   };
+}
+
+/** A tiny page that hands the PIN to the app. `pin` is always 6 digits. */
+function invitePage(pin: string): string {
+  const deepLink = `mediaroulette://join?pin=${pin}`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join Media Roulette game ${pin}</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-align:center;padding:24px;box-sizing:border-box}
+  main{max-width:360px}
+  h1{font-size:22px;margin:0 0 8px}
+  .pin{font-size:56px;font-weight:800;letter-spacing:4px;color:#f97316;margin:16px 0}
+  a.button{display:block;background:#f97316;color:#fff;text-decoration:none;font-weight:700;font-size:18px;padding:16px;border-radius:16px;margin:24px 0 16px}
+  p{color:#9ca3af;font-size:15px;line-height:1.5}
+</style>
+</head>
+<body>
+<main>
+  <h1>You're invited to a Media Roulette game</h1>
+  <div class="pin">${pin}</div>
+  <a class="button" href="${deepLink}">Open Media Roulette</a>
+  <p>Don't have the app yet? Install Media Roulette, then tap <b>Join Game</b> and enter this PIN.</p>
+</main>
+<script>setTimeout(function(){location.href=${JSON.stringify(deepLink)}},300)</script>
+</body>
+</html>`;
 }
 
 // Started directly (npm start / npm run dev): listen on PORT.

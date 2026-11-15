@@ -1,12 +1,12 @@
 import type { Server, Socket } from "socket.io";
 import { schemas, type ClientEvent, type Payload } from "./protocol.js";
 import { RoomRegistry, type PlayerContext } from "./rooms.js";
-import { answerTime, buildDeck, calculateGameStats, leaderboard, ROUND_GRACE_MS, scoreRound } from "./game.js";
+import { answerTime, buildDeck, calculateGameStats, leaderboard, ROUND_GRACE_MS, scoreRound, twistFor } from "./game.js";
 import { KeyedRateLimiter, TokenBucket } from "./rateLimit.js";
 import * as mediaStore from "./mediaStore.js";
 // Debug-only helper (JavaScript): a no-op unless Drive credentials are configured.
 import { enqueueBackup } from "./driveBackup.js";
-import type { Room } from "./types.js";
+import type { Player, Room } from "./types.js";
 import path from "node:path";
 
 export interface GameServerOptions {
@@ -41,6 +41,8 @@ export class GameServer {
   private intervals: NodeJS.Timeout[] = [];
   private joinLimiter = new KeyedRateLimiter(10, 10 / 60); // 10 join attempts per minute per IP
   private createLimiter = new KeyedRateLimiter(5, 5 / 60); // 5 games per minute per IP
+  /** Reactions are cosmetic: a short burst, then about one per second per player. */
+  private reactionBuckets = new WeakMap<Player, TokenBucket>();
   private readonly graceMs: number;
   private readonly firstRoundDelayMs: number;
   private readonly collectTimeoutMs: number;
@@ -231,9 +233,30 @@ export class GameServer {
         socket.emit("error", { message: "Game is not finished yet" });
         return;
       }
-      this.resetForNewGame(room, player.id);
-      this.io.to(room.pin).emit("play-again-initiated", { newHostId: player.id, newHostName: player.name });
+      // Rematch: same room, same players and settings. The host stays host.
+      const host = this.rematchHost(room, player);
+      this.resetForNewGame(room, host.id);
+      this.io.to(room.pin).emit("play-again-initiated", { newHostId: host.id, newHostName: host.name });
       this.broadcastRoom(room);
+    });
+
+    onMember("kick-player", (data, { room, player }) => {
+      if (!player.isHost || data.playerId === player.id) return;
+      if (room.gameState !== "lobby" && room.gameState !== "finished") return;
+      const target = room.players.find((p) => p.id === data.playerId);
+      if (!target) return;
+      if (target.socketId) {
+        this.io.to(target.socketId).emit("kicked", { pin: room.pin });
+        this.io.sockets.sockets.get(target.socketId)?.leave(room.pin);
+      }
+      this.removePlayer(room, target.id);
+    });
+
+    onMember("send-reaction", (data, { room, player }) => {
+      let bucket = this.reactionBuckets.get(player);
+      if (!bucket) this.reactionBuckets.set(player, (bucket = new TokenBucket(4, 1)));
+      if (!bucket.take()) return;
+      this.io.to(room.pin).emit("reaction", { playerId: player.id, emoji: data.emoji });
     });
 
     // Lets the app check its connection is still alive (e.g. when it returns to the foreground).
@@ -247,14 +270,20 @@ export class GameServer {
   // ── Lobby ────────────────────────────────────────────────────────────────
 
   private setMediaPool(socket: Socket, data: Payload<"set-media-pool">, { room, player }: PlayerContext) {
-    if (data.playAgain && room.gameState === "finished") this.resetForNewGame(room, player.id);
+    if (data.playAgain && room.gameState === "finished") this.resetForNewGame(room, this.rematchHost(room, player).id);
     if (room.gameState !== "lobby") {
       socket.emit("error", { message: "The game has already started" });
       return;
     }
 
     // Only ids and types: the media stays on the phone until it's chosen for the game.
-    player.mediaPool = data.mediaPool.map((item) => ({ id: item.id, mediaType: item.mediaType }));
+    // The year is only kept for Time Machine games, and never sent to other players before the reveal.
+    const keepYear = room.settings.timeMachine;
+    player.mediaPool = data.mediaPool.map((item) => ({
+      id: item.id,
+      mediaType: item.mediaType,
+      ...(keepYear && item.year !== undefined ? { year: item.year } : {}),
+    }));
     player.state = "ready";
     this.broadcastRoom(room);
     socket.emit("media-pool-set", { success: true, accepted: player.mediaPool.length });
@@ -384,6 +413,11 @@ export class GameServer {
     this.roundTimers.set(room.pin, timer);
   }
 
+  /** The current host keeps hosting a rematch, unless they're offline. */
+  private rematchHost(room: Room, requester: Player): Player {
+    return room.players.find((p) => p.isHost && p.connected) ?? requester;
+  }
+
   private resetForNewGame(room: Room, newHostId: string) {
     this.clearRoundTimer(room.pin);
     mediaStore.deleteRoom(room.pin);
@@ -396,6 +430,7 @@ export class GameServer {
       currentRound: 0,
       totalRounds: 0,
       currentMedia: null,
+      currentTwist: null,
       lastRoundResult: null,
       finalResult: null,
     } satisfies Partial<Room>);
@@ -436,6 +471,7 @@ export class GameServer {
     room.deckPosition = position;
     room.currentMedia = room.deck[position];
     room.currentRound += 1;
+    room.currentTwist = twistFor(room.currentRound, room.currentMedia.mediaType);
     room.phase = "round";
     room.guesses.clear();
     room.roundStartedAt = Date.now();
@@ -457,7 +493,17 @@ export class GameServer {
       remainingMs,
       options: room.players.map((p) => ({ id: p.id, name: p.name })),
       roundStartTime: room.roundStartedAt,
+      twist: room.currentTwist,
+      // Time Machine: the years players can pick from (not the answer).
+      yearRange: this.yearRange(room),
     };
+  }
+
+  private yearRange(room: Room): { min: number; max: number } | null {
+    if (!room.settings.timeMachine || room.currentMedia?.year === undefined) return null;
+    const years = room.deck.map((m) => m.year).filter((y): y is number => y !== undefined);
+    const thisYear = new Date().getFullYear();
+    return { min: Math.min(...years), max: Math.max(thisYear, ...years) };
   }
 
   private submitGuess(socket: Socket, data: Payload<"submit-guess">, { room, player }: PlayerContext) {
@@ -465,7 +511,8 @@ export class GameServer {
       socket.emit("guess-received", { success: false, message: "Round already ended" });
       return;
     }
-    if (!room.players.some((p) => p.id === data.targetUser)) return;
+    if (data.targetUser !== undefined && !room.players.some((p) => p.id === data.targetUser)) return;
+    if (data.targetUser === undefined && data.year === undefined) return;
 
     const timeTaken = answerTime(Date.now() - room.roundStartedAt, player.latencyMs, data.displayDelayMs);
     if (timeTaken > room.settings.timer * 1000 + LATE_GUESS_TOLERANCE_MS) {
@@ -474,7 +521,13 @@ export class GameServer {
     }
 
     // Players may change their mind while the round runs: the last guess counts.
-    room.guesses.set(player.id, { guessedPlayerId: data.targetUser, timeTaken });
+    // "Who" and "when" (Time Machine) can be sent separately.
+    const previous = room.guesses.get(player.id);
+    room.guesses.set(player.id, {
+      guessedPlayerId: data.targetUser ?? previous?.guessedPlayerId ?? null,
+      timeTaken: data.targetUser !== undefined ? timeTaken : (previous?.timeTaken ?? timeTaken),
+      year: data.year ?? previous?.year,
+    });
     socket.emit("guess-received", { success: true });
     this.endRoundIfEveryoneGuessed(room);
   }
@@ -504,8 +557,12 @@ export class GameServer {
 
   private endRoundIfEveryoneGuessed(room: Room) {
     if (room.phase !== "round") return;
-    const waitingFor = room.players.filter((p) => !room.guesses.has(p.id));
-    if (waitingFor.length === 0 && room.guesses.size > 0) this.endRound(room);
+    const needsYear = this.yearRange(room) !== null;
+    const done = (id: string) => {
+      const guess = room.guesses.get(id);
+      return !!guess && guess.guessedPlayerId !== null && (!needsYear || guess.year !== undefined);
+    };
+    if (room.guesses.size > 0 && room.players.every((p) => done(p.id))) this.endRound(room);
   }
 
   private endRound(room: Room) {
@@ -528,11 +585,23 @@ export class GameServer {
     room.gameState = "finished";
     room.phase = null;
     room.finalResult = { leaderboard: leaderboard(room), stats };
+    this.recordSeries(room);
     // Media is no longer needed once the game is over.
     mediaStore.deleteRoom(room.pin);
     room.players.forEach((p) => p.uploadedFiles.clear());
     this.io.to(room.pin).emit("game-finished", room.finalResult);
     this.broadcastRoom(room);
+  }
+
+  /** Rematches in the same room add up to a series: total points and games won. */
+  private recordSeries(room: Room) {
+    if (room.roundHistory.length === 0) return;
+    room.gamesPlayed += 1;
+    const best = Math.max(...room.players.map((p) => p.score));
+    for (const p of room.players) {
+      p.seriesScore += p.score;
+      if (best > 0 && p.score === best) p.seriesWins += 1;
+    }
   }
 
   private clearRoundTimer(pin: string) {

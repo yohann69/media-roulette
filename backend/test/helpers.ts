@@ -67,7 +67,11 @@ export class TestEnv {
    * server's upload requests the way a phone does: upload, then "uploads-complete".
    * Returns the filenames uploaded so far (filled in as requests arrive).
    */
-  async setPool(session: Session, count: number, { respondToUploads = true } = {}): Promise<string[]> {
+  async setPool(
+    session: Session,
+    count: number,
+    { respondToUploads = true, years }: { respondToUploads?: boolean; years?: number[] } = {}
+  ): Promise<string[]> {
     const uploaded: string[] = [];
     if (respondToUploads) {
       session.socket.on("upload-request", async ({ items }: { items: string[] }) => {
@@ -82,7 +86,11 @@ export class TestEnv {
     }
     session.socket.emit("set-media-pool", {
       pin: session.pin,
-      mediaPool: Array.from({ length: count }, (_, i) => ({ id: `m${i}`, mediaType: "photo" })),
+      mediaPool: Array.from({ length: count }, (_, i) => ({
+        id: `m${i}`,
+        mediaType: "photo",
+        ...(years ? { year: years[i % years.length] } : {}),
+      })),
     });
     await waitFor(session.socket, "media-pool-set");
     return uploaded;

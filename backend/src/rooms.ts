@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   mode: "Photo",
   playVideoWithSound: true,
   blindMode: false,
+  timeMachine: false,
 };
 
 export interface PlayerContext {
@@ -53,6 +54,8 @@ export class RoomRegistry {
       hasRoomKey: isHost,
       roomKeyShare: null,
       uploadsDone: false,
+      seriesWins: 0,
+      seriesScore: 0,
     };
   }
 
@@ -87,6 +90,7 @@ export class RoomRegistry {
       currentRound: 0,
       totalRounds: 0,
       currentMedia: null,
+      currentTwist: null,
       roundStartedAt: 0,
       guesses: new Map(),
       readyPlayers: new Set(),
@@ -96,6 +100,7 @@ export class RoomRegistry {
       lastRoundResult: null,
       finalResult: null,
       lastActivityTime: Date.now(),
+      gamesPlayed: 0,
     };
     this.rooms.set(pin, room);
     this.index(room, player);
@@ -219,9 +224,12 @@ export class RoomRegistry {
         mediaCount: p.mediaPool.length,
         publicKey: p.publicKey,
         hasRoomKey: p.hasRoomKey,
+        seriesWins: p.seriesWins,
+        seriesScore: p.seriesScore,
       })),
       settings: room.settings,
       gameState: room.gameState,
+      gamesPlayed: room.gamesPlayed,
     };
   }
 
