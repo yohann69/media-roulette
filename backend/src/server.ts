@@ -36,7 +36,7 @@ export function createAppServer(options: GameServerOptions = {}): AppServer {
 
   const upload = multer({
     dest: mediaStore.TMP_DIR,
-    limits: { fileSize: mediaStore.LIMITS.maxVideoBytes, files: 1, fields: 5 },
+    limits: { fileSize: mediaStore.LIMITS.maxFileBytes, files: 1, fields: 5 },
   });
 
   const requireToken: express.RequestHandler = (req, res, next) => {
@@ -57,7 +57,7 @@ export function createAppServer(options: GameServerOptions = {}): AppServer {
     res.json({ status: "ok", message: "Media Roulette Backend Server" });
   });
 
-  // Media upload: one prepared (already compressed) photo or video clip per request.
+  // Media upload: one prepared (compressed, then end-to-end encrypted) photo or video clip per request.
   app.post("/upload", requireToken, (req, res) => {
     const { room, player } = res.locals.ctx as ReturnType<typeof registry.resolveUploadToken> & object;
     if (player.uploadedFiles.size >= mediaStore.LIMITS.maxFilesPerPlayer) {
@@ -76,10 +76,10 @@ export function createAppServer(options: GameServerOptions = {}): AppServer {
         return;
       }
       try {
-        const { filename, kind } = mediaStore.acceptUpload(req.file.path, room.pin);
+        const { filename } = mediaStore.acceptUpload(req.file.path, room.pin);
         player.uploadedFiles.add(filename);
         room.lastActivityTime = Date.now();
-        res.json({ filename, mediaType: kind });
+        res.json({ filename });
       } catch (error) {
         const status = error instanceof mediaStore.HttpError ? error.status : 500;
         res.status(status).json({ error: (error as Error).message });

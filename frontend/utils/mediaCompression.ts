@@ -21,7 +21,10 @@ const PHOTO_QUALITY = 0.75;
 /** Video clip: only a few seconds are ever played in a round. */
 const VIDEO_CLIP_EXTRA_MS = 2000;
 const VIDEO_MIN_CLIP_MS = 6000;
-const VIDEO_BITRATE = 1_500_000;
+/** Bitrate scales with the output resolution, within these bounds. */
+const VIDEO_MAX_BITRATE = 1_500_000;
+const VIDEO_MIN_BITRATE = 200_000;
+const VIDEO_BITS_PER_PIXEL = 0.07; // per frame, at ~30 fps: a good H.264 quality/size balance
 const VIDEO_PORTRAIT_WIDTH = 720;
 const VIDEO_LANDSCAPE_WIDTH = 1280;
 
@@ -84,17 +87,31 @@ export async function compressVideo(
   const clipMs = Math.max(VIDEO_MIN_CLIP_MS, roundDurationSeconds * 1000 + VIDEO_CLIP_EXTRA_MS);
   const isLandscape = (item.width ?? 0) > (item.height ?? 0);
   const needsTrim = item.duration == null || item.duration > clipMs;
+  const targetWidth = isLandscape ? VIDEO_LANDSCAPE_WIDTH : VIDEO_PORTRAIT_WIDTH;
+  const bitrate = videoBitrate(item.width, item.height, targetWidth);
 
   const result = await MediaToolkit.compressVideo(item.uri, {
     startTime: 0,
     endTime: needsTrim ? clipMs : undefined,
-    bitrate: VIDEO_BITRATE,
-    width: isLandscape ? VIDEO_LANDSCAPE_WIDTH : VIDEO_PORTRAIT_WIDTH,
+    bitrate,
+    width: targetWidth,
     muteAudio: !keepVideoAudio,
   });
   const uri = toFileUri(result.uri);
   logSize(`video ${item.name ?? ""} ${result.width}x${result.height} ${result.duration}ms`, uri);
   return uri;
+}
+
+/**
+ * Bitrate for the output resolution: small clips don't need 1.5 Mbps.
+ * Videos are never upscaled, so the output is at most the source size.
+ */
+export function videoBitrate(width: number | undefined, height: number | undefined, targetWidth: number): number {
+  if (!width || !height) return VIDEO_MAX_BITRATE;
+  const scale = Math.min(1, targetWidth / width);
+  const pixels = width * height * scale * scale;
+  const bitrate = pixels * 30 * VIDEO_BITS_PER_PIXEL;
+  return Math.round(Math.min(VIDEO_MAX_BITRATE, Math.max(VIDEO_MIN_BITRATE, bitrate)));
 }
 
 /**

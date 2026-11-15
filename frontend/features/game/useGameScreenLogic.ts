@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
-import { Directory, Paths } from "expo-file-system";
+import { clearGameMedia } from "../../utils/gameMedia";
 import { useSocket } from "../../stores/useSocket";
 import { useSocketEvent } from "../../hooks/useSocketEvent";
 
@@ -109,13 +109,8 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     setIsShowingMediaAgain(false);
 
     // Other players' media is no longer needed on this phone.
-    try {
-      const gameDir = new Directory(Paths.cache, `game_${pin}`);
-      if (gameDir.exists) gameDir.delete();
-      setLocalMediaMap(new Map());
-    } catch (e) {
-      console.error("Cleanup error:", e);
-    }
+    clearGameMedia(pin);
+    setLocalMediaMap(new Map());
   });
 
   useSocketEvent("show-media-again", () => setIsShowingMediaAgain(true));

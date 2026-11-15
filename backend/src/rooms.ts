@@ -34,7 +34,7 @@ export class RoomRegistry {
     return pin;
   }
 
-  private newPlayer(name: string, socketId: string, isHost: boolean): Player {
+  private newPlayer(name: string, socketId: string, isHost: boolean, publicKey?: string): Player {
     return {
       id: randomToken(12),
       socketId,
@@ -48,6 +48,11 @@ export class RoomRegistry {
       latencyMs: 100,
       mediaPool: [],
       uploadedFiles: new Set(),
+      publicKey: publicKey ?? null,
+      // The host's phone creates the room key; others receive it from a player who has it.
+      hasRoomKey: isHost,
+      roomKeyShare: null,
+      uploadsDone: false,
     };
   }
 
@@ -67,15 +72,16 @@ export class RoomRegistry {
     }
   }
 
-  createRoom(socketId: string, hostName: string, settings: Partial<GameSettings>): PlayerContext {
+  createRoom(socketId: string, hostName: string, settings: Partial<GameSettings>, publicKey?: string): PlayerContext {
     const pin = this.generatePin();
-    const player = this.newPlayer(hostName, socketId, true);
+    const player = this.newPlayer(hostName, socketId, true, publicKey);
     const room: Room = {
       pin,
       players: [player],
       settings: { ...DEFAULT_SETTINGS, ...stripUndefined(settings) },
       gameState: "lobby",
       phase: null,
+      syncStage: null,
       deck: [],
       deckPosition: -1,
       currentRound: 0,
@@ -96,7 +102,7 @@ export class RoomRegistry {
     return { room, player };
   }
 
-  joinRoom(pin: string, socketId: string, name: string): PlayerContext | { error: string } {
+  joinRoom(pin: string, socketId: string, name: string, publicKey?: string): PlayerContext | { error: string } {
     const room = this.rooms.get(pin);
     if (!room) return { error: "Room not found" };
     if (room.gameState !== "lobby") return { error: "Game already started" };
@@ -104,7 +110,7 @@ export class RoomRegistry {
     const existing = this.getContext(socketId);
     if (existing && existing.room.pin === pin) return existing;
 
-    const player = this.newPlayer(this.uniqueName(room, name), socketId, false);
+    const player = this.newPlayer(this.uniqueName(room, name), socketId, false, publicKey);
     room.players.push(player);
     room.lastActivityTime = Date.now();
     this.index(room, player);
@@ -211,6 +217,8 @@ export class RoomRegistry {
         state: p.state,
         connected: p.connected,
         mediaCount: p.mediaPool.length,
+        publicKey: p.publicKey,
+        hasRoomKey: p.hasRoomKey,
       })),
       settings: room.settings,
       gameState: room.gameState,

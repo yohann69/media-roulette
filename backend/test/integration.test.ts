@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { arrives, FAKE_JPEG, sleep, TestEnv, waitFor, waitForMatch } from "./helpers.js";
+import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
+import { x25519 } from "@noble/curves/ed25519.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { randomBytes } from "node:crypto";
+import { arrives, FAKE_ENCRYPTED, sleep, TestEnv, waitFor, waitForMatch } from "./helpers.js";
 
 const PUBLIC_ROOM_KEYS = ["gameState", "pin", "players", "settings"];
 
@@ -39,18 +44,20 @@ describe("no answer leaks", () => {
 });
 
 describe("uploads", () => {
-  it("rejects unauthenticated, disguised and oversized files", async () => {
+  it("only accepts end-to-end encrypted media, within size limits", async () => {
     const host = await env.create();
     expect((await env.upload(null)).status).toBe(401);
     expect((await env.upload(host.uploadToken, Buffer.from("<html><script>alert(1)</script></html>"))).status).toBe(415);
-    expect((await env.upload(host.uploadToken, Buffer.concat([FAKE_JPEG, Buffer.alloc(5 * 1024 * 1024)]))).status).toBe(413);
+    const plainJpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(256)]);
+    expect((await env.upload(host.uploadToken, plainJpeg)).status).toBe(415);
+    expect((await env.upload(host.uploadToken, Buffer.concat([FAKE_ENCRYPTED, Buffer.alloc(21 * 1024 * 1024)]))).status).toBe(413);
     expect((await env.upload(host.uploadToken)).status).toBe(200);
   });
 
   it("only serves media to players of the same room", async () => {
     const host = await env.create();
     const other = await env.create("Other");
-    const [file] = await env.setPool(host, 1);
+    const file = (await env.upload(host.uploadToken)).body.filename;
 
     expect((await fetch(`${env.url}/uploads/${file}`)).status).toBe(404);
     expect((await fetch(`${env.url}/media/${host.pin}/${file}`)).status).toBe(401);
@@ -59,27 +66,106 @@ describe("uploads", () => {
     const ok = await fetch(`${env.url}/media/${host.pin}/${file}`, { headers: { "x-upload-token": host.uploadToken } });
     expect(ok.status).toBe(200);
     expect(ok.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(ok.headers.get("content-type")).toContain("application/octet-stream");
   });
 
-  it("ignores files a player didn't upload when building their pool", async () => {
-    const host = await env.create();
+  it("ignores files a player didn't upload themselves", async () => {
+    const host = await env.create("Host", { rounds: 10, timer: 3 });
     const p2 = await env.join(host.pin, "P2");
-    const [hostFile] = await env.setPool(host, 1);
-    p2.socket.emit("set-media-pool", {
-      pin: p2.pin,
-      mediaPool: [{ id: "x", filename: hostFile, mediaType: "photo" }],
+    const hostFiles = await env.setPool(host, 1);
+    await env.setPool(p2, 1, { respondToUploads: false });
+    // P2 answers its upload request by claiming the host's file.
+    p2.socket.on("upload-request", async ({ items }: { items: string[] }) => {
+      await sleep(100);
+      p2.socket.emit("uploads-complete", { pin: p2.pin, items: [{ id: items[0], filename: hostFiles[0] }] });
     });
-    expect((await waitFor<any>(p2.socket, "media-pool-set")).accepted).toBe(0);
+    const sync = waitFor<any>(host.socket, "sync-media");
+    host.socket.emit("prepare-game", { pin: host.pin });
+    expect((await sync).count).toBe(1);
   });
 
   it("deletes a player's media when they leave", async () => {
     const host = await env.create();
     const p2 = await env.join(host.pin, "P2");
-    const [file] = await env.setPool(p2, 1);
+    const file = (await env.upload(p2.uploadToken)).body.filename;
     p2.socket.emit("leave-game", { pin: p2.pin });
     await sleep(200);
     const res = await fetch(`${env.url}/media/${host.pin}/${file}`, { headers: { "x-upload-token": host.uploadToken } });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("media stays on the phone until it's chosen", () => {
+  it("asks owners to upload only the media picked for the game", async () => {
+    const host = await env.create("Host", { rounds: 3, timer: 3 });
+    const p2 = await env.join(host.pin, "P2");
+    const requested: string[][] = [];
+    for (const s of [host, p2]) s.socket.on("upload-request", ({ items }: { items: string[] }) => requested.push(items));
+    await env.setPool(host, 5);
+    await env.setPool(p2, 5);
+    const first = await env.startGame(host, [host, p2]);
+    expect(requested.flat()).toHaveLength(3);
+    expect(first.totalRounds).toBe(3);
+  });
+
+  it("starts without the media of a player who doesn't upload in time", async () => {
+    await env.stop();
+    env = new TestEnv();
+    await env.start({ reconnectGraceMs: 500, collectTimeoutMs: 500 });
+    const host = await env.create("Host", { rounds: 10, timer: 3 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 2);
+    await env.setPool(p2, 2, { respondToUploads: false });
+    const sync = waitFor<any>(p2.socket, "sync-media", 3000);
+    host.socket.emit("prepare-game", { pin: host.pin });
+    expect((await sync).count).toBe(2);
+  });
+});
+
+describe("end-to-end encrypted room key", () => {
+  const info = new TextEncoder().encode("media-roulette:room-key:v1");
+  const sharedKey = (secret: Uint8Array, pub: Uint8Array) => hkdf(sha256, x25519.getSharedSecret(secret, pub), undefined, info, 32);
+  const b64 = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
+
+  it("relays the sealed room key from the host to a new player, without being able to read it", async () => {
+    const hostSecret = new Uint8Array(randomBytes(32));
+    const guestSecret = new Uint8Array(randomBytes(32));
+    const hostPublic = b64(x25519.getPublicKey(hostSecret));
+    const guestPublic = b64(x25519.getPublicKey(guestSecret));
+    const roomKey = new Uint8Array(randomBytes(32));
+
+    const hostSocket = await env.connect();
+    hostSocket.emit("create-game", { hostName: "Host", publicKey: hostPublic });
+    const created = await waitFor<any>(hostSocket, "game-created");
+    expect(created.room.players[0]).toMatchObject({ hasRoomKey: true, publicKey: hostPublic });
+
+    // The host's phone answers key requests by sealing the room key for the requester.
+    hostSocket.on("key-request", ({ playerId, publicKey }: { playerId: string; publicKey: string }) => {
+      const nonce = new Uint8Array(randomBytes(24));
+      const sealed = xchacha20poly1305(sharedKey(hostSecret, new Uint8Array(Buffer.from(publicKey, "base64"))), nonce).encrypt(roomKey);
+      hostSocket.emit("share-room-key", { pin: created.pin, to: playerId, sealed: b64(Buffer.concat([nonce, sealed])) });
+    });
+
+    const guestSocket = await env.connect();
+    const roomKeyMessage = waitFor<any>(guestSocket, "room-key");
+    guestSocket.emit("join-game", { pin: created.pin, playerName: "Guest", publicKey: guestPublic });
+    const { from, sealed } = await roomKeyMessage;
+    expect(from).toBe(created.playerId);
+
+    const data = new Uint8Array(Buffer.from(sealed, "base64"));
+    const opened = xchacha20poly1305(sharedKey(guestSecret, new Uint8Array(Buffer.from(hostPublic, "base64"))), data.subarray(0, 24)).decrypt(data.subarray(24));
+    expect(Buffer.from(opened).equals(Buffer.from(roomKey))).toBe(true);
+
+    const update = await waitForMatch<any>(hostSocket, "room-update", (r) => r.players.every((p: any) => p.hasRoomKey));
+    expect(update.players).toHaveLength(2);
+  });
+
+  it("only lets players who hold the key share it", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const p3 = await env.join(host.pin, "P3");
+    p2.socket.emit("share-room-key", { pin: p2.pin, to: p3.playerId, sealed: "A".repeat(96) });
+    expect(await arrives(p3.socket, "room-key", 500)).toBe(false);
   });
 });
 

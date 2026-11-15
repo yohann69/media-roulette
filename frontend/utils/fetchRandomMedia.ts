@@ -59,23 +59,23 @@ export async function queryCandidates(
   kind: "photo" | "video",
   limit: number = CANDIDATE_POOL_SIZE
 ): Promise<AssetMetadata[]> {
-  let query = new Query()
+  const items = await new Query()
     .eq(AssetField.MEDIA_TYPE, kind === "photo" ? LibraryMediaType.IMAGE : LibraryMediaType.VIDEO)
     .orderBy({ key: AssetField.CREATION_TIME, ascending: false })
-    .limit(limit);
+    .limit(limit)
+    .exeForMetadata();
 
-  if (kind === "video") {
-    query = query
-      .gte(AssetField.DURATION, MIN_VIDEO_DURATION_MS)
-      .lte(AssetField.DURATION, MAX_VIDEO_DURATION_MS);
-  }
-
-  const items = await query.exeForMetadata();
-  return items.filter(
-    (item) =>
-      !item.mediaSubtypes?.includes(MediaSubtype.SCREENSHOT) &&
-      !item.mediaSubtypes?.includes(MediaSubtype.SCREEN_RECORDING)
-  );
+  return items.filter((item) => {
+    if (item.mediaSubtypes?.includes(MediaSubtype.SCREENSHOT)) return false;
+    if (item.mediaSubtypes?.includes(MediaSubtype.SCREEN_RECORDING)) return false;
+    // Filtered here rather than in the query: the query's duration unit differs
+    // between iOS (seconds) and Android (milliseconds). Metadata is always in ms.
+    if (kind === "video") {
+      const duration = item.duration ?? 0;
+      return duration >= MIN_VIDEO_DURATION_MS && duration <= MAX_VIDEO_DURATION_MS;
+    }
+    return true;
+  });
 }
 
 function toMediaAsset(item: AssetMetadata, kind: "photo" | "video"): MediaAsset {

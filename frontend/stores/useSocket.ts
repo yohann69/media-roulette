@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { AppState } from "react-native";
 import { io, Socket } from "socket.io-client";
+import { fromBase64, generateKeyPair, generateRoomKey, openRoomKey, sealRoomKey, toBase64, type KeyPair } from "../utils/e2e";
+import { clearGameMedia, clearPrepared } from "../utils/gameMedia";
 
 export type PlayerState = "selecting" | "compressing" | "uploading" | "ready";
 
@@ -15,6 +17,10 @@ export interface RoomPlayer {
   connected: boolean;
   /** Number of media items the player has confirmed. */
   mediaCount: number;
+  /** X25519 public key (base64) used to receive the room key. */
+  publicKey: string | null;
+  /** Whether the player can decrypt this game's media yet. */
+  hasRoomKey: boolean;
 }
 
 export interface Room {
@@ -54,6 +60,12 @@ interface SocketState {
   session: Session | null;
   /** Authorizes our media uploads/downloads for the current room. */
   uploadToken: string | null;
+  /** Key that encrypts this room's media end to end. Never sent to the server in clear. */
+  roomKey: Uint8Array | null;
+  /** Our own compressed media, by local id, waiting to be shared if chosen for the game. */
+  preparedMedia: Map<string, { uri: string; mediaType: "photo" | "video" }>;
+  /** Files we uploaded this game (server filename → local id), so we never download our own. */
+  myUploads: Map<string, string>;
   localMediaMap: Map<number, string>; // media index -> local file URI
   /**
    * Latest "new-round" payload. The first round can arrive before the game screen
@@ -71,6 +83,7 @@ interface SocketState {
   subscribe: (event: string, handler: (...args: any[]) => void) => () => void;
   setUploadStatus: (stage: UploadStage, progress: number) => void;
   setLocalMediaMap: (map: Map<number, string>) => void;
+  setPreparedMedia: (media: Map<string, { uri: string; mediaType: "photo" | "video" }>) => void;
   clearKicked: () => void;
 
   createGame: (hostName: string, settings: any) => Promise<string | null>;
@@ -125,11 +138,18 @@ function request<T>(
   });
 }
 
+// One key pair per app session: its public half lets other players seal the room key for us.
+let keyPair: KeyPair | null = null;
+const myKeyPair = () => (keyPair ??= generateKeyPair());
+
 const EMPTY_GAME_STATE = {
   room: null,
   currentPlayerId: null,
   session: null,
   uploadToken: null,
+  roomKey: null,
+  preparedMedia: new Map<string, { uri: string; mediaType: "photo" | "video" }>(),
+  myUploads: new Map<string, string>(),
   localMediaMap: new Map<number, string>(),
   lastNewRound: null,
   uploadStage: "idle" as UploadStage,
@@ -148,7 +168,15 @@ export const useSocket = create<SocketState>((set, get) => {
     set({ room: data.room, session, currentPlayerId: data.playerId, uploadToken: data.uploadToken });
   };
 
-  const loseRoom = () => set({ ...EMPTY_GAME_STATE, localMediaMap: new Map(), wasKicked: true });
+  /** Leaves the game's state behind, deleting media files left on the phone. */
+  const resetGame = (extra: Partial<SocketState> = {}) => {
+    const pin = get().room?.pin;
+    if (pin) clearGameMedia(pin);
+    clearPrepared();
+    set({ ...EMPTY_GAME_STATE, localMediaMap: new Map(), preparedMedia: new Map(), myUploads: new Map(), ...extra });
+  };
+
+  const loseRoom = () => resetGame({ wasKicked: true });
 
   return {
     socket: null,
@@ -204,7 +232,30 @@ export const useSocket = create<SocketState>((set, get) => {
       // Remember when the round arrived: time spent before it's on screen (e.g. while
       // switching to the game screen) is reported to the server.
       socket.on("new-round", (data: any) => set({ lastNewRound: { ...data, receivedAt: Date.now() } }));
-      socket.on("game-finished", () => set({ lastNewRound: null }));
+      socket.on("game-finished", () => {
+        // Our own prepared copies aren't needed any more either.
+        clearPrepared();
+        set({ lastNewRound: null, preparedMedia: new Map(), myUploads: new Map() });
+      });
+
+      // Someone joined without the room key: if we have it, seal it for them.
+      socket.on("key-request", ({ playerId, publicKey }: { playerId: string; publicKey: string }) => {
+        const { roomKey, session } = get();
+        if (!roomKey || !session) return;
+        const sealed = sealRoomKey(roomKey, fromBase64(publicKey), myKeyPair().secretKey);
+        socket.emit("share-room-key", { pin: session.pin, to: playerId, sealed });
+      });
+
+      // The room key, sealed for us by another player.
+      socket.on("room-key", ({ from, sealed }: { from: string; sealed: string }) => {
+        const sender = get().room?.players.find((p) => p.id === from);
+        if (!sender?.publicKey || get().roomKey) return;
+        try {
+          set({ roomKey: openRoomKey(sealed, fromBase64(sender.publicKey), myKeyPair().secretKey) });
+        } catch (error) {
+          console.warn("Could not open the room key:", error);
+        }
+      });
 
       // Coming back to the foreground: a connection that died while the phone was
       // locked may still look open. Check it right away instead of waiting for the
@@ -228,7 +279,7 @@ export const useSocket = create<SocketState>((set, get) => {
 
     disconnect: () => {
       get().socket?.disconnect();
-      set({ socket: null, isConnected: false, connectionFailed: false, wasKicked: false, ...EMPTY_GAME_STATE, localMediaMap: new Map() });
+      resetGame({ socket: null, isConnected: false, connectionFailed: false, wasKicked: false });
     },
 
     subscribe: (event, handler) => {
@@ -246,21 +297,27 @@ export const useSocket = create<SocketState>((set, get) => {
 
     setLocalMediaMap: (map) => set({ localMediaMap: map }),
 
+    setPreparedMedia: (media) => set({ preparedMedia: media, myUploads: new Map() }),
+
     clearKicked: () => set({ wasKicked: false }),
 
     createGame: async (hostName, settings) => {
       const { socket } = get();
       if (!socket?.connected) return null;
-      const res = await request<JoinPayload>(socket, "create-game", { hostName, settings }, "game-created");
+      const publicKey = toBase64(myKeyPair().publicKey);
+      const res = await request<JoinPayload>(socket, "create-game", { hostName, settings, publicKey }, "game-created");
       if (!res.ok) return null;
       enterRoom(res.data);
+      // As host, our phone creates the key that encrypts this game's media.
+      set({ roomKey: generateRoomKey() });
       return res.data.pin;
     },
 
     joinGame: async (pin, playerName) => {
       const { socket } = get();
       if (!socket?.connected) return false;
-      const res = await request<JoinPayload>(socket, "join-game", { pin, playerName }, "joined-game", ["join-error", "error"]);
+      const publicKey = toBase64(myKeyPair().publicKey);
+      const res = await request<JoinPayload>(socket, "join-game", { pin, playerName, publicKey }, "joined-game", ["join-error", "error"]);
       if (!res.ok) return false;
       enterRoom(res.data);
       return true;
@@ -268,7 +325,7 @@ export const useSocket = create<SocketState>((set, get) => {
 
     leaveGame: async (pin) => {
       get().socket?.emit("leave-game", { pin });
-      set({ ...EMPTY_GAME_STATE, localMediaMap: new Map() });
+      resetGame();
     },
 
     setPlayerState: async (pin, state) => {

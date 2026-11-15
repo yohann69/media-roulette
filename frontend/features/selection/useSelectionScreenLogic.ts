@@ -1,12 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
-import { File, UploadType } from "expo-file-system";
 import { useMediaFetcher } from "../../hooks/useMediaFetcher";
-import { useSocket, SOCKET_URL } from "../../stores/useSocket";
-import { compressMediaBatch, deleteTempFile } from "../../utils/mediaCompression";
-import { processInBatches } from "../../utils/parallelProcessing";
-
-const MAX_PARALLEL_UPLOADS = 4;
+import { useSocket } from "../../stores/useSocket";
+import { compressMediaBatch } from "../../utils/mediaCompression";
+import { storePrepared } from "../../utils/gameMedia";
 
 export function useSelectionScreenLogic(
   params: { isHost?: string; pin?: string; playAgain?: string },
@@ -157,54 +154,20 @@ export function useSelectionScreenLogic(
           }
         );
 
-        // Items that couldn't be prepared are dropped: originals are never uploaded.
-        const prepared = mediaToUpload
-          .map((item, index) => ({ item, compressedUri: compressedUris[index] }))
-          .filter((entry): entry is { item: typeof entry.item; compressedUri: string } => !!entry.compressedUri);
-        if (prepared.length === 0) throw new Error("No media could be prepared");
+        // Items that couldn't be prepared are dropped: originals are never shared.
+        // The prepared copies stay on this phone: only the ones chosen for the game
+        // are encrypted and uploaded when it starts.
+        const prepared = new Map<string, { uri: string; mediaType: "photo" | "video" }>();
+        mediaToUpload.forEach((item, index) => {
+          const compressedUri = compressedUris[index];
+          if (!compressedUri) return;
+          const id = `m${index}`;
+          prepared.set(id, { uri: storePrepared(compressedUri, id, item.mediaType), mediaType: item.mediaType });
+        });
+        if (prepared.size === 0) throw new Error("No media could be prepared");
+        useSocket.getState().setPreparedMedia(prepared);
 
-        // Step 2: upload
-        const { uploadToken } = useSocket.getState();
-        if (!uploadToken) throw new Error("Missing upload token");
-
-        const total = prepared.length;
-        let uploadCompleted = 0;
-        setUploadStatus("uploading", 0);
-        // Flip the shared player state from "compressing" to "uploading" so
-        // the player list in every lobby reflects the current phase.
-        await setPlayerState(pin, "uploading");
-
-        const uploadedMedia = await processInBatches(
-          prepared,
-          async ({ item, compressedUri }, idx) => {
-            try {
-              const result = await new File(compressedUri).upload(`${SOCKET_URL}/upload`, {
-                httpMethod: "POST",
-                uploadType: UploadType.MULTIPART,
-                fieldName: "media",
-                mimeType: item.mediaType === "video" ? "video/mp4" : "image/jpeg",
-                headers: { "x-upload-token": uploadToken },
-              });
-
-              if (result.status !== 200) {
-                throw new Error(`Upload failed for media ${idx + 1} (HTTP ${result.status})`);
-              }
-
-              const response = JSON.parse(result.body);
-              uploadCompleted++;
-              setUploadProgress(0.5 + (uploadCompleted / total) * 0.5);
-              setUploadStatus("uploading", uploadCompleted / total);
-
-              return { id: item.id, mediaType: item.mediaType, filename: response.filename as string };
-            } finally {
-              deleteTempFile(compressedUri);
-            }
-          },
-          MAX_PARALLEL_UPLOADS
-        );
-
-        console.log(`Uploaded ${uploadedMedia.length} files`);
-
+        const uploadedMedia = Array.from(prepared, ([id, { mediaType }]) => ({ id, mediaType }));
         const success = await setMediaPool(pin, uploadedMedia, playAgain);
         if (!success) {
           console.error("Failed to set media pool");
@@ -214,7 +177,7 @@ export function useSelectionScreenLogic(
           return;
         }
 
-        // Status will be updated to "ready" by setMediaPool in the backend
+        // The server marks us ready; nothing has left the phone yet.
         setIsUploading(false);
         setUploadStatus("idle", 1);
       } catch (error) {

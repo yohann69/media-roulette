@@ -3,8 +3,8 @@ import { io as ioClient, type Socket } from "socket.io-client";
 import { createAppServer, type AppServer } from "../src/server.js";
 import type { GameServerOptions } from "../src/gameServer.js";
 
-/** Smallest byte sequence our type sniffing accepts as a JPEG. */
-export const FAKE_JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(256)]);
+/** An "end-to-end encrypted" media file as phones produce it: "MRE1" header + opaque bytes. */
+export const FAKE_ENCRYPTED = Buffer.concat([Buffer.from("MRE1", "ascii"), Buffer.alloc(256, 7)]);
 
 export interface Session {
   socket: Socket;
@@ -51,7 +51,7 @@ export class TestEnv {
     return { socket, ...pick(data) };
   }
 
-  async upload(token: string | null, body: Buffer = FAKE_JPEG, type = "image/jpeg") {
+  async upload(token: string | null, body: Buffer = FAKE_ENCRYPTED, type = "application/octet-stream") {
     const form = new FormData();
     form.append("media", new Blob([body], { type }), "file");
     const res = await fetch(`${this.url}/upload`, {
@@ -62,16 +62,30 @@ export class TestEnv {
     return { status: res.status, body: (await res.json().catch(() => ({}))) as any };
   }
 
-  /** Uploads `count` files for a player and confirms them as their media pool. */
-  async setPool(session: Session, count: number): Promise<string[]> {
-    const files: string[] = [];
-    for (let i = 0; i < count; i++) files.push((await this.upload(session.uploadToken)).body.filename);
+  /**
+   * Confirms `count` prepared media for a player (ids only), and answers the
+   * server's upload requests the way a phone does: upload, then "uploads-complete".
+   * Returns the filenames uploaded so far (filled in as requests arrive).
+   */
+  async setPool(session: Session, count: number, { respondToUploads = true } = {}): Promise<string[]> {
+    const uploaded: string[] = [];
+    if (respondToUploads) {
+      session.socket.on("upload-request", async ({ items }: { items: string[] }) => {
+        const done = [];
+        for (const id of items) {
+          const { body } = await this.upload(session.uploadToken);
+          uploaded.push(body.filename);
+          done.push({ id, filename: body.filename });
+        }
+        session.socket.emit("uploads-complete", { pin: session.pin, items: done });
+      });
+    }
     session.socket.emit("set-media-pool", {
       pin: session.pin,
-      mediaPool: files.map((filename, i) => ({ id: `m${i}`, filename, mediaType: "photo" })),
+      mediaPool: Array.from({ length: count }, (_, i) => ({ id: `m${i}`, mediaType: "photo" })),
     });
     await waitFor(session.socket, "media-pool-set");
-    return files;
+    return uploaded;
   }
 
   /** Host prepares, every player confirms the download, and the first round starts. */

@@ -32,21 +32,31 @@ export interface Player {
   uploadToken: string;
   /** Smoothed one-way network delay, measured by the server. */
   latencyMs: number;
-  /** Media pool confirmed by the player (only files they uploaded). */
+  /** Media the player prepared on their phone (ids only: nothing is uploaded yet). */
   mediaPool: PoolItem[];
-  /** Every file received from this player, pooled or not (for validation and cleanup). */
+  /** Every file received from this player (for validation and cleanup). */
   uploadedFiles: Set<string>;
+  /** X25519 public key (base64) used to receive the room key. */
+  publicKey: string | null;
+  /** Whether this player holds the room key (can decrypt the game's media). */
+  hasRoomKey: boolean;
+  /** The sealed room key relayed to this player, kept to replay after a reconnect. */
+  roomKeyShare: { from: string; sealed: string } | null;
+  /** True once the player has uploaded the media the server asked them for. */
+  uploadsDone: boolean;
 }
 
 export interface PoolItem {
+  /** Opaque id chosen by the owner's phone. */
   id: string;
-  filename: string;
   mediaType: MediaType;
 }
 
 export interface DeckItem extends PoolItem {
   ownerId: string;
   index: number;
+  /** Encrypted file on the server, once the owner has uploaded it. */
+  filename?: string;
 }
 
 export interface Guess {
@@ -92,6 +102,8 @@ export interface Room {
   settings: GameSettings;
   gameState: GameState;
   phase: RoundPhase | null;
+  /** While syncing: first the owners upload the chosen media, then everyone downloads it. */
+  syncStage: "collecting" | "downloading" | null;
   /** Shuffled media for this game. */
   deck: DeckItem[];
   /** Position in `deck` of the media currently shown. */
@@ -137,4 +149,7 @@ export interface PublicPlayer {
   connected: boolean;
   /** Number of media items this player has confirmed. */
   mediaCount: number;
+  /** X25519 public key (base64), so others can seal the room key for this player. */
+  publicKey: string | null;
+  hasRoomKey: boolean;
 }

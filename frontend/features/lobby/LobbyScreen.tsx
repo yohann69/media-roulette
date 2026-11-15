@@ -81,7 +81,9 @@ export function LobbyScreen() {
   const totalMedia = room?.players.reduce((sum, p) => sum + (p.mediaCount ?? 0), 0) ?? 0;
   const allPlayersReady = players.length > 0 && players.every((p) => p.state === "ready");
   const hasEnoughPlayers = players.length >= 2;
-  const canStart = allPlayersReady && hasEnoughPlayers && !isSyncing && !allReady;
+  // Everyone needs the room key to decrypt the game's media (shared automatically on join).
+  const everyoneHasKey = room?.players.every((p) => p.hasRoomKey) ?? false;
+  const canStart = allPlayersReady && hasEnoughPlayers && everyoneHasKey && !isSyncing && !allReady;
   const hostPlayer = players.find((p) => p.isHost);
   const hostName = hostPlayer?.name || t("lobby.host");
 

@@ -16,20 +16,13 @@ export const UPLOADS_DIR = process.env.UPLOADS_DIR || path.resolve(import.meta.d
 export const TMP_DIR = path.join(UPLOADS_DIR, "_tmp");
 
 export const LIMITS = {
-  maxImageBytes: 4 * 1024 * 1024,
-  maxVideoBytes: 20 * 1024 * 1024,
+  /** Encrypted photos are ~0.2–0.7 MB and video clips ~1.5–3 MB. */
+  maxFileBytes: 20 * 1024 * 1024,
   maxFilesPerPlayer: 60,
 };
 
-const FILENAME_PATTERN = /^[a-f0-9]{32}\.(jpg|png|webp|mp4|mov)$/;
+const FILENAME_PATTERN = /^[a-f0-9]{32}\.bin$/;
 
-const CONTENT_TYPES: Record<string, string> = {
-  jpg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  mp4: "video/mp4",
-  mov: "video/quicktime",
-};
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -39,30 +32,21 @@ export class HttpError extends Error {
 
 fs.mkdirSync(TMP_DIR, { recursive: true });
 
-/** Detects the real file type from its first bytes. Returns null when unsupported. */
-type DetectedType = { ext: string; kind: "photo" | "video" };
+/**
+ * Media is end-to-end encrypted by the players' phones: the server only accepts
+ * files in that format ("MRE1" header) and can't read their content.
+ */
+const ENCRYPTED_MAGIC = Buffer.from("MRE1", "ascii");
 
-function detectType(filePath: string): DetectedType | null {
+function isEncryptedMedia(filePath: string): boolean {
   const fd = fs.openSync(filePath, "r");
-  const header = Buffer.alloc(16);
+  const header = Buffer.alloc(4);
   try {
-    fs.readSync(fd, header, 0, 16, 0);
+    fs.readSync(fd, header, 0, 4, 0);
   } finally {
     fs.closeSync(fd);
   }
-
-  if (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) return { ext: "jpg", kind: "photo" };
-  if (header.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
-    return { ext: "png", kind: "photo" };
-  }
-  if (header.toString("ascii", 0, 4) === "RIFF" && header.toString("ascii", 8, 12) === "WEBP") {
-    return { ext: "webp", kind: "photo" };
-  }
-  if (header.toString("ascii", 4, 8) === "ftyp") {
-    const brand = header.toString("ascii", 8, 12);
-    return brand === "qt  " ? { ext: "mov", kind: "video" } : { ext: "mp4", kind: "video" };
-  }
-  return null;
+  return header.equals(ENCRYPTED_MAGIC);
 }
 
 export function roomDir(pin: string) {
@@ -78,28 +62,27 @@ function safeUnlink(filePath: string) {
  * folder under a random name. Throws an Error with a `status` on rejection.
  */
 export function acceptUpload(tmpPath: string, pin: string) {
-  let type: DetectedType | null;
+  let valid = false;
   try {
-    type = detectType(tmpPath);
+    valid = isEncryptedMedia(tmpPath);
   } catch {
-    type = null;
+    valid = false;
   }
-  if (!type) {
+  if (!valid) {
     safeUnlink(tmpPath);
-    throw new HttpError(415, "Unsupported file type");
+    throw new HttpError(415, "Only end-to-end encrypted media is accepted");
   }
 
   const size = fs.statSync(tmpPath).size;
-  const maxBytes = type.kind === "video" ? LIMITS.maxVideoBytes : LIMITS.maxImageBytes;
-  if (size > maxBytes) {
+  if (size > LIMITS.maxFileBytes) {
     safeUnlink(tmpPath);
     throw new HttpError(413, "File too large");
   }
 
-  const filename = `${crypto.randomBytes(16).toString("hex")}.${type.ext}`;
+  const filename = `${crypto.randomBytes(16).toString("hex")}.bin`;
   fs.mkdirSync(roomDir(pin), { recursive: true });
   fs.renameSync(tmpPath, path.join(roomDir(pin), filename));
-  return { filename, kind: type.kind, size };
+  return { filename, size };
 }
 
 /** Absolute path of a room file, or null if the name isn't one we generated. */
@@ -109,13 +92,30 @@ export function resolveFile(pin: string, filename: string) {
   return fs.existsSync(filePath) ? filePath : null;
 }
 
-export function contentTypeFor(filename: string) {
-  return CONTENT_TYPES[path.extname(filename).slice(1)] || "application/octet-stream";
+export function contentTypeFor(_filename: string) {
+  return "application/octet-stream";
 }
 
 export function deleteFile(pin: string, filename: string) {
   if (!/^\d{6}$/.test(pin) || !FILENAME_PATTERN.test(filename)) return;
   safeUnlink(path.join(roomDir(pin), filename));
+}
+
+/**
+ * Backstop: deletes room folders older than `maxAgeMs`, whatever their state.
+ * Normal cleanup happens when games end or players leave.
+ */
+export function sweepOlderThan(maxAgeMs: number) {
+  const cutoff = Date.now() - maxAgeMs;
+  for (const entry of fs.readdirSync(UPLOADS_DIR)) {
+    if (entry === "_tmp") continue; // multer's working folder
+    const dir = path.join(UPLOADS_DIR, entry);
+    try {
+      if (fs.statSync(dir).birthtimeMs < cutoff) fs.rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // Already gone
+    }
+  }
 }
 
 export function deleteRoom(pin: string) {

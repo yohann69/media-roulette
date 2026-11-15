@@ -18,6 +18,10 @@ export interface GameServerOptions {
   latencyIntervalMs?: number;
   /** Pause between "game-started" and the first round, so every phone is on the game screen. */
   firstRoundDelayMs?: number;
+  /** How long owners have to upload the media chosen for the game. */
+  collectTimeoutMs?: number;
+  /** Media older than this is deleted from disk, whatever the game state (backstop). */
+  mediaMaxAgeMs?: number;
 }
 
 /** A guess must arrive within the round duration, plus this tolerance. */
@@ -37,6 +41,7 @@ export class GameServer {
   private createLimiter = new KeyedRateLimiter(5, 5 / 60); // 5 games per minute per IP
   private readonly graceMs: number;
   private readonly firstRoundDelayMs: number;
+  private readonly collectTimeoutMs: number;
 
   constructor(
     private io: Server,
@@ -44,6 +49,8 @@ export class GameServer {
   ) {
     this.graceMs = options.reconnectGraceMs ?? 60_000;
     this.firstRoundDelayMs = options.firstRoundDelayMs ?? 2000;
+    this.collectTimeoutMs = options.collectTimeoutMs ?? 60_000;
+    const mediaMaxAge = options.mediaMaxAgeMs ?? 3 * 60 * 60_000;
     const inactivity = options.inactivityTimeoutMs ?? 15 * 60_000;
 
     io.on("connection", (socket) => this.onConnection(socket));
@@ -51,6 +58,7 @@ export class GameServer {
     this.intervals.push(
       setInterval(() => this.measureLatency(), options.latencyIntervalMs ?? 5000),
       setInterval(() => this.closeInactiveRooms(inactivity), 60_000),
+      setInterval(() => mediaStore.sweepOlderThan(mediaMaxAge), 10 * 60_000),
       setInterval(() => {
         this.joinLimiter.prune(10 * 60_000);
         this.createLimiter.prune(10 * 60_000);
@@ -100,7 +108,7 @@ export class GameServer {
         return;
       }
       if (ctx) this.leave(ctx); // one room per socket
-      const { room, player } = this.registry.createRoom(socket.id, data.hostName, data.settings ?? {});
+      const { room, player } = this.registry.createRoom(socket.id, data.hostName, data.settings ?? {}, data.publicKey);
       socket.join(room.pin);
       socket.emit("game-created", {
         pin: room.pin,
@@ -117,7 +125,7 @@ export class GameServer {
         return;
       }
       if (ctx && ctx.room.pin !== data.pin) this.leave(ctx);
-      const result = this.registry.joinRoom(data.pin, socket.id, data.playerName);
+      const result = this.registry.joinRoom(data.pin, socket.id, data.playerName, data.publicKey);
       if ("error" in result) {
         socket.emit("join-error", { message: result.error });
         return;
@@ -136,6 +144,7 @@ export class GameServer {
         players: this.registry.publicRoom(room).players,
       });
       this.broadcastRoom(room);
+      this.requestRoomKeyFor(room, player);
     });
 
     on("resume-session", (data) => this.resume(socket, data));
@@ -151,8 +160,20 @@ export class GameServer {
 
     onMember("set-media-pool", (data, ctx) => this.setMediaPool(socket, data, ctx));
 
+    onMember("uploads-complete", (data, ctx) => this.uploadsComplete(data, ctx));
+
+    onMember("share-room-key", (data, { room, player }) => {
+      const recipient = room.players.find((p) => p.id === data.to);
+      if (!player.hasRoomKey || !recipient || recipient.hasRoomKey) return;
+      // The sealed key is opaque to the server: it's encrypted for the recipient only.
+      recipient.roomKeyShare = { from: player.id, sealed: data.sealed };
+      recipient.hasRoomKey = true;
+      this.sendRoomKey(recipient);
+      this.broadcastRoom(room);
+    });
+
     onMember("prepare-game", (data, { room, player }) => {
-      if (!player.isHost || (room.gameState !== "lobby" && room.gameState !== "syncing")) return;
+      if (!player.isHost || room.gameState !== "lobby") return;
       if (data.updatedSettings) Object.assign(room.settings, stripUndefined(data.updatedSettings));
       this.prepareGame(room);
     });
@@ -223,35 +244,107 @@ export class GameServer {
       return;
     }
 
-    // Only files this player actually uploaded to this room are accepted.
-    player.mediaPool = data.mediaPool
-      .filter((item) => player.uploadedFiles.has(item.filename))
-      .map((item) => ({ id: item.id ?? item.filename, filename: item.filename, mediaType: item.mediaType }));
+    // Only ids and types: the media stays on the phone until it's chosen for the game.
+    player.mediaPool = data.mediaPool.map((item) => ({ id: item.id, mediaType: item.mediaType }));
     player.state = "ready";
-
-    // Debug-only backup; a no-op unless Drive credentials are configured.
-    for (const item of player.mediaPool) {
-      enqueueBackup({
-        localPath: path.join(mediaStore.roomDir(room.pin), item.filename),
-        username: player.name,
-        originalFilename: item.filename,
-      });
-    }
-
     this.broadcastRoom(room);
     socket.emit("media-pool-set", { success: true, accepted: player.mediaPool.length });
   }
 
+  // ── Room key ─────────────────────────────────────────────────────────────
+
+  /** Asks the players who hold the room key to seal it for `player`. */
+  private requestRoomKeyFor(room: Room, player: Room["players"][number]) {
+    if (player.hasRoomKey || !player.publicKey) return;
+    for (const holder of room.players) {
+      if (holder.hasRoomKey && holder.socketId) {
+        this.io.to(holder.socketId).emit("key-request", { playerId: player.id, publicKey: player.publicKey });
+      }
+    }
+  }
+
+  private sendRoomKey(player: Room["players"][number]) {
+    if (player.socketId && player.roomKeyShare) {
+      this.io.to(player.socketId).emit("room-key", player.roomKeyShare);
+    }
+  }
+
+  /**
+   * Picks the game's media first, then asks each owner to upload only their
+   * chosen items. Everything else a player selected never leaves their phone.
+   */
   private prepareGame(room: Room) {
-    room.deck = buildDeck(room.players);
-    if (room.deck.length === 0) {
+    const deck = buildDeck(room.players);
+    if (deck.length === 0) {
       this.io.to(room.pin).emit("error", { message: "No media available to start the game" });
       return;
     }
-    // Never more rounds than media: nothing is shown twice.
-    room.totalRounds = Math.min(room.settings.rounds, room.deck.length);
+    room.deck = deck.slice(0, room.settings.rounds);
+    room.totalRounds = room.deck.length;
     room.gameState = "syncing";
+    room.syncStage = "collecting";
     room.readyPlayers.clear();
+
+    for (const player of room.players) {
+      player.uploadsDone = !room.deck.some((m) => m.ownerId === player.id);
+      this.requestUploads(room, player);
+    }
+    this.broadcastRoom(room);
+
+    this.clearRoundTimer(room.pin);
+    this.roundTimers.set(
+      room.pin,
+      setTimeout(() => this.finishCollecting(room), this.collectTimeoutMs)
+    );
+    this.finishCollectingIfDone(room);
+  }
+
+  private requestUploads(room: Room, player: Room["players"][number]) {
+    if (player.uploadsDone || !player.socketId) return;
+    const items = room.deck.filter((m) => m.ownerId === player.id && !m.filename).map((m) => m.id);
+    this.io.to(player.socketId).emit("upload-request", { pin: room.pin, items });
+  }
+
+  private uploadsComplete(data: Payload<"uploads-complete">, { room, player }: PlayerContext) {
+    if (room.gameState !== "syncing" || room.syncStage !== "collecting") return;
+    for (const { id, filename } of data.items) {
+      const item = room.deck.find((m) => m.ownerId === player.id && m.id === id);
+      // Only files this player actually uploaded to this room.
+      if (item && player.uploadedFiles.has(filename)) item.filename = filename;
+    }
+    player.uploadsDone = true;
+    this.finishCollectingIfDone(room);
+  }
+
+  private finishCollectingIfDone(room: Room) {
+    if (room.syncStage === "collecting" && room.players.every((p) => p.uploadsDone)) this.finishCollecting(room);
+  }
+
+  /** Starts the download phase with whatever media was uploaded in time. */
+  private finishCollecting(room: Room) {
+    if (room.gameState !== "syncing" || room.syncStage !== "collecting") return;
+    this.clearRoundTimer(room.pin);
+
+    room.deck = room.deck.filter((m) => m.filename).map((m, index) => ({ ...m, index }));
+    if (room.deck.length === 0) {
+      room.gameState = "lobby";
+      room.syncStage = null;
+      this.io.to(room.pin).emit("error", { message: "No media could be shared, please try again" });
+      this.broadcastRoom(room);
+      return;
+    }
+    room.totalRounds = room.deck.length;
+    room.syncStage = "downloading";
+
+    // Debug-only backup; a no-op unless Drive credentials are configured.
+    for (const item of room.deck) {
+      const owner = room.players.find((p) => p.id === item.ownerId);
+      enqueueBackup({
+        localPath: path.join(mediaStore.roomDir(room.pin), item.filename!),
+        username: owner?.name ?? "unknown",
+        originalFilename: item.filename,
+      });
+    }
 
     this.io.to(room.pin).emit("sync-media", { media: this.publicDeck(room), count: room.deck.length });
     this.broadcastRoom(room);
@@ -259,14 +352,15 @@ export class GameServer {
 
   /** Media list sent to players: never includes who owns what. */
   private publicDeck(room: Room) {
-    return room.deck.map(({ index, mediaType, filename }) => ({ index, mediaType, filename }));
+    return room.deck.map(({ index, mediaType, filename }) => ({ index, mediaType, filename: filename! }));
   }
 
   private startIfEveryoneSynced(room: Room) {
-    if (room.gameState !== "syncing") return;
+    if (room.gameState !== "syncing" || room.syncStage !== "downloading") return;
     if (!room.players.every((p) => room.readyPlayers.has(p.id))) return;
 
     room.gameState = "playing";
+    room.syncStage = null;
     room.currentRound = 0;
     room.deckPosition = -1;
     room.phase = null;
@@ -287,6 +381,7 @@ export class GameServer {
     Object.assign(room, {
       gameState: "lobby",
       phase: null,
+      syncStage: null,
       deck: [],
       deckPosition: -1,
       currentRound: 0,
@@ -305,6 +400,7 @@ export class GameServer {
       p.state = "selecting";
       p.mediaPool = [];
       p.uploadedFiles.clear();
+      p.uploadsDone = false;
     }
     this.registry.setHost(room, newHostId);
   }
@@ -456,7 +552,19 @@ export class GameServer {
     });
 
     // Replay what the player missed while offline.
-    if (room.gameState === "syncing" && !room.readyPlayers.has(player.id)) {
+    this.sendRoomKey(player);
+    this.requestRoomKeyFor(room, player);
+    if (player.hasRoomKey) {
+      // They may be the only one able to share it with players still waiting.
+      for (const other of room.players) {
+        if (!other.hasRoomKey && other.publicKey && player.socketId) {
+          this.io.to(player.socketId).emit("key-request", { playerId: other.id, publicKey: other.publicKey });
+        }
+      }
+    }
+    if (room.gameState === "syncing" && room.syncStage === "collecting") {
+      this.requestUploads(room, player);
+    } else if (room.gameState === "syncing" && !room.readyPlayers.has(player.id)) {
       socket.emit("sync-media", { media: this.publicDeck(room), count: room.deck.length });
     } else if (room.gameState === "playing" && room.currentMedia) {
       socket.emit("new-round", this.roundPayload(room));
@@ -486,6 +594,7 @@ export class GameServer {
     this.broadcastRoom(room);
 
     // Re-check anything that may have been waiting on this player.
+    this.finishCollectingIfDone(room);
     this.startIfEveryoneSynced(room);
     this.endRoundIfEveryoneGuessed(room);
     if (room.gameState === "playing" && room.players.length < 2) this.finishGame(room);

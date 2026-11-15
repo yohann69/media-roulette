@@ -3,21 +3,17 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useKeepAwake } from "expo-keep-awake";
 import { useEffect } from "react";
-import { Directory, Paths } from "expo-file-system";
+import { clearAllGameMedia } from "../utils/gameMedia";
 import "../utils/i18n"; // Initialize i18n
 import { DisconnectedModal } from "../components/molecules/DisconnectedModal";
 
 /**
- * Downloaded game media (other players' photos) normally gets deleted when a
- * game ends. If the app was killed mid-game, remove the leftovers on next launch.
+ * Game media (other players' decrypted photos, our prepared copies) is deleted
+ * when a game ends. If the app was killed mid-game, remove the leftovers on launch.
  */
 function clearLeftoverGameMedia() {
   try {
-    for (const entry of Paths.cache.list()) {
-      if (entry instanceof Directory && entry.name.startsWith("game_")) {
-        entry.delete();
-      }
-    }
+    clearAllGameMedia();
   } catch (error) {
     console.warn("Could not clear leftover game media:", error);
   }
