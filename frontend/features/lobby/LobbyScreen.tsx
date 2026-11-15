@@ -32,7 +32,7 @@ export function LobbyScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
-  const { room, currentPlayerId, prepareGame, leaveGame, kickPlayer, uploadStage, uploadProgress } = useSocket();
+  const { room, currentPlayerId, prepareGame, leaveGame, kickPlayer, updateExtras, uploadStage, uploadProgress } = useSocket();
 
   // Derive host status from the room when available (e.g. after play-again, the
   // new host never re-navigates with an updated `isHost` param).
@@ -162,7 +162,10 @@ export function LobbyScreen() {
           </View>
 
           {/* Everyone sees what they're signing up for. */}
-          <GameSettingsDisplay settings={settings} />
+          <GameSettingsDisplay
+            settings={settings}
+            onToggleExtra={isHost && !isSyncing && !isStarting ? (key, value) => pin && updateExtras(pin, { [key]: value }) : undefined}
+          />
 
           {isHost && allPlayersReady && <WarningBanner totalMedia={totalMedia} requiredRounds={settings.rounds} />}
 

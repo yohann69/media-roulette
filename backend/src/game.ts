@@ -7,6 +7,7 @@ import type {
   RoundResult,
   RoundResultPayload,
   RoundTwist,
+  ExtraKind,
 } from "./types.js";
 
 /** Pure game rules. No I/O, no timers: easy to unit-test. */
@@ -40,8 +41,24 @@ export function yearBonus(guess: number | undefined, actual: number | undefined)
 /** Every few rounds a photo is revealed slowly (it starts blurred and sharpens). */
 export const SLOW_REVEAL_EVERY = 4;
 
-export function twistFor(round: number, mediaType: "photo" | "video"): RoundTwist | null {
-  return mediaType === "photo" && round > 0 && round % SLOW_REVEAL_EVERY === 0 ? "slowReveal" : null;
+/** In Slow Reveal mode every photo is a slow reveal; otherwise every fourth one. */
+export function twistFor(round: number, mediaType: "photo" | "video", slowRevealMode = false): RoundTwist | null {
+  if (mediaType !== "photo" || round <= 0) return null;
+  return slowRevealMode || round % SLOW_REVEAL_EVERY === 0 ? "slowReveal" : null;
+}
+
+/** Party extras run after every third round, alternating when both are on. */
+export const EXTRA_EVERY = 3;
+export const CAPTION_VOTE_POINTS = 100;
+export const STORY_APPLAUSE_POINTS = 50;
+
+export function extraFor(round: number, settings: { captionThis: boolean; storyTime: boolean }): ExtraKind | null {
+  if (round <= 0 || round % EXTRA_EVERY !== 0) return null;
+  const kinds: ExtraKind[] = [];
+  if (settings.captionThis) kinds.push("caption");
+  if (settings.storyTime) kinds.push("story");
+  if (kinds.length === 0) return null;
+  return kinds[(round / EXTRA_EVERY - 1) % kinds.length];
 }
 
 /** Upper bounds on what a client may subtract from its answer time. */

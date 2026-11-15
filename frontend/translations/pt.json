@@ -80,7 +80,10 @@
     "shareInvite": "Compartilhar convite",
     "inviteMessage": "Entre na minha partida de Media Roulette! PIN: {pin}\n{link}",
     "you": "Você",
-    "seriesWins": "{count} partidas vencidas",
+    "seriesWins": {
+      "one": "{count} partida vencida",
+      "other": "{count} partidas vencidas"
+    },
     "removePlayer": "Remover {name}",
     "removePlayerTitle": "Remover {name}?",
     "removePlayerMessage": "A pessoa sairá do lobby. Poderá voltar com o PIN.",
@@ -107,7 +110,8 @@
     "withoutSound": "Sem som",
     "blindMode": "Modo cego",
     "blindModeDescription": "Pular seleção de mídias - mídias aleatórias serão uma surpresa para todos! 🎲",
-    "timeMachine": "⏳ Máquina do tempo"
+    "timeMachine": "⏳ Máquina do tempo",
+    "slowReveal": "🔍 Revelação lenta"
   },
   "game": {
     "round": "Rodada {current} de {total}",
@@ -229,8 +233,33 @@
   "terms": {
     "title": "Termos e condições"
   },
-  "reactions": {
-    "label": "Reações",
-    "send": "Reagir com {emoji}"
+  "extras": {
+    "title": "Extras de festa",
+    "captionThis": "✍️ Legenda",
+    "storyTime": "🎤 A história",
+    "hint": "A cada 3 rodadas. Toque para ligar ou desligar.",
+    "secondsLeft": "Faltam {seconds} s",
+    "captionTitle": "✍️ Legenda",
+    "captionPrompt": "Escreva a legenda mais engraçada",
+    "captionPlaceholder": "Sua legenda…",
+    "sendCaption": "Enviar",
+    "updateCaption": "Mudar minha legenda",
+    "captionSent": "Enviada: “{text}”",
+    "voteTitle": "🗳️ Vote!",
+    "votePrompt": "Qual legenda é a mais engraçada?",
+    "yourCaption": "Sua legenda (você não pode votar nela)",
+    "captionResultsTitle": "😂 As legendas mais engraçadas",
+    "noCaptions": "Ninguém escreveu nada desta vez.",
+    "votes": {
+      "one": "{count} voto",
+      "other": "{count} votos"
+    },
+    "storyTitle": "🎤 A história",
+    "storyYourTurn": "Sua vez: conte a história por trás desta!",
+    "storyPrompt": "{name} conta a história por trás desta",
+    "storyDone": "Terminei",
+    "applaud": "👏 Aplaudir",
+    "applauded": "👏 Aplaudido!",
+    "storyResult": "{name} ganhou 👏 ×{count} (+{points} pts)"
   }
 }

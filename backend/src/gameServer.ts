@@ -1,12 +1,24 @@
 import type { Server, Socket } from "socket.io";
 import { schemas, type ClientEvent, type Payload } from "./protocol.js";
 import { RoomRegistry, type PlayerContext } from "./rooms.js";
-import { answerTime, buildDeck, calculateGameStats, leaderboard, ROUND_GRACE_MS, scoreRound, twistFor } from "./game.js";
+import {
+  answerTime,
+  buildDeck,
+  calculateGameStats,
+  CAPTION_VOTE_POINTS,
+  extraFor,
+  leaderboard,
+  ROUND_GRACE_MS,
+  scoreRound,
+  STORY_APPLAUSE_POINTS,
+  twistFor,
+} from "./game.js";
 import { KeyedRateLimiter, TokenBucket } from "./rateLimit.js";
 import * as mediaStore from "./mediaStore.js";
 // Debug-only helper (JavaScript): a no-op unless Drive credentials are configured.
 import { enqueueBackup } from "./driveBackup.js";
-import type { Player, Room } from "./types.js";
+import type { ExtraState, Player, Room } from "./types.js";
+import crypto from "node:crypto";
 import path from "node:path";
 
 export interface GameServerOptions {
@@ -24,6 +36,11 @@ export interface GameServerOptions {
   skipPauseMs?: number;
   /** Media older than this is deleted from disk, whatever the game state (backstop). */
   mediaMaxAgeMs?: number;
+  /** Party extras: time to write a caption, to vote, to tell the story, and the pause after it. */
+  captionWriteMs?: number;
+  captionVoteMs?: number;
+  storyMs?: number;
+  storyEndPauseMs?: number;
 }
 
 /** A guess must arrive within the round duration, plus this tolerance. */
@@ -41,12 +58,14 @@ export class GameServer {
   private intervals: NodeJS.Timeout[] = [];
   private joinLimiter = new KeyedRateLimiter(10, 10 / 60); // 10 join attempts per minute per IP
   private createLimiter = new KeyedRateLimiter(5, 5 / 60); // 5 games per minute per IP
-  /** Reactions are cosmetic: a short burst, then about one per second per player. */
-  private reactionBuckets = new WeakMap<Player, TokenBucket>();
   private readonly graceMs: number;
   private readonly firstRoundDelayMs: number;
   private readonly collectTimeoutMs: number;
   private readonly skipPauseMs: number;
+  private readonly captionWriteMs: number;
+  private readonly captionVoteMs: number;
+  private readonly storyMs: number;
+  private readonly storyEndPauseMs: number;
 
   constructor(
     private io: Server,
@@ -56,6 +75,10 @@ export class GameServer {
     this.firstRoundDelayMs = options.firstRoundDelayMs ?? 2000;
     this.collectTimeoutMs = options.collectTimeoutMs ?? 60_000;
     this.skipPauseMs = options.skipPauseMs ?? 1500;
+    this.captionWriteMs = options.captionWriteMs ?? 40_000;
+    this.captionVoteMs = options.captionVoteMs ?? 20_000;
+    this.storyMs = options.storyMs ?? 30_000;
+    this.storyEndPauseMs = options.storyEndPauseMs ?? 3000;
     const mediaMaxAge = options.mediaMaxAgeMs ?? 3 * 60 * 60_000;
     const inactivity = options.inactivityTimeoutMs ?? 15 * 60_000;
 
@@ -203,14 +226,58 @@ export class GameServer {
     onMember("submit-guess", (data, ctx) => this.submitGuess(socket, data, ctx));
 
     onMember("continue-game", (_data, { room, player }) => {
-      if (room.gameState !== "playing" || room.phase !== "results" || !room.currentMedia) return;
+      if (room.gameState !== "playing" || !room.currentMedia) return;
+      if (room.phase !== "results" && room.phase !== "captionResults") return;
       const owner = room.players.find((p) => p.id === room.currentMedia!.ownerId);
       // The owner moves the game on. If they left or are offline, anyone can.
       if (owner && owner.connected && owner.id !== player.id) {
         socket.emit("error", { message: "Only the media owner can continue" });
         return;
       }
-      this.nextRound(room);
+      // After some rounds, a party extra comes before the next media.
+      const extra = room.phase === "results" ? extraFor(room.currentRound, room.settings) : null;
+      if (extra === "caption") this.startCaption(room);
+      else if (extra === "story" && owner?.connected) this.startStory(room);
+      else this.nextRound(room);
+    });
+
+    onMember("update-extras", (data, { room, player }) => {
+      if (!player.isHost || room.gameState !== "lobby") return;
+      if (data.captionThis !== undefined) room.settings.captionThis = data.captionThis;
+      if (data.storyTime !== undefined) room.settings.storyTime = data.storyTime;
+      this.broadcastRoom(room);
+    });
+
+    onMember("submit-caption", (data, { room, player }) => {
+      const extra = room.extra;
+      if (room.phase !== "caption" || !extra) return;
+      const existing = extra.captions.find((c) => c.authorId === player.id);
+      if (existing) existing.text = data.text;
+      else extra.captions.push({ id: crypto.randomBytes(4).toString("hex"), authorId: player.id, text: data.text });
+      socket.emit("caption-received", { success: true });
+      if (room.players.every((p) => extra.captions.some((c) => c.authorId === p.id))) this.startCaptionVote(room);
+    });
+
+    onMember("vote-caption", (data, { room, player }) => {
+      const extra = room.extra;
+      if (room.phase !== "captionVote" || !extra) return;
+      const caption = extra.captions.find((c) => c.id === data.captionId);
+      if (!caption || caption.authorId === player.id) return;
+      extra.votes.set(player.id, caption.id);
+      socket.emit("caption-vote-received", { success: true });
+      this.finishCaptionIfEveryoneVoted(room);
+    });
+
+    onMember("applaud", (_data, { room, player }) => {
+      const extra = room.extra;
+      if (room.phase !== "story" || !extra || player.id === room.currentMedia?.ownerId) return;
+      if (extra.applause.has(player.id)) return;
+      extra.applause.add(player.id);
+      this.io.to(room.pin).emit("applause", { playerId: player.id, count: extra.applause.size });
+    });
+
+    onMember("end-story", (_data, { room, player }) => {
+      if (room.phase === "story" && player.id === room.currentMedia?.ownerId) this.endStory(room);
     });
 
     onMember("skip-media", (_data, { room, player }) => {
@@ -250,13 +317,6 @@ export class GameServer {
         this.io.sockets.sockets.get(target.socketId)?.leave(room.pin);
       }
       this.removePlayer(room, target.id);
-    });
-
-    onMember("send-reaction", (data, { room, player }) => {
-      let bucket = this.reactionBuckets.get(player);
-      if (!bucket) this.reactionBuckets.set(player, (bucket = new TokenBucket(4, 1)));
-      if (!bucket.take()) return;
-      this.io.to(room.pin).emit("reaction", { playerId: player.id, emoji: data.emoji });
     });
 
     // Lets the app check its connection is still alive (e.g. when it returns to the foreground).
@@ -431,6 +491,7 @@ export class GameServer {
       totalRounds: 0,
       currentMedia: null,
       currentTwist: null,
+      extra: null,
       lastRoundResult: null,
       finalResult: null,
     } satisfies Partial<Room>);
@@ -471,7 +532,8 @@ export class GameServer {
     room.deckPosition = position;
     room.currentMedia = room.deck[position];
     room.currentRound += 1;
-    room.currentTwist = twistFor(room.currentRound, room.currentMedia.mediaType);
+    room.currentTwist = twistFor(room.currentRound, room.currentMedia.mediaType, room.settings.slowReveal);
+    room.extra = null;
     room.phase = "round";
     room.guesses.clear();
     room.roundStartedAt = Date.now();
@@ -574,6 +636,142 @@ export class GameServer {
     this.io.to(room.pin).emit("round-result", room.lastRoundResult);
   }
 
+  // ── Party extras ─────────────────────────────────────────────────────────
+
+  private newExtra(kind: ExtraState["kind"], durationMs: number): ExtraState {
+    return { kind, endsAt: Date.now() + durationMs, captions: [], votes: new Map(), applause: new Set(), result: null };
+  }
+
+  private remaining(room: Room) {
+    return Math.max(0, (room.extra?.endsAt ?? 0) - Date.now());
+  }
+
+  private setPhaseTimer(room: Room, ms: number, next: () => void) {
+    this.clearRoundTimer(room.pin);
+    this.roundTimers.set(
+      room.pin,
+      setTimeout(() => {
+        if (this.registry.rooms.has(room.pin) && room.gameState === "playing") next();
+      }, ms)
+    );
+  }
+
+  /** Caption This: everyone writes a caption for the media just revealed. */
+  private startCaption(room: Room) {
+    room.phase = "caption";
+    room.extra = this.newExtra("caption", this.captionWriteMs);
+    this.io.to(room.pin).emit("caption-start", { round: room.currentRound, endsInMs: this.captionWriteMs });
+    this.setPhaseTimer(room, this.captionWriteMs, () => this.startCaptionVote(room));
+  }
+
+  private startCaptionVote(room: Room) {
+    const extra = room.extra;
+    if (room.phase !== "caption" || !extra) return;
+    if (extra.captions.length < 2) {
+      // Nothing to vote on: show what was written and move on.
+      this.finishCaption(room);
+      return;
+    }
+    room.phase = "captionVote";
+    extra.endsAt = Date.now() + this.captionVoteMs;
+    // Shuffled and anonymous: authors are only revealed with the results.
+    extra.captions.sort(() => Math.random() - 0.5);
+    for (const player of room.players) this.sendCaptionVote(room, player);
+    this.setPhaseTimer(room, this.captionVoteMs, () => this.finishCaption(room));
+  }
+
+  private sendCaptionVote(room: Room, player: Player) {
+    if (!player.socketId || !room.extra) return;
+    this.io.to(player.socketId).emit("caption-vote-start", {
+      captions: room.extra.captions.map((c) => ({ id: c.id, text: c.text, mine: c.authorId === player.id })),
+      endsInMs: this.remaining(room),
+    });
+  }
+
+  private finishCaptionIfEveryoneVoted(room: Room) {
+    const extra = room.extra;
+    if (room.phase !== "captionVote" || !extra) return;
+    // Players who only see their own caption have nothing to vote for.
+    const voters = room.players.filter((p) => extra.captions.some((c) => c.authorId !== p.id));
+    if (voters.every((p) => extra.votes.has(p.id))) this.finishCaption(room);
+  }
+
+  private finishCaption(room: Room) {
+    const extra = room.extra;
+    if ((room.phase !== "caption" && room.phase !== "captionVote") || !extra) return;
+    this.clearRoundTimer(room.pin);
+    const votesFor = new Map<string, number>();
+    for (const captionId of extra.votes.values()) votesFor.set(captionId, (votesFor.get(captionId) ?? 0) + 1);
+
+    const results = extra.captions
+      .map((c) => {
+        const author = room.players.find((p) => p.id === c.authorId);
+        const votes = votesFor.get(c.id) ?? 0;
+        const points = votes * CAPTION_VOTE_POINTS;
+        if (author) author.score += points;
+        return { authorId: c.authorId, authorName: author?.name ?? "", text: c.text, votes, points };
+      })
+      .sort((a, b) => b.votes - a.votes);
+
+    room.phase = "captionResults";
+    extra.result = { results, leaderboard: leaderboard(room) };
+    this.io.to(room.pin).emit("caption-results", extra.result);
+    // The owner moves on, as after a round ("continue-game").
+  }
+
+  /** Story Time: the owner gets the floor to tell the story behind their media. */
+  private startStory(room: Room) {
+    const owner = room.players.find((p) => p.id === room.currentMedia?.ownerId);
+    if (!owner) {
+      this.nextRound(room);
+      return;
+    }
+    room.phase = "story";
+    room.extra = this.newExtra("story", this.storyMs);
+    this.io.to(room.pin).emit("story-start", { ownerId: owner.id, ownerName: owner.name, endsInMs: this.storyMs });
+    this.setPhaseTimer(room, this.storyMs, () => this.endStory(room));
+  }
+
+  private endStory(room: Room) {
+    const extra = room.extra;
+    if (room.phase !== "story" || !extra) return;
+    this.clearRoundTimer(room.pin);
+    const owner = room.players.find((p) => p.id === room.currentMedia?.ownerId);
+    const points = extra.applause.size * STORY_APPLAUSE_POINTS;
+    if (owner) owner.score += points;
+    room.phase = "storyEnded";
+    extra.result = { ownerId: owner?.id ?? null, applause: extra.applause.size, points, leaderboard: leaderboard(room) };
+    this.io.to(room.pin).emit("story-ended", extra.result);
+    this.setPhaseTimer(room, this.storyEndPauseMs, () => this.nextRound(room));
+  }
+
+  /** Re-checks a running extra after a player left. */
+  private recheckExtra(room: Room) {
+    const extra = room.extra;
+    if (!extra) return;
+    if (room.phase === "caption" && room.players.every((p) => extra.captions.some((c) => c.authorId === p.id))) {
+      this.startCaptionVote(room);
+    } else if (room.phase === "captionVote") {
+      this.finishCaptionIfEveryoneVoted(room);
+    } else if (room.phase === "story" && !room.players.some((p) => p.id === room.currentMedia?.ownerId)) {
+      this.endStory(room);
+    }
+  }
+
+  /** Replays the running extra to a player who reconnected. */
+  private replayExtra(room: Room, player: Player) {
+    const extra = room.extra;
+    if (!extra || !player.socketId) return;
+    const to = this.io.to(player.socketId);
+    if (room.phase === "caption") to.emit("caption-start", { round: room.currentRound, endsInMs: this.remaining(room) });
+    else if (room.phase === "captionVote") this.sendCaptionVote(room, player);
+    else if (room.phase === "captionResults") to.emit("caption-results", extra.result);
+    else if (room.phase === "story") {
+      const owner = room.players.find((p) => p.id === room.currentMedia?.ownerId);
+      to.emit("story-start", { ownerId: owner?.id, ownerName: owner?.name, endsInMs: this.remaining(room) });
+    } else if (room.phase === "storyEnded") to.emit("story-ended", extra.result);
+  }
+
   private finishGame(room: Room) {
     this.clearRoundTimer(room.pin);
     let stats = null;
@@ -664,7 +862,9 @@ export class GameServer {
       socket.emit("sync-media", { media: this.publicDeck(room), count: room.deck.length });
     } else if (room.gameState === "playing" && room.currentMedia) {
       socket.emit("new-round", this.roundPayload(room));
-      if (room.phase === "results" && room.lastRoundResult) socket.emit("round-result", room.lastRoundResult);
+      const afterRound = room.phase !== null && room.phase !== "round";
+      if (afterRound && room.lastRoundResult) socket.emit("round-result", room.lastRoundResult);
+      this.replayExtra(room, player);
     } else if (room.gameState === "finished" && room.finalResult) {
       socket.emit("game-finished", room.finalResult);
     }
@@ -693,6 +893,7 @@ export class GameServer {
     this.finishCollectingIfDone(room);
     this.startIfEveryoneSynced(room);
     this.endRoundIfEveryoneGuessed(room);
+    this.recheckExtra(room);
     if (room.gameState === "playing" && room.players.length < 2) this.finishGame(room);
   }
 

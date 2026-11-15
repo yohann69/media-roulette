@@ -80,7 +80,10 @@
     "shareInvite": "Einladung teilen",
     "inviteMessage": "Spiel mit mir Media Roulette! PIN: {pin}\n{link}",
     "you": "Du",
-    "seriesWins": "{count} Spiele gewonnen",
+    "seriesWins": {
+      "one": "{count} Spiel gewonnen",
+      "other": "{count} Spiele gewonnen"
+    },
     "removePlayer": "{name} entfernen",
     "removePlayerTitle": "{name} entfernen?",
     "removePlayerMessage": "Die Person verlässt die Lobby und kann mit der PIN wieder beitreten.",
@@ -107,7 +110,8 @@
     "withoutSound": "Ohne Ton",
     "blindMode": "Blindmodus",
     "blindModeDescription": "Medienauswahl überspringen - zufällige Medien werden für alle eine Überraschung sein! 🎲",
-    "timeMachine": "⏳ Zeitmaschine"
+    "timeMachine": "⏳ Zeitmaschine",
+    "slowReveal": "🔍 Langsame Enthüllung"
   },
   "game": {
     "round": "Runde {current} von {total}",
@@ -229,8 +233,33 @@
   "terms": {
     "title": "Nutzungsbedingungen"
   },
-  "reactions": {
-    "label": "Reaktionen",
-    "send": "Mit {emoji} reagieren"
+  "extras": {
+    "title": "Party-Extras",
+    "captionThis": "✍️ Bildunterschrift",
+    "storyTime": "🎤 Geschichte",
+    "hint": "Jede 3. Runde. Tippen zum Ein- oder Ausschalten.",
+    "secondsLeft": "Noch {seconds} s",
+    "captionTitle": "✍️ Bildunterschrift",
+    "captionPrompt": "Schreib die lustigste Bildunterschrift dafür",
+    "captionPlaceholder": "Deine Bildunterschrift…",
+    "sendCaption": "Senden",
+    "updateCaption": "Meine Bildunterschrift ändern",
+    "captionSent": "Gesendet: „{text}“",
+    "voteTitle": "🗳️ Abstimmen!",
+    "votePrompt": "Welche Bildunterschrift ist am lustigsten?",
+    "yourCaption": "Deine Bildunterschrift (du kannst nicht dafür stimmen)",
+    "captionResultsTitle": "😂 Die lustigsten Bildunterschriften",
+    "noCaptions": "Diesmal hat niemand etwas geschrieben.",
+    "votes": {
+      "one": "{count} Stimme",
+      "other": "{count} Stimmen"
+    },
+    "storyTitle": "🎤 Geschichte",
+    "storyYourTurn": "Du bist dran: erzähl die Geschichte dahinter!",
+    "storyPrompt": "{name} erzählt die Geschichte dahinter",
+    "storyDone": "Fertig",
+    "applaud": "👏 Applaus",
+    "applauded": "👏 Applaudiert!",
+    "storyResult": "{name} bekommt 👏 ×{count} (+{points} Pkt.)"
   }
 }

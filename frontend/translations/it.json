@@ -80,7 +80,10 @@
     "shareInvite": "Condividi invito",
     "inviteMessage": "Gioca con me a Media Roulette! PIN: {pin}\n{link}",
     "you": "Tu",
-    "seriesWins": "{count} partite vinte",
+    "seriesWins": {
+      "one": "{count} partita vinta",
+      "other": "{count} partite vinte"
+    },
     "removePlayer": "Rimuovi {name}",
     "removePlayerTitle": "Rimuovere {name}?",
     "removePlayerMessage": "Uscirà dalla lobby. Potrà rientrare con il PIN.",
@@ -107,7 +110,8 @@
     "withoutSound": "Senza audio",
     "blindMode": "Modalità cieca",
     "blindModeDescription": "Salta la selezione media - i media casuali saranno una sorpresa per tutti! 🎲",
-    "timeMachine": "⏳ Macchina del tempo"
+    "timeMachine": "⏳ Macchina del tempo",
+    "slowReveal": "🔍 Rivelazione lenta"
   },
   "game": {
     "round": "Round {current} di {total}",
@@ -229,8 +233,33 @@
   "terms": {
     "title": "Termini e condizioni"
   },
-  "reactions": {
-    "label": "Reazioni",
-    "send": "Reagisci con {emoji}"
+  "extras": {
+    "title": "Extra per la festa",
+    "captionThis": "✍️ Didascalia",
+    "storyTime": "🎤 La storia",
+    "hint": "Ogni 3 round. Tocca per attivare o disattivare.",
+    "secondsLeft": "{seconds} s rimasti",
+    "captionTitle": "✍️ Didascalia",
+    "captionPrompt": "Scrivi la didascalia più divertente",
+    "captionPlaceholder": "La tua didascalia…",
+    "sendCaption": "Invia",
+    "updateCaption": "Modifica la mia didascalia",
+    "captionSent": "Inviata: «{text}»",
+    "voteTitle": "🗳️ Vota!",
+    "votePrompt": "Qual è la didascalia più divertente?",
+    "yourCaption": "La tua didascalia (non puoi votarla)",
+    "captionResultsTitle": "😂 Le didascalie più divertenti",
+    "noCaptions": "Questa volta nessuno ha scritto nulla.",
+    "votes": {
+      "one": "{count} voto",
+      "other": "{count} voti"
+    },
+    "storyTitle": "🎤 La storia",
+    "storyYourTurn": "Tocca a te: racconta la storia dietro questa!",
+    "storyPrompt": "{name} racconta la storia dietro questa",
+    "storyDone": "Ho finito",
+    "applaud": "👏 Applaudi",
+    "applauded": "👏 Applaudito!",
+    "storyResult": "{name} riceve 👏 ×{count} (+{points} pt)"
   }
 }

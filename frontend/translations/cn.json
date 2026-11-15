@@ -107,7 +107,8 @@
     "withoutSound": "无声音",
     "blindMode": "盲选模式",
     "blindModeDescription": "跳过媒体选择 - 随机媒体对所有人来说都是惊喜！🎲",
-    "timeMachine": "⏳ 时光机"
+    "timeMachine": "⏳ 时光机",
+    "slowReveal": "🔍 慢慢揭晓"
   },
   "game": {
     "round": "第 {current} 回合，共 {total} 回合",
@@ -229,8 +230,30 @@
   "terms": {
     "title": "条款和条件"
   },
-  "reactions": {
-    "label": "表情回应",
-    "send": "用 {emoji} 回应"
+  "extras": {
+    "title": "派对附加玩法",
+    "captionThis": "✍️ 配文",
+    "storyTime": "🎤 讲故事",
+    "hint": "每 3 轮一次。点按开启或关闭。",
+    "secondsLeft": "剩余 {seconds} 秒",
+    "captionTitle": "✍️ 配文",
+    "captionPrompt": "为这张写一句最搞笑的配文",
+    "captionPlaceholder": "你的配文…",
+    "sendCaption": "发送",
+    "updateCaption": "修改我的配文",
+    "captionSent": "已发送：“{text}”",
+    "voteTitle": "🗳️ 投票！",
+    "votePrompt": "哪句配文最搞笑？",
+    "yourCaption": "你的配文（不能投给自己）",
+    "captionResultsTitle": "😂 最搞笑的配文",
+    "noCaptions": "这次没有人写配文。",
+    "votes": "{count} 票",
+    "storyTitle": "🎤 讲故事",
+    "storyYourTurn": "轮到你了：讲讲这张背后的故事！",
+    "storyPrompt": "{name} 正在讲这张背后的故事",
+    "storyDone": "讲完了",
+    "applaud": "👏 鼓掌",
+    "applauded": "👏 已鼓掌！",
+    "storyResult": "{name} 获得 👏 ×{count}（+{points} 分）"
   }
 }

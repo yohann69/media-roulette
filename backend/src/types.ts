@@ -3,8 +3,32 @@ export type PlayerState = "selecting" | "compressing" | "uploading" | "ready";
 /** Externally visible game state. "playing" covers both the round and results phases. */
 export type GameState = "lobby" | "syncing" | "playing" | "finished";
 
-/** Sub-phase while `gameState === "playing"`. */
-export type RoundPhase = "round" | "results";
+/**
+ * Sub-phase while `gameState === "playing"`. After some rounds' results, a party
+ * extra runs: captions are written, voted on and shown, or the owner tells the story.
+ */
+export type RoundPhase = "round" | "results" | "caption" | "captionVote" | "captionResults" | "story" | "storyEnded";
+
+export type ExtraKind = "caption" | "story";
+
+export interface CaptionEntry {
+  /** Opaque id shown while voting, so captions stay anonymous until the results. */
+  id: string;
+  authorId: string;
+  text: string;
+}
+
+export interface ExtraState {
+  kind: ExtraKind;
+  endsAt: number;
+  captions: CaptionEntry[];
+  /** Voter id → caption id. */
+  votes: Map<string, string>;
+  /** Players who applauded the story. */
+  applause: Set<string>;
+  /** Last result sent, replayed to players who reconnect. */
+  result: unknown;
+}
 
 export type MediaType = "photo" | "video";
 
@@ -16,6 +40,11 @@ export interface GameSettings {
   blindMode: boolean;
   /** Time Machine: players also guess the year the media was taken. */
   timeMachine: boolean;
+  /** Slow Reveal mode: every photo starts blurred and sharpens. */
+  slowReveal: boolean;
+  /** Party extras, every few rounds: write captions and vote, or the owner tells the story. */
+  captionThis: boolean;
+  storyTime: boolean;
 }
 
 export interface Player {
@@ -131,6 +160,8 @@ export interface Room {
   totalRounds: number;
   currentMedia: DeckItem | null;
   currentTwist: RoundTwist | null;
+  /** The party extra running after the current round, if any. */
+  extra: ExtraState | null;
   roundStartedAt: number;
   guesses: Map<string, Guess>;
   readyPlayers: Set<string>;

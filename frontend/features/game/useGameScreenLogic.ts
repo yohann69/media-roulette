@@ -17,7 +17,32 @@ interface MediaItem {
   mediaType: "photo" | "video";
 }
 
-type GameState = "reveal" | "result" | "leaderboard" | "podium" | "skipped";
+type GameState =
+  | "reveal"
+  | "result"
+  | "leaderboard"
+  | "podium"
+  | "skipped"
+  // Party extras after some rounds
+  | "caption"
+  | "captionVote"
+  | "captionResults"
+  | "story"
+  | "storyEnded";
+
+export interface CaptionChoice {
+  id: string;
+  text: string;
+  mine: boolean;
+}
+
+export interface CaptionResult {
+  authorId: string;
+  authorName: string;
+  text: string;
+  votes: number;
+  points: number;
+}
 
 /** Must match the server's MAX_DISPLAY_DELAY_CREDIT_MS. */
 const MAX_DISPLAY_DELAY_CREDIT_MS = 1500;
@@ -32,6 +57,10 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     showMediaAgain,
     hideMediaAgain,
     skipMedia,
+    submitCaption,
+    voteCaption,
+    applaud,
+    endStory,
     playAgain,
     leaveGame,
     setLocalMediaMap,
@@ -57,6 +86,18 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
   /** Time Machine: years to pick from (null outside Time Machine rounds) and our pick. */
   const [yearRange, setYearRange] = useState<{ min: number; max: number } | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+
+  // Party extras
+  /** When the running extra phase ends, on this phone's clock. */
+  const [extraEndsAt, setExtraEndsAt] = useState(0);
+  const [myCaption, setMyCaption] = useState<string | null>(null);
+  const [captionChoices, setCaptionChoices] = useState<CaptionChoice[]>([]);
+  const [myCaptionVote, setMyCaptionVote] = useState<string | null>(null);
+  const [captionResults, setCaptionResults] = useState<CaptionResult[]>([]);
+  const [storyOwner, setStoryOwner] = useState<{ id: string; name: string } | null>(null);
+  const [hasApplauded, setHasApplauded] = useState(false);
+  const [applauseCount, setApplauseCount] = useState(0);
+  const [storyResult, setStoryResult] = useState<{ applause: number; points: number } | null>(null);
 
   // When the round arrived and when its media became visible on this phone.
   // The difference is sent with the guess so slow loading isn't penalized.
@@ -138,6 +179,81 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     setTimerActive(false);
     setGameState("skipped");
   });
+
+  // ── Party extras ──
+  useSocketEvent("caption-start", ({ endsInMs }: { endsInMs: number }) => {
+    setExtraEndsAt(Date.now() + endsInMs);
+    setMyCaption(null);
+    setMyCaptionVote(null);
+    setCaptionChoices([]);
+    setIsShowingMediaAgain(false);
+    setGameState("caption");
+  });
+
+  useSocketEvent("caption-vote-start", ({ captions, endsInMs }: { captions: CaptionChoice[]; endsInMs: number }) => {
+    setExtraEndsAt(Date.now() + endsInMs);
+    setCaptionChoices(captions);
+    setMyCaptionVote(null);
+    setGameState("captionVote");
+  });
+
+  useSocketEvent("caption-results", ({ results }: { results: CaptionResult[] }) => {
+    setCaptionResults(results);
+    const top = results[0];
+    if (top && top.votes > 0 && top.authorId === useSocket.getState().currentPlayerId) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+    setGameState("captionResults");
+  });
+
+  useSocketEvent("story-start", (data: { ownerId: string; ownerName: string; endsInMs: number }) => {
+    setExtraEndsAt(Date.now() + data.endsInMs);
+    setStoryOwner({ id: data.ownerId, name: data.ownerName });
+    setHasApplauded(false);
+    setApplauseCount(0);
+    setStoryResult(null);
+    setIsShowingMediaAgain(false);
+    setGameState("story");
+  });
+
+  useSocketEvent("applause", ({ count }: { count: number }) => {
+    setApplauseCount(count);
+    if (storyOwner?.id === useSocket.getState().currentPlayerId) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  });
+
+  useSocketEvent("story-ended", (data: { applause: number; points: number }) => {
+    setStoryResult({ applause: data.applause, points: data.points });
+    setGameState("storyEnded");
+  });
+
+  const handleSubmitCaption = async (text: string) => {
+    const clean = text.replace(/\s+/g, " ").trim();
+    if (!pin || !clean) return;
+    if (await submitCaption(pin, clean)) {
+      setMyCaption(clean);
+      Haptics.selectionAsync().catch(() => {});
+    }
+  };
+
+  const handleVoteCaption = (captionId: string) => {
+    if (!pin) return;
+    setMyCaptionVote(captionId);
+    Haptics.selectionAsync().catch(() => {});
+    voteCaption(pin, captionId);
+  };
+
+  const handleApplaud = () => {
+    if (!pin || hasApplauded) return;
+    setHasApplauded(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    applaud(pin);
+  };
+
+  const handleEndStory = () => {
+    if (pin) endStory(pin);
+  };
 
   useSocketEvent("show-media-again", () => setIsShowingMediaAgain(true));
   useSocketEvent("hide-media-again", () => setIsShowingMediaAgain(false));
@@ -247,6 +363,19 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     yearRange,
     selectedYear,
     handleYearSelect,
+    extraEndsAt,
+    myCaption,
+    captionChoices,
+    myCaptionVote,
+    captionResults,
+    storyOwner,
+    hasApplauded,
+    applauseCount,
+    storyResult,
+    handleSubmitCaption,
+    handleVoteCaption,
+    handleApplaud,
+    handleEndStory,
     handlePlayerSelect,
     handleTimeExpired,
     handleMediaShown,

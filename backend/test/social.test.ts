@@ -60,24 +60,6 @@ describe("lobby: host can remove a player", () => {
   });
 });
 
-describe("reactions", () => {
-  it("relays reactions to the room, rate-limited per player", async () => {
-    const host = await env.create();
-    const p2 = await env.join(host.pin, "P2");
-    const received: any[] = [];
-    p2.socket.on("reaction", (r) => received.push(r));
-
-    host.socket.emit("send-reaction", { pin: host.pin, emoji: "😂" });
-    host.socket.emit("send-reaction", { pin: host.pin, emoji: "💣" }); // not an allowed emoji
-    for (let i = 0; i < 10; i++) host.socket.emit("send-reaction", { pin: host.pin, emoji: "🔥" });
-    await sleep(200);
-
-    expect(received[0]).toEqual({ playerId: host.playerId, emoji: "😂" });
-    expect(received.length).toBe(4); // burst allowance
-    expect(received.every((r) => r.emoji !== "💣")).toBe(true);
-  });
-});
-
 describe("rematch and series", () => {
   it("keeps the room, players, settings and host, and adds up a series", async () => {
     const host = await env.create("Host", { rounds: 2, timer: 3 });

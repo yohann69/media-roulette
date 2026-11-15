@@ -107,7 +107,8 @@
     "withoutSound": "Без звука",
     "blindMode": "Режим вслепую",
     "blindModeDescription": "Пропустить выбор медиа - случайные медиа будут сюрпризом для всех! 🎲",
-    "timeMachine": "⏳ Машина времени"
+    "timeMachine": "⏳ Машина времени",
+    "slowReveal": "🔍 Медленное раскрытие"
   },
   "game": {
     "round": "Раунд {current} из {total}",
@@ -229,8 +230,30 @@
   "terms": {
     "title": "Условия использования"
   },
-  "reactions": {
-    "label": "Реакции",
-    "send": "Отреагировать {emoji}"
+  "extras": {
+    "title": "Дополнения для вечеринки",
+    "captionThis": "✍️ Подпись",
+    "storyTime": "🎤 История",
+    "hint": "Каждый 3-й раунд. Нажмите, чтобы включить или выключить.",
+    "secondsLeft": "Осталось {seconds} с",
+    "captionTitle": "✍️ Подпись",
+    "captionPrompt": "Придумайте самую смешную подпись",
+    "captionPlaceholder": "Ваша подпись…",
+    "sendCaption": "Отправить",
+    "updateCaption": "Изменить подпись",
+    "captionSent": "Отправлено: «{text}»",
+    "voteTitle": "🗳️ Голосуйте!",
+    "votePrompt": "Какая подпись самая смешная?",
+    "yourCaption": "Ваша подпись (за неё нельзя голосовать)",
+    "captionResultsTitle": "😂 Самые смешные подписи",
+    "noCaptions": "В этот раз никто ничего не написал.",
+    "votes": "Голосов: {count}",
+    "storyTitle": "🎤 История",
+    "storyYourTurn": "Ваша очередь: расскажите историю этого фото!",
+    "storyPrompt": "{name} рассказывает историю этого фото",
+    "storyDone": "Готово",
+    "applaud": "👏 Аплодировать",
+    "applauded": "👏 Вы поаплодировали!",
+    "storyResult": "{name}: 👏 ×{count} (+{points} очк.)"
   }
 }

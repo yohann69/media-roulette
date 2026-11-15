@@ -11,6 +11,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   playVideoWithSound: true,
   blindMode: false,
   timeMachine: false,
+  slowReveal: false,
+  captionThis: false,
+  storyTime: false,
 };
 
 export interface PlayerContext {
@@ -91,6 +94,7 @@ export class RoomRegistry {
       totalRounds: 0,
       currentMedia: null,
       currentTwist: null,
+      extra: null,
       roundStartedAt: 0,
       guesses: new Map(),
       readyPlayers: new Set(),

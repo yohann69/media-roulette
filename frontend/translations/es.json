@@ -80,7 +80,10 @@
     "shareInvite": "Compartir invitación",
     "inviteMessage": "¡Únete a mi partida de Media Roulette! PIN: {pin}\n{link}",
     "you": "Tú",
-    "seriesWins": "{count} partidas ganadas",
+    "seriesWins": {
+      "one": "{count} partida ganada",
+      "other": "{count} partidas ganadas"
+    },
     "removePlayer": "Quitar a {name}",
     "removePlayerTitle": "¿Quitar a {name}?",
     "removePlayerMessage": "Saldrá de la sala. Podrá volver a unirse con el PIN.",
@@ -107,7 +110,8 @@
     "withoutSound": "Sin sonido",
     "blindMode": "Modo ciego",
     "blindModeDescription": "Omitir selección de medios - ¡los medios aleatorios serán una sorpresa para todos! 🎲",
-    "timeMachine": "⏳ Máquina del tiempo"
+    "timeMachine": "⏳ Máquina del tiempo",
+    "slowReveal": "🔍 Revelación lenta"
   },
   "game": {
     "round": "Ronda {current} de {total}",
@@ -229,8 +233,33 @@
   "terms": {
     "title": "Términos y condiciones"
   },
-  "reactions": {
-    "label": "Reacciones",
-    "send": "Reaccionar con {emoji}"
+  "extras": {
+    "title": "Extras de fiesta",
+    "captionThis": "✍️ Pon un pie de foto",
+    "storyTime": "🎤 La historia",
+    "hint": "Cada 3 rondas. Toca para activar o desactivar.",
+    "secondsLeft": "Quedan {seconds} s",
+    "captionTitle": "✍️ Pon un pie de foto",
+    "captionPrompt": "Escribe el pie de foto más gracioso",
+    "captionPlaceholder": "Tu pie de foto…",
+    "sendCaption": "Enviar",
+    "updateCaption": "Cambiar mi pie de foto",
+    "captionSent": "Enviado: «{text}»",
+    "voteTitle": "🗳️ ¡Vota!",
+    "votePrompt": "¿Qué pie de foto es el más gracioso?",
+    "yourCaption": "Tu pie de foto (no puedes votarlo)",
+    "captionResultsTitle": "😂 Los pies de foto más graciosos",
+    "noCaptions": "Nadie escribió nada esta vez.",
+    "votes": {
+      "one": "{count} voto",
+      "other": "{count} votos"
+    },
+    "storyTitle": "🎤 La historia",
+    "storyYourTurn": "Te toca: ¡cuenta la historia detrás de esta!",
+    "storyPrompt": "{name} cuenta la historia detrás de esta",
+    "storyDone": "Ya está",
+    "applaud": "👏 Aplaudir",
+    "applauded": "👏 ¡Aplaudido!",
+    "storyResult": "{name} recibió 👏 ×{count} (+{points} pts)"
   }
 }

@@ -13,7 +13,7 @@ import Svg, {
   TSpan
 } from "react-native-svg";
 
-type GameMode = "Photo" | "Video" | "Mix" | "Blind" | "TimeMachine" | "initial" | "random";
+type GameMode = "Photo" | "Video" | "Mix" | "Blind" | "TimeMachine" | "SlowReveal" | "initial" | "random";
 
 interface AnimatedLogoProps {
   targetMode?: GameMode;
@@ -34,6 +34,7 @@ const SEGMENT_ANGLES: Record<string, number | null> = {
   Mix: 22.5,    // Takes Photo's coordinates
   Blind: null,  // No spin
   TimeMachine: 67.5, // A photo game: lands on the photo segment
+  SlowReveal: 67.5,
   initial: 0,   // Between segments
   random: null,
 };

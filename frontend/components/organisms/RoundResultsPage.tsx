@@ -2,7 +2,6 @@ import { View, Text, ScrollView } from "react-native";
 import { useTranslation } from "../../hooks/useTranslation";
 import { Button } from "../../components/atoms/Button";
 import { MediaDisplay } from "../../components/molecules/MediaDisplay";
-import { ReactionBar } from "../../components/molecules/Reactions";
 
 interface PlayerScore {
   playerId: string;
@@ -53,8 +52,6 @@ interface RoundResultsPageProps {
   onShowAgainEnd?: () => void;
   allPlayers: Array<{ id: string; name: string }>;
   currentMedia?: MediaItem | null;
-  /** Room PIN, for reactions. */
-  pin?: string;
 }
 
 function formatTime(ms: number | null): string {
@@ -77,7 +74,6 @@ export function RoundResultsPage({
   onShowAgainEnd,
   allPlayers,
   currentMedia,
-  pin,
 }: RoundResultsPageProps) {
   const { t } = useTranslation();
 
@@ -246,11 +242,6 @@ export function RoundResultsPage({
       </ScrollView>
 
       <View className="px-6 py-3 border-t border-gray-800 bg-black">
-        {!!pin && (
-          <View className="mb-3">
-            <ReactionBar pin={pin} />
-          </View>
-        )}
         {isOwner ? (
           <View className="gap-3">
             <Button

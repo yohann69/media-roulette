@@ -37,7 +37,7 @@ interface RevealViewProps {
   /** Long-press on the media (owners use it to hide their own media). */
   onMediaLongPress?: () => void;
   playVideoWithSound?: boolean;
-  /** Slow Reveal round: the photo starts blurred and sharpens as time runs out. */
+  /** Slow Reveal round: the photo starts pixelated and sharpens as time runs out. */
   slowReveal?: boolean;
   /** Time Machine: years to pick from, the year picked, and the handler. */
   yearRange?: { min: number; max: number } | null;
@@ -45,32 +45,34 @@ interface RevealViewProps {
   onYearSelect?: (year: number) => void;
 }
 
-/** Blur at the start of a Slow Reveal round; it reaches 0 at SHARP_AT of the round. */
-const SLOW_REVEAL_MAX_BLUR = 40;
+/**
+ * Slow Reveal: block sizes (in points) the photo goes through, from very coarse
+ * to sharp, reached at SHARP_AT of the round.
+ */
+const SLOW_REVEAL_STEPS = [48, 32, 24, 16, 12, 8, 5, 3, 1];
 const SLOW_REVEAL_SHARP_AT = 0.8;
-const SLOW_REVEAL_STEP_MS = 150;
 
-/** Blur radius for a Slow Reveal round, decreasing while the countdown runs. */
-function useSlowRevealBlur(enabled: boolean, running: boolean, durationSeconds: number, roundKey: string) {
-  const [blur, setBlur] = useState(enabled ? SLOW_REVEAL_MAX_BLUR : 0);
+/** Current block size for a Slow Reveal round (undefined in normal rounds). */
+function useSlowRevealPixelSize(enabled: boolean, running: boolean, durationSeconds: number, roundKey: string) {
+  const [step, setStep] = useState(0);
 
   useEffect(() => {
-    setBlur(enabled ? SLOW_REVEAL_MAX_BLUR : 0);
+    setStep(0);
   }, [enabled, roundKey]);
 
   useEffect(() => {
     if (!enabled || !running) return;
     const startedAt = Date.now();
-    const sharpAfterMs = Math.max(1, durationSeconds * 1000 * SLOW_REVEAL_SHARP_AT);
+    const stepMs = Math.max(1, (durationSeconds * 1000 * SLOW_REVEAL_SHARP_AT) / (SLOW_REVEAL_STEPS.length - 1));
     const timer = setInterval(() => {
-      const progress = Math.min(1, (Date.now() - startedAt) / sharpAfterMs);
-      setBlur(Math.round(SLOW_REVEAL_MAX_BLUR * (1 - progress)));
-      if (progress >= 1) clearInterval(timer);
-    }, SLOW_REVEAL_STEP_MS);
+      const next = Math.min(SLOW_REVEAL_STEPS.length - 1, Math.floor((Date.now() - startedAt) / stepMs));
+      setStep(next);
+      if (next >= SLOW_REVEAL_STEPS.length - 1) clearInterval(timer);
+    }, 100);
     return () => clearInterval(timer);
   }, [enabled, running, durationSeconds, roundKey]);
 
-  return blur;
+  return enabled ? SLOW_REVEAL_STEPS[step] : undefined;
 }
 
 export function RevealView({
@@ -94,7 +96,7 @@ export function RevealView({
 }: RevealViewProps) {
   const { t } = useTranslation();
   const roundKey = `${currentRound}-${currentMedia?.id}`;
-  const blur = useSlowRevealBlur(slowReveal, timerActive, timerDuration, roundKey);
+  const pixelSize = useSlowRevealPixelSize(slowReveal, timerActive, timerDuration, roundKey);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -141,7 +143,7 @@ export function RevealView({
                   media={currentMedia}
                   playVideoWithSound={playVideoWithSound}
                   onReady={onMediaShown}
-                  blurRadius={blur}
+                  pixelSize={pixelSize}
                 />
               </Pressable>
             )}

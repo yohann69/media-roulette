@@ -6,6 +6,7 @@ import { z } from "zod";
  */
 
 export const MAX_NAME_LENGTH = 16;
+export const MAX_CAPTION_LENGTH = 80;
 
 const pin = z.string().regex(/^\d{6}$/);
 /** 32-byte X25519 public key, base64. */
@@ -24,14 +25,14 @@ export const settingsSchema = z
     playVideoWithSound: z.boolean().optional().catch(true),
     blindMode: z.boolean().optional().catch(false),
     timeMachine: z.boolean().optional().catch(false),
+    slowReveal: z.boolean().optional().catch(false),
+    captionThis: z.boolean().optional().catch(false),
+    storyTime: z.boolean().optional().catch(false),
   })
   .partial();
 
 /** A plausible year a photo was taken. */
 const year = z.number().int().min(1900).max(2100);
-
-/** The reactions players can send. */
-export const REACTIONS = ["😂", "😮", "😍", "🔥", "👀"] as const;
 
 export const schemas = {
   "create-game": z.object({ hostName: playerName, settings: settingsSchema.optional(), publicKey: publicKey.optional() }),
@@ -79,7 +80,20 @@ export const schemas = {
   "play-again": z.object({ pin }),
   /** The host removes a player from the lobby. */
   "kick-player": z.object({ pin, playerId: z.string().min(1).max(64) }),
-  "send-reaction": z.object({ pin, emoji: z.enum(REACTIONS) }),
+  /** Host, in the lobby: turn the party extras on or off. */
+  "update-extras": z.object({ pin, captionThis: z.boolean().optional(), storyTime: z.boolean().optional() }),
+  "submit-caption": z.object({
+    pin,
+    text: z
+      .string()
+      .transform((s) => s.replace(/\s+/g, " ").trim().slice(0, MAX_CAPTION_LENGTH))
+      .pipe(z.string().min(1)),
+  }),
+  "vote-caption": z.object({ pin, captionId: z.string().min(1).max(16) }),
+  /** Applause for the story being told (once per player). */
+  applaud: z.object({ pin }),
+  /** The owner finished telling the story. */
+  "end-story": z.object({ pin }),
 } as const;
 
 export type ClientEvent = keyof typeof schemas;

@@ -1,0 +1,16 @@
+:{$PORT:8080} {
+	root * /srv
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Content-Security-Policy "default-src 'self'; style-src 'unsafe-inline'; img-src 'self'"
+		-Server
+	}
+	try_files {path} {path}.html
+	file_server
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+}

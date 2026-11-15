@@ -2,6 +2,7 @@ import { View, useWindowDimensions, Animated, StyleSheet } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { PixelatedImage } from "./PixelatedImage";
 
 interface MediaItem {
   id: string;
@@ -18,8 +19,11 @@ interface MediaDisplayProps {
   playVideoWithSound?: boolean;
   /** Called once the photo or the first video frame is visible. */
   onReady?: () => void;
-  /** Blurs a photo (Slow Reveal rounds). */
-  blurRadius?: number;
+  /**
+   * Slow Reveal rounds: the photo is shown as blocks of this many points, which
+   * shrink as the round goes on. Undefined for a normal round.
+   */
+  pixelSize?: number;
 }
 
 function getSourceUri(media: MediaItem): string | null {
@@ -66,7 +70,7 @@ export function MediaDisplay({
   showAsBackground = false,
   playVideoWithSound = true,
   onReady,
-  blurRadius = 0,
+  pixelSize,
 }: MediaDisplayProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { width: screenWidth } = useWindowDimensions();
@@ -111,13 +115,24 @@ export function MediaDisplay({
         className="rounded-2xl overflow-hidden bg-gray-900"
         style={{ width: displayWidth, height: displayHeight }}
       >
-        {uri && media.mediaType === "photo" && (
+        {uri && media.mediaType === "photo" && pixelSize !== undefined && (
+          <PixelatedImage
+            uri={uri}
+            width={displayWidth}
+            height={displayHeight}
+            pixelSize={pixelSize}
+            onLoad={({ width, height }) => {
+              if (width && height) setAspectRatio(width / height);
+              onReady?.();
+            }}
+          />
+        )}
+        {uri && media.mediaType === "photo" && pixelSize === undefined && (
           <Image
             source={{ uri }}
             style={{ width: displayWidth, height: displayHeight }}
             contentFit="cover"
             transition={0}
-            blurRadius={blurRadius}
             onLoad={(event) => {
               const { width, height } = event.source;
               if (width && height) setAspectRatio(width / height);

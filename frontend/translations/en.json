@@ -80,7 +80,10 @@
     "shareInvite": "Share invite",
     "inviteMessage": "Join my Media Roulette game! PIN: {pin}\n{link}",
     "you": "You",
-    "seriesWins": "{count} games won",
+    "seriesWins": {
+      "one": "{count} game won",
+      "other": "{count} games won"
+    },
     "removePlayer": "Remove {name}",
     "removePlayerTitle": "Remove {name}?",
     "removePlayerMessage": "They'll leave the lobby. They can join again with the PIN.",
@@ -107,7 +110,8 @@
     "withoutSound": "Without Sound",
     "blindMode": "Blind Mode",
     "blindModeDescription": "Skip media selection - random medias will be a surprise for everyone! 🎲",
-    "timeMachine": "⏳ Time Machine"
+    "timeMachine": "⏳ Time Machine",
+    "slowReveal": "🔍 Slow Reveal"
   },
   "game": {
     "round": "Round {current} of {total}",
@@ -222,7 +226,7 @@
     "section2Title": "2. Your responsibilities",
     "section2Body": "You are fully responsible for the media stored on your device and for what you choose to show in the game. Do not use content that is illegal, offensive, harmful, or that you do not have the right to share.",
     "section3Title": "3. No storage of your media",
-    "section3Body": "Photos and videos are only shared after you confirm your selection. They are resized and re-encoded on your phone first, which also removes location and camera metadata. The game server keeps them only while your game runs and shares them only with the players in your room. They are deleted when the game ends, when you leave the game, or after 15 minutes of inactivity.",
+    "section3Body": "Only the photos and videos played in a game are shared, after you have seen the selection. They are resized and re-encoded on your phone first, which removes location and camera metadata, and encrypted end to end. The game server keeps them only while your game runs and they are deleted when the game ends, when you leave, after 15 minutes of inactivity, or after 3 hours at most.",
     "section4Title": "4. Online features",
     "section4Body": "Multiplayer games use an online connection to sync players, scores and game state. Do not attempt to cheat, disrupt games, or attack the service or other players.",
     "section5Title": "5. No warranty",
@@ -233,15 +237,15 @@
     "title": "Privacy Policy",
     "lastUpdated": "Last updated: November 2026",
     "section1Title": "1. Media access",
-    "section1Body": "The app reads your photo and video library only to pick random media for the game. Nothing is shared until you confirm your selection (in Blind mode, photos are picked and shared automatically). Selected media are compressed on your device before upload, and location and camera metadata are removed.",
+    "section1Body": "The app reads your photo and video library only to pick random media for the game, and only after you allow it. You see the selection first and can swap or remove anything. Only the items actually played in the game ever leave your phone: they are resized and re-encoded on your device first, which removes location and camera metadata. In Time Machine games, the year each photo was taken is also shared, and only revealed after the round.",
     "section2Title": "2. What is stored",
-    "section2Body": "We may store limited technical data such as game room IDs, usernames, scores and timestamps needed for gameplay. We do not build advertising profiles and we do not sell your data.",
+    "section2Body": "The game server keeps only what a game needs while it runs: the room PIN, usernames, answers and scores. There are no accounts, we do not build advertising profiles, and we do not sell your data.",
     "section3Title": "3. Multiplayer data",
-    "section3Body": "During a game, your username, answers, scores and selected media are shared with the other players in the same room. Media are stored temporarily on the game server, are only accessible to players of that room, and are deleted when the game ends, when you leave, or after 15 minutes of inactivity. Each player's phone also keeps a temporary copy until the game ends.",
+    "section3Body": "During a game, your username, answers, captions and scores are shared with the other players in the same room, along with the media played. Media is stored temporarily on the game server and deleted when the game ends, when you leave, after 15 minutes of inactivity, and in any case after 3 hours. Phones delete downloaded media at the end of the game.",
     "section4Title": "4. Permissions and control",
     "section4Body": "You can revoke photo and video permissions at any time in your device settings. In the app settings you can also exclude specific albums so they are never used in the game.",
     "section5Title": "5. Security",
-    "section5Body": "We use standard technical measures to protect data in transit between players and the server. However, no online service can be 100% secure, and you should avoid using the app on untrusted networks.",
+    "section5Body": "Media is end-to-end encrypted: it is encrypted on your phone with a key shared only between the players' phones, so the game server stores and relays files it cannot read. Connections to the server are encrypted too.",
     "disclaimer": "This policy is a simplified explanation of how the app handles data and may not cover all legal requirements in your country. For full legal compliance, please have it reviewed by a qualified lawyer."
   },
   "permissionInfo": {
@@ -253,8 +257,33 @@
     "limitedAccess": "You only gave access to some photos. Choose more to play.",
     "chooseMore": "Choose more photos"
   },
-  "reactions": {
-    "label": "Reactions",
-    "send": "React with {emoji}"
+  "extras": {
+    "title": "Party extras",
+    "captionThis": "✍️ Caption This",
+    "storyTime": "🎤 Story Time",
+    "hint": "Every 3rd round. Tap to switch on or off.",
+    "secondsLeft": "{seconds}s left",
+    "captionTitle": "✍️ Caption This",
+    "captionPrompt": "Write the funniest caption for this one",
+    "captionPlaceholder": "Your caption…",
+    "sendCaption": "Send",
+    "updateCaption": "Update my caption",
+    "captionSent": "Sent: “{text}”",
+    "voteTitle": "🗳️ Vote!",
+    "votePrompt": "Which caption is the funniest?",
+    "yourCaption": "Your caption (you can't vote for it)",
+    "captionResultsTitle": "😂 Funniest captions",
+    "noCaptions": "Nobody wrote a caption this time.",
+    "votes": {
+      "one": "{count} vote",
+      "other": "{count} votes"
+    },
+    "storyTitle": "🎤 Story Time",
+    "storyYourTurn": "Your turn: tell everyone the story behind this one!",
+    "storyPrompt": "{name} tells the story behind this one",
+    "storyDone": "I'm done",
+    "applaud": "👏 Applaud",
+    "applauded": "👏 Applauded!",
+    "storyResult": "{name} got 👏 ×{count} (+{points} pts)"
   }
 }

@@ -36,15 +36,17 @@ export interface Room {
     playVideoWithSound?: boolean;
     blindMode?: boolean;
     timeMachine?: boolean;
+    slowReveal?: boolean;
+    /** Party extras, every few rounds. */
+    captionThis?: boolean;
+    storyTime?: boolean;
   };
   gameState: "lobby" | "syncing" | "playing" | "finished";
   /** Games finished in this room (rematches keep the room). */
   gamesPlayed?: number;
 }
 
-/** The reactions players can send (must match the server's list). */
-export const REACTIONS = ["😂", "😮", "😍", "🔥", "👀"] as const;
-export type Reaction = (typeof REACTIONS)[number];
+
 
 /** What the server needs to let us back into a game after a disconnect. */
 interface Session {
@@ -110,7 +112,12 @@ interface SocketState {
   submitYear: (pin: string, year: number, displayDelayMs?: number) => void;
   /** Host only: removes a player from the lobby. */
   kickPlayer: (pin: string, playerId: string) => void;
-  sendReaction: (pin: string, emoji: Reaction) => void;
+  /** Host, in the lobby: turns the party extras on or off. */
+  updateExtras: (pin: string, extras: { captionThis?: boolean; storyTime?: boolean }) => void;
+  submitCaption: (pin: string, text: string) => Promise<boolean>;
+  voteCaption: (pin: string, captionId: string) => void;
+  applaud: (pin: string) => void;
+  endStory: (pin: string) => void;
   continueGame: (pin: string) => Promise<boolean>;
   showMediaAgain: (pin: string) => void;
   /** Hides our own media during its round (the round is dropped). */
@@ -395,8 +402,27 @@ export const useSocket = create<SocketState>((set, get) => {
       get().socket?.emit("kick-player", { pin, playerId });
     },
 
-    sendReaction: (pin, emoji) => {
-      get().socket?.emit("send-reaction", { pin, emoji });
+    updateExtras: (pin, extras) => {
+      get().socket?.emit("update-extras", { pin, ...extras });
+    },
+
+    submitCaption: async (pin, text) => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+      const res = await request(socket, "submit-caption", { pin, text }, "caption-received");
+      return res.ok;
+    },
+
+    voteCaption: (pin, captionId) => {
+      get().socket?.emit("vote-caption", { pin, captionId });
+    },
+
+    applaud: (pin) => {
+      get().socket?.emit("applaud", { pin });
+    },
+
+    endStory: (pin) => {
+      get().socket?.emit("end-story", { pin });
     },
 
     continueGame: async (pin) => {

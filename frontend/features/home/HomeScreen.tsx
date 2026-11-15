@@ -38,6 +38,7 @@ const MODE_COLORS = {
   Mix: "#3b82f6", // Blue (was Video color)
   Blind: "#ef4444", // Red
   TimeMachine: "#14b8a6", // Teal
+  SlowReveal: "#6366f1", // Indigo
 };
 
 type CreateMode = keyof typeof MODE_COLORS;
@@ -236,16 +237,18 @@ export function HomeScreen() {
   };
 
   const handleSettingsConfirm = async (selectedTimer: number) => {
-    // Blind and Time Machine are photo games with an extra rule.
+    // Blind, Time Machine and Slow Reveal are photo games with an extra rule.
+    const isPhotoVariant = selectedMode === "Blind" || selectedMode === "TimeMachine" || selectedMode === "SlowReveal";
     const settings: any = {
       rounds,
       timer: selectedTimer,
-      mode: selectedMode === "Blind" || selectedMode === "TimeMachine" ? "Photo" : selectedMode,
+      mode: isPhotoVariant ? "Photo" : selectedMode,
       playVideoWithSound: (selectedMode === "Video" || selectedMode === "Mix") ? playVideoWithSound : undefined,
       blindMode: selectedMode === "Blind",
       timeMachine: selectedMode === "TimeMachine",
+      slowReveal: selectedMode === "SlowReveal",
     };
-    const mediaMode = selectedMode === "TimeMachine" ? "Photo" : selectedMode;
+    const mediaMode = selectedMode === "TimeMachine" || selectedMode === "SlowReveal" ? "Photo" : selectedMode;
 
     // Check media availability before creating game
     await explainPermissionIfNeeded();
@@ -553,6 +556,12 @@ export function HomeScreen() {
                       title={t("gameSettings.timeMachine")}
                       onPress={() => handleModeSelect("TimeMachine")}
                       color={MODE_COLORS.TimeMachine}
+                      visible={true}
+                    />
+                    <WiggleButton
+                      title={t("gameSettings.slowReveal")}
+                      onPress={() => handleModeSelect("SlowReveal")}
+                      color={MODE_COLORS.SlowReveal}
                       visible={true}
                     />
                   </View>

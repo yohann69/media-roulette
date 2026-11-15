@@ -9,7 +9,12 @@ import { GameStatsPage } from "../../components/organisms/GameStatsPage";
 import { Podium } from "../../components/molecules/Podium";
 import { Button } from "../../components/atoms/Button";
 import { MediaDisplay } from "../../components/molecules/MediaDisplay";
-import { ReactionBar } from "../../components/molecules/Reactions";
+import {
+  CaptionResultsView,
+  CaptionVoteView,
+  CaptionWriteView,
+  StoryView,
+} from "../../components/organisms/PartyExtras";
 import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useGameScreenLogic } from "./useGameScreenLogic";
@@ -41,6 +46,19 @@ export function GameScreen() {
     yearRange,
     selectedYear,
     handleYearSelect,
+    extraEndsAt,
+    myCaption,
+    captionChoices,
+    myCaptionVote,
+    captionResults,
+    storyOwner,
+    hasApplauded,
+    applauseCount,
+    storyResult,
+    handleSubmitCaption,
+    handleVoteCaption,
+    handleApplaud,
+    handleEndStory,
     handlePlayerSelect,
     handleTimeExpired,
     handleMediaShown,
@@ -113,7 +131,6 @@ export function GameScreen() {
           <Podium players={finalLeaderboard} />
         )}
         <View className="px-6 py-3 border-t border-gray-800 bg-black gap-3">
-          {!!pin && <ReactionBar pin={pin} />}
           <Button
             title={t("game.playAgain")}
             onPress={handlePlayAgain}
@@ -176,7 +193,41 @@ export function GameScreen() {
         onShowAgainEnd={handleShowAgainEnd}
         allPlayers={players}
         currentMedia={currentMedia}
-        pin={pin}
+      />
+    );
+  }
+
+  // Party extras, after some rounds' results.
+  if (gameState === "caption") {
+    return <CaptionWriteView media={currentMedia} endsAt={extraEndsAt} submitted={myCaption} onSubmit={handleSubmitCaption} />;
+  }
+  if (gameState === "captionVote") {
+    return <CaptionVoteView endsAt={extraEndsAt} choices={captionChoices} myVote={myCaptionVote} onVote={handleVoteCaption} />;
+  }
+  if (gameState === "captionResults") {
+    const ownerName = players.find((p) => p.id === actualOwnerId)?.name || t("game.owner");
+    return (
+      <CaptionResultsView
+        media={currentMedia}
+        results={captionResults}
+        isOwner={isOwner}
+        ownerName={ownerName}
+        onContinue={handleContinue}
+      />
+    );
+  }
+  if ((gameState === "story" || gameState === "storyEnded") && storyOwner) {
+    return (
+      <StoryView
+        media={currentMedia}
+        endsAt={extraEndsAt}
+        ownerName={storyOwner.name}
+        isOwner={storyOwner.id === currentPlayerId}
+        hasApplauded={hasApplauded}
+        applauseCount={applauseCount}
+        result={gameState === "storyEnded" ? storyResult : null}
+        onApplaud={handleApplaud}
+        onEnd={handleEndStory}
       />
     );
   }
