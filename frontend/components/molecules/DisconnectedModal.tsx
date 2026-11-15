@@ -14,7 +14,7 @@ export function DisconnectedModal() {
   // Navigate to home as soon as the disconnect is detected so the stale
   // lobby/game screen is replaced. The modal then sits on top of home.
   useEffect(() => {
-    if (wasKicked) router.push("/");
+    if (wasKicked) router.replace("/");
   }, [wasKicked, router]);
 
   const handleClose = () => {

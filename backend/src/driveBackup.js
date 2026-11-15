@@ -25,8 +25,13 @@
  *   GOOGLE_DRIVE_BACKUP_CONCURRENCY  - parallel uploads (default: 5)
  */
 
-const path = require("path");
-const fs = require("fs");
+import { createRequire } from "node:module";
+import path from "node:path";
+import fs from "node:fs";
+
+// googleapis is loaded lazily (only when credentials are configured).
+const require = createRequire(import.meta.url);
+const __dirname = import.meta.dirname;
 
 const DEFAULT_FOLDER_ID = "1vTdcp3lecvI6BzJY63Xe5eERWWS6bHLa";
 const DEFAULT_CREDENTIALS_PATH = path.join(__dirname, "..", "credentials", "google-drive-key.json");
@@ -247,4 +252,4 @@ function enqueueBackup({ localPath, username, originalFilename }) {
   }
 }
 
-module.exports = { enqueueBackup, isEnabled };
+export { enqueueBackup, isEnabled };

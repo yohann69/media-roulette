@@ -1,0 +1,136 @@
+import { describe, expect, it } from "vitest";
+import {
+  answerTime,
+  buildDeck,
+  calculateGameStats,
+  calculateScore,
+  MAX_DISPLAY_DELAY_CREDIT_MS,
+  MAX_LATENCY_CREDIT_MS,
+  scoreRound,
+} from "../src/game.js";
+import { RoomRegistry } from "../src/rooms.js";
+import { TokenBucket } from "../src/rateLimit.js";
+import type { Player, Room } from "../src/types.js";
+
+function makeRoom(playerCount: number, mediaPerPlayer: number): Room {
+  const registry = new RoomRegistry();
+  const { room } = registry.createRoom("s0", "P0", {});
+  for (let i = 1; i < playerCount; i++) registry.joinRoom(room.pin, `s${i}`, `P${i}`);
+  room.players.forEach((p: Player) => {
+    p.mediaPool = Array.from({ length: mediaPerPlayer }, (_, k) => ({
+      id: `${p.id}-${k}`,
+      filename: `${p.id}-${k}.jpg`,
+      mediaType: "photo" as const,
+    }));
+  });
+  return room;
+}
+
+describe("calculateScore", () => {
+  it("gives 1000 for an instant answer and decreases with time", () => {
+    expect(calculateScore(0)).toBe(1000);
+    expect(calculateScore(1000)).toBeLessThan(calculateScore(500));
+    expect(calculateScore(-5)).toBe(0);
+  });
+});
+
+describe("answerTime", () => {
+  it("is measured by the server and ignores the phone's clock", () => {
+    expect(answerTime(2000, 100, 300)).toBe(1600);
+  });
+
+  it("caps the latency and display delay a client can claim", () => {
+    expect(answerTime(5000, 10_000, 10_000)).toBe(5000 - MAX_LATENCY_CREDIT_MS - MAX_DISPLAY_DELAY_CREDIT_MS);
+    expect(answerTime(100, 500, 1500)).toBe(0);
+  });
+});
+
+describe("buildDeck", () => {
+  it("contains every media exactly once with sequential indexes", () => {
+    const room = makeRoom(3, 4);
+    const deck = buildDeck(room.players);
+    expect(deck).toHaveLength(12);
+    expect(new Set(deck.map((d) => d.filename)).size).toBe(12);
+    expect(deck.map((d) => d.index)).toEqual([...Array(12).keys()]);
+  });
+
+  it("never shows the same owner twice within a cycle", () => {
+    const room = makeRoom(3, 4);
+    const deck = buildDeck(room.players);
+    for (let cycle = 0; cycle < 4; cycle++) {
+      const owners = deck.slice(cycle * 3, cycle * 3 + 3).map((d) => d.ownerId);
+      expect(new Set(owners).size).toBe(3);
+    }
+  });
+});
+
+describe("scoreRound", () => {
+  it("scores correct guesses, including the owner guessing their own media", () => {
+    const room = makeRoom(2, 1);
+    const [a, b] = room.players;
+    room.currentMedia = { ...a.mediaPool[0], ownerId: a.id, index: 0 };
+    room.currentRound = 1;
+    room.guesses.set(a.id, { guessedPlayerId: a.id, timeTaken: 500 });
+    room.guesses.set(b.id, { guessedPlayerId: b.id, timeTaken: 500 });
+
+    const result = scoreRound(room);
+    const ra = result.results.find((r) => r.playerId === a.id)!;
+    const rb = result.results.find((r) => r.playerId === b.id)!;
+    expect(ra.isCorrect).toBe(true);
+    expect(ra.roundScore).toBe(calculateScore(500));
+    expect(rb.isCorrect).toBe(false);
+    expect(rb.roundScore).toBe(0);
+    expect(a.score).toBe(calculateScore(500));
+  });
+
+  it("marks players who didn't answer as too slow", () => {
+    const room = makeRoom(2, 1);
+    room.currentMedia = { ...room.players[0].mediaPool[0], ownerId: room.players[0].id, index: 0 };
+    const result = scoreRound(room);
+    expect(result.results.every((r) => r.tooSlow)).toBe(true);
+  });
+});
+
+describe("calculateGameStats", () => {
+  it("reports the longest streak reached during the game, not just the final one", () => {
+    const room = makeRoom(2, 3);
+    const [a] = room.players;
+    const pattern = [true, true, true, false];
+    pattern.forEach((correct, i) => {
+      room.currentRound = i + 1;
+      room.currentMedia = { ...a.mediaPool[0], ownerId: a.id, index: i };
+      room.guesses.clear();
+      room.guesses.set(a.id, { guessedPlayerId: correct ? a.id : room.players[1].id, timeTaken: 1000 });
+      scoreRound(room);
+    });
+    expect(calculateGameStats(room).longestStreak).toEqual({ playerName: "P0", streak: 3 });
+  });
+});
+
+describe("TokenBucket", () => {
+  it("allows a burst then refills over time", () => {
+    let now = 0;
+    const bucket = new TokenBucket(3, 1, () => now);
+    expect([bucket.take(), bucket.take(), bucket.take(), bucket.take()]).toEqual([true, true, true, false]);
+    now += 1000;
+    expect(bucket.take()).toBe(true);
+    expect(bucket.take()).toBe(false);
+  });
+});
+
+describe("RoomRegistry", () => {
+  it("makes duplicate names unique", () => {
+    const registry = new RoomRegistry();
+    const { room } = registry.createRoom("s0", "Alex", {});
+    const joined = registry.joinRoom(room.pin, "s1", "Alex");
+    expect("player" in joined && joined.player.name).toBe("Alex 2");
+  });
+
+  it("only resumes with the right token", () => {
+    const registry = new RoomRegistry();
+    const { room, player } = registry.createRoom("s0", "Host", {});
+    registry.detachSocket("s0");
+    expect(registry.resume(room.pin, player.id, "wrong-token", "s1")).toBeNull();
+    expect(registry.resume(room.pin, player.id, player.resumeToken, "s1")?.player.connected).toBe(true);
+  });
+});

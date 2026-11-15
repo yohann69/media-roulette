@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import { Directory, Paths } from "expo-file-system";
 import { useSocket } from "../../stores/useSocket";
-import { useGameEvents } from "../../hooks/useGameEvents";
+import { useSocketEvent } from "../../hooks/useSocketEvent";
 
 interface Player {
   id: string;
@@ -18,21 +18,20 @@ interface MediaItem {
 
 type GameState = "reveal" | "result" | "leaderboard" | "podium";
 
-export function useGameScreenLogic(pin: string, isHost: boolean) {
+/** Must match the server's MAX_DISPLAY_DELAY_CREDIT_MS. */
+const MAX_DISPLAY_DELAY_CREDIT_MS = 1500;
+
+export function useGameScreenLogic(pin: string, _isHost: boolean) {
   const router = useRouter();
   const {
-    room,
     currentPlayerId,
     submitGuess,
     continueGame,
-    notifyTimeExpired,
     showMediaAgain,
     hideMediaAgain,
     playAgain,
     leaveGame,
-    localMediaMap,
     setLocalMediaMap,
-    onPlayAgainInitiated
   } = useSocket();
 
   const [gameState, setGameState] = useState<GameState>("reveal");
@@ -42,7 +41,6 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [timeExpired, setTimeExpired] = useState(false);
   const [timerActive, setTimerActive] = useState(false);
-  const [roundStartTime, setRoundStartTime] = useState<number>(0);
   const [timerDuration, setTimerDuration] = useState(5);
   const [players, setPlayers] = useState<Player[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -52,25 +50,31 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   const [actualOwnerId, setActualOwnerId] = useState<string | null>(null);
   const [isShowingMediaAgain, setIsShowingMediaAgain] = useState(false);
 
+  // When the round arrived and when its media became visible on this phone.
+  // The difference is sent with the guess so slow loading isn't penalized.
+  const roundReceivedAt = useRef(0);
+  const mediaShownAt = useRef<number | null>(null);
+  const roundRemainingMs = useRef(0);
+
   const handleNewRound = (data: any) => {
-    // Resolve local file URI
-    let uri = data.mediaData.uri;
-    if (data.mediaData.index !== undefined && localMediaMap.has(data.mediaData.index)) {
-        uri = localMediaMap.get(data.mediaData.index);
-    }
+    const localMediaMap = useSocket.getState().localMediaMap;
+    const uri =
+      data.mediaData.index !== undefined && localMediaMap.has(data.mediaData.index)
+        ? localMediaMap.get(data.mediaData.index)
+        : data.mediaData.uri;
+
+    roundReceivedAt.current = data.receivedAt ?? Date.now();
+    mediaShownAt.current = null;
+    roundRemainingMs.current = data.remainingMs ?? data.duration * 1000;
 
     setCurrentRound(data.round);
     setTotalRounds(data.totalRounds);
-    setCurrentMedia({
-        ...data.mediaData,
-        uri,
-    });
-    setTimerDuration(data.duration);
-    setRoundStartTime(data.roundStartTime);
+    setCurrentMedia({ ...data.mediaData, uri });
+    setTimerDuration(Math.max(0, data.duration));
     setPlayers(data.options);
     setSelectedPlayer(null);
-    setTimeExpired(false);
-    setTimerActive(true);
+    setTimeExpired(data.duration <= 0);
+    setTimerActive(false); // starts once the media is on screen (see handleMediaShown)
     setGameState("reveal");
     setRoundResults(null);
     setIsShowingMediaAgain(false);
@@ -79,65 +83,85 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   };
 
   // The first round can arrive before this screen mounts (the server sends it
-  // right after "game-started"): pick it up from the store.
+  // right after "game-started"), and a resumed session replays it: pick it up.
   useEffect(() => {
     const pending = useSocket.getState().lastNewRound;
     if (pending) handleNewRound(pending);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useGameEvents({
-    onNewRound: handleNewRound,
-    onRoundResult: (data) => {
-      setActualOwnerId(data.actualOwnerId);
-      setRoundResults(data);
-      setTimerActive(false);
-      setTimeExpired(false);
-      setShowLeaderboard(true);
-      setGameState("leaderboard");
-      setIsShowingMediaAgain(false);
-    },
-    onGameFinished: async (data) => {
-      setFinalLeaderboard(data.leaderboard);
-      setGameStats(data.stats || null);
-      setGameState("podium");
-      setIsShowingMediaAgain(false);
-      
-      // Cleanup local files
-      try {
-          const gameDir = new Directory(Paths.cache, `game_${pin}`);
-          if (gameDir.exists) gameDir.delete();
-          setLocalMediaMap(new Map()); // Clear map
-      } catch (e) {
-          console.error("Cleanup error:", e);
-      }
-    },
-    onShowMediaAgain: () => {
-      console.log("onShowMediaAgain called, setting isShowingMediaAgain to true");
-      setIsShowingMediaAgain(true);
-    },
-    onHideMediaAgain: () => {
-      console.log("onHideMediaAgain called, setting isShowingMediaAgain to false");
-      setIsShowingMediaAgain(false);
-    },
+  useSocketEvent("new-round", handleNewRound);
+
+  useSocketEvent("round-result", (data: any) => {
+    setActualOwnerId(data.actualOwnerId);
+    setRoundResults(data);
+    setTimerActive(false);
+    setTimeExpired(false);
+    setShowLeaderboard(true);
+    setGameState("leaderboard");
+    setIsShowingMediaAgain(false);
   });
+
+  useSocketEvent("game-finished", (data: any) => {
+    setFinalLeaderboard(data.leaderboard);
+    setGameStats(data.stats || null);
+    setGameState("podium");
+    setIsShowingMediaAgain(false);
+
+    // Other players' media is no longer needed on this phone.
+    try {
+      const gameDir = new Directory(Paths.cache, `game_${pin}`);
+      if (gameDir.exists) gameDir.delete();
+      setLocalMediaMap(new Map());
+    } catch (e) {
+      console.error("Cleanup error:", e);
+    }
+  });
+
+  useSocketEvent("show-media-again", () => setIsShowingMediaAgain(true));
+  useSocketEvent("hide-media-again", () => setIsShowingMediaAgain(false));
+
+  // Whoever taps "Play again" first sends everyone back to the lobby.
+  useSocketEvent("play-again-initiated", () => {
+    router.replace({ pathname: "/lobby", params: { pin } });
+  });
+
+  /** Called by the media view once the photo or video is actually visible. */
+  const handleMediaShown = () => {
+    if (mediaShownAt.current !== null) return;
+    mediaShownAt.current = Date.now();
+    // The server credits at most this much display delay; anything beyond it is
+    // taken off the local countdown so it never shows time the server won't accept.
+    const uncredited = Math.max(0, mediaShownAt.current - roundReceivedAt.current - MAX_DISPLAY_DELAY_CREDIT_MS);
+    const seconds = Math.floor((roundRemainingMs.current - uncredited) / 1000);
+    setTimerDuration(Math.max(0, seconds));
+    if (seconds <= 0) {
+      setTimeExpired(true);
+      return;
+    }
+    if (!timeExpired) setTimerActive(true);
+  };
+
+  // If the media never loads (e.g. a failed download), don't block the round.
+  useEffect(() => {
+    if (gameState !== "reveal" || !currentMedia) return;
+    const fallback = setTimeout(handleMediaShown, 1500);
+    return () => clearTimeout(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, currentMedia?.id, currentRound]);
 
   const handlePlayerSelect = async (playerId: string) => {
     if (timeExpired || !pin) return;
-
-    // All players can select anyone, including themselves; they can also
-    // change their mind as long as the round is still running. The backend
-    // overwrites previous guesses and rejects resubmits once results are
-    // calculated, so this is safe.
-    const timestamp = Date.now();
+    // Players can change their mind while the round runs; the last guess counts.
     setSelectedPlayer(playerId);
-    await submitGuess(pin, playerId, timestamp);
+    const displayDelayMs = Math.max(0, (mediaShownAt.current ?? Date.now()) - roundReceivedAt.current);
+    await submitGuess(pin, playerId, displayDelayMs);
   };
 
-  const handleTimeExpired = async () => {
+  // The server ends the round on its own timer; locally we only stop voting.
+  const handleTimeExpired = () => {
     setTimeExpired(true);
     setTimerActive(false);
-    if (pin) await notifyTimeExpired(pin);
   };
 
   const handleContinue = async () => {
@@ -146,46 +170,22 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   };
 
   const handleShowAgainStart = () => {
-    if (!pin) return;
-    showMediaAgain(pin);
+    if (pin) showMediaAgain(pin);
   };
 
   const handleShowAgainEnd = () => {
-    if (!pin) return;
-    hideMediaAgain(pin);
+    if (pin) hideMediaAgain(pin);
   };
-
-  const handleContinueFromLeaderboard = async () => {
-    // This is no longer used - continue is handled directly
-    await handleContinue();
-  };
-
-  // Listen for play-again-initiated event from any player
-  useEffect(() => {
-    onPlayAgainInitiated(() => {
-      // Navigate all players back to lobby
-      router.push({
-        pathname: "/lobby",
-        params: { pin }
-      });
-    });
-  }, [pin, router, onPlayAgainInitiated]);
 
   const handlePlayAgain = async () => {
     if (!pin) return;
-    // Emit play-again event - first person to click becomes new host.
-    // Navigation for everyone (including the clicker) is handled by the
-    // `onPlayAgainInitiated` broadcast listener above, so we don't push here
-    // to avoid stacking /lobby twice on the first clicker.
+    // Navigation for everyone (including us) happens on "play-again-initiated".
     await playAgain(pin);
   };
 
   const handleExit = async () => {
-    // Leave the game and go back to home
-    if (pin) {
-      await leaveGame(pin);
-    }
-    router.push("/");
+    if (pin) await leaveGame(pin);
+    router.replace("/");
   };
 
   return {
@@ -196,6 +196,7 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     selectedPlayer,
     timerDuration,
     timerActive,
+    timeExpired,
     players,
     showLeaderboard,
     roundResults,
@@ -206,10 +207,11 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
     currentPlayerId,
     handlePlayerSelect,
     handleTimeExpired,
+    handleMediaShown,
     handleContinue,
     handleShowAgainStart,
     handleShowAgainEnd,
-    handleContinueFromLeaderboard,
+    handleContinueFromLeaderboard: handleContinue,
     handlePlayAgain,
     handleExit,
     setShowLeaderboard,

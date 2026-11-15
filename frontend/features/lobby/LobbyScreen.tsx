@@ -23,19 +23,20 @@ interface Player {
   name: string;
   isHost?: boolean;
   state?: "selecting" | "compressing" | "uploading" | "ready";
+  connected?: boolean;
 }
 
 export function LobbyScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
-  const { room, currentPlayerId, startGame, prepareGame, leaveGame, uploadStage, uploadProgress } = useSocket();
+  const { room, currentPlayerId, prepareGame, leaveGame, uploadStage, uploadProgress } = useSocket();
 
   // Derive host status from the room when available (e.g. after play-again, the
   // new host never re-navigates with an updated `isHost` param).
   const isHost =
     (room && currentPlayerId
-      ? !!room.players.find((p) => p.socketId === currentPlayerId)?.isHost
+      ? !!room.players.find((p) => p.id === currentPlayerId)?.isHost
       : false) || params.isHost === "true";
   const pin = params.pin || room?.pin || "";
 
@@ -53,7 +54,7 @@ export function LobbyScreen() {
   const [showSelectionModal, setShowSelectionModal] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
-  const currentPlayer = room?.players.find((p) => p.socketId === currentPlayerId);
+  const currentPlayer = room?.players.find((p) => p.id === currentPlayerId);
   const currentPlayerState = currentPlayer?.state || "selecting";
   const blindMode = room?.settings?.blindMode || false;
 
@@ -68,23 +69,25 @@ export function LobbyScreen() {
   }, [room, currentPlayerState, blindMode]);
 
   const players: Player[] = room?.players.map((p) => ({
-    id: p.socketId,
+    id: p.id,
     name: p.name,
     isHost: p.isHost,
     state: p.state || "selecting",
+    connected: p.connected,
   })) || [];
 
-  const settings = room?.settings || { rounds: 25, timer: 5, mode: "Photo" };
-  const totalMedia = players.length * 20;
-  const canStartGame = totalMedia >= settings.rounds;
+  const settings = room?.settings || { rounds: 10, timer: 5, mode: "Photo" };
+  // Media actually confirmed by each player (players with small libraries may have fewer).
+  const totalMedia = room?.players.reduce((sum, p) => sum + (p.mediaCount ?? 0), 0) ?? 0;
   const allPlayersReady = players.length > 0 && players.every((p) => p.state === "ready");
   const hasEnoughPlayers = players.length >= 2;
-  const canStart = canStartGame && allPlayersReady && hasEnoughPlayers && (!isSyncing || allReady);
+  const canStart = allPlayersReady && hasEnoughPlayers && !isSyncing && !allReady;
   const hostPlayer = players.find((p) => p.isHost);
   const hostName = hostPlayer?.name || t("lobby.host");
 
   const handlePrepareGame = async () => {
-    if (!canStartGame) {
+    // Fewer media than rounds: offer to play one round per media instead.
+    if (totalMedia < settings.rounds) {
       setShowWarningModal(true);
       return;
     }
@@ -98,21 +101,15 @@ export function LobbyScreen() {
     await prepareGame(pin, updatedSettings);
   };
 
-  const handleStartGame = async () => {
-    if (!pin) return;
-    setIsStarting(true);
-    await startGame(pin);
-  };
-
   const handleProceedAnyway = async () => {
     setShowWarningModal(false);
     if (!pin) return;
-    initiateGameStart({ ...settings, rounds: totalMedia });
+    initiateGameStart({ rounds: totalMedia });
   };
 
   const handleExitLobby = async () => {
     if (pin && room?.pin === pin) await leaveGame(pin);
-    router.push("/");
+    router.replace("/");
   };
 
   const handleConfirmExit = async () => {
@@ -148,7 +145,7 @@ export function LobbyScreen() {
 
           {isHost && <GameSettingsDisplay settings={settings} />}
 
-          {isHost && <WarningBanner totalMedia={totalMedia} requiredRounds={settings.rounds} />}
+          {isHost && allPlayersReady && <WarningBanner totalMedia={totalMedia} requiredRounds={settings.rounds} />}
 
           {uploadStage !== "idle" && currentPlayerState !== "ready" && (
             <UploadProgress stage={uploadStage} progress={uploadProgress} />
@@ -176,7 +173,6 @@ export function LobbyScreen() {
           syncStatus={syncStatus}
           hostName={hostName}
           onPrepareGame={handlePrepareGame}
-          onStartGame={handleStartGame}
         />
 
         <WarningModal

@@ -5,7 +5,7 @@ A free, open-source party game: everyone's phone picks random photos and videos 
 ## Project layout
 
 - `frontend/`: the mobile app (Expo SDK 58, React Native, expo-router)
-- `backend/`: the game server (Node.js, Express, Socket.IO)
+- `backend/`: the game server (Node.js, TypeScript, Express, Socket.IO). The server is authoritative: it runs the round timers, measures answer times, and lets players who drop out resume their seat for 60 seconds.
 
 ## Running locally
 
@@ -14,7 +14,9 @@ Requirements: Node.js 22 or 24 (even-numbered releases), Xcode for iOS and/or An
 ```bash
 cd backend
 npm install
-npm run dev          # listens on port 6969 (override with PORT)
+npm run dev          # TypeScript server with reload, port 6969 (override with PORT)
+npm test             # unit + integration tests
+npm run build && npm start   # production: compiles to dist/ and runs it
 ```
 
 ```bash

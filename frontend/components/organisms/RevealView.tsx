@@ -31,6 +31,8 @@ interface RevealViewProps {
   disabled: boolean;
   onPlayerSelect: (playerId: string) => void;
   onTimeExpired: () => void;
+  /** Called once the media is visible: the countdown starts from there. */
+  onMediaShown?: () => void;
   playVideoWithSound?: boolean;
 }
 
@@ -45,6 +47,7 @@ export function RevealView({
   disabled,
   onPlayerSelect,
   onTimeExpired,
+  onMediaShown,
   playVideoWithSound = true,
 }: RevealViewProps) {
   const { t } = useTranslation();
@@ -81,7 +84,9 @@ export function RevealView({
 
           {/* Center: Media display */}
           <View className="items-center justify-center flex-1">
-            {currentMedia && <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />}
+            {currentMedia && (
+              <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} onReady={onMediaShown} />
+            )}
           </View>
 
           {/* Bottom: Player selection - always at bottom */}

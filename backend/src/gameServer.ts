@@ -1,0 +1,534 @@
+import type { Server, Socket } from "socket.io";
+import { schemas, type ClientEvent, type Payload } from "./protocol.js";
+import { RoomRegistry, type PlayerContext } from "./rooms.js";
+import { answerTime, buildDeck, calculateGameStats, leaderboard, ROUND_GRACE_MS, scoreRound } from "./game.js";
+import { KeyedRateLimiter, TokenBucket } from "./rateLimit.js";
+import * as mediaStore from "./mediaStore.js";
+// Debug-only helper (JavaScript): a no-op unless Drive credentials are configured.
+import { enqueueBackup } from "./driveBackup.js";
+import type { Room } from "./types.js";
+import path from "node:path";
+
+export interface GameServerOptions {
+  /** How long a disconnected player keeps their seat. */
+  reconnectGraceMs?: number;
+  /** Rooms with no activity for this long are closed. */
+  inactivityTimeoutMs?: number;
+  /** How often player latency is measured. */
+  latencyIntervalMs?: number;
+  /** Pause between "game-started" and the first round, so every phone is on the game screen. */
+  firstRoundDelayMs?: number;
+}
+
+/** A guess must arrive within the round duration, plus this tolerance. */
+const LATE_GUESS_TOLERANCE_MS = 250;
+
+/**
+ * Server-authoritative game flow: the server decides when rounds start and end,
+ * measures answer times itself, and never reveals who owns a media item before
+ * the round result.
+ */
+export class GameServer {
+  readonly registry = new RoomRegistry();
+  private roundTimers = new Map<string, NodeJS.Timeout>();
+  private disconnectTimers = new Map<string, NodeJS.Timeout>();
+  private intervals: NodeJS.Timeout[] = [];
+  private joinLimiter = new KeyedRateLimiter(10, 10 / 60); // 10 join attempts per minute per IP
+  private createLimiter = new KeyedRateLimiter(5, 5 / 60); // 5 games per minute per IP
+  private readonly graceMs: number;
+  private readonly firstRoundDelayMs: number;
+
+  constructor(
+    private io: Server,
+    options: GameServerOptions = {}
+  ) {
+    this.graceMs = options.reconnectGraceMs ?? 60_000;
+    this.firstRoundDelayMs = options.firstRoundDelayMs ?? 2000;
+    const inactivity = options.inactivityTimeoutMs ?? 15 * 60_000;
+
+    io.on("connection", (socket) => this.onConnection(socket));
+
+    this.intervals.push(
+      setInterval(() => this.measureLatency(), options.latencyIntervalMs ?? 5000),
+      setInterval(() => this.closeInactiveRooms(inactivity), 60_000),
+      setInterval(() => {
+        this.joinLimiter.prune(10 * 60_000);
+        this.createLimiter.prune(10 * 60_000);
+      }, 10 * 60_000)
+    );
+  }
+
+  close() {
+    this.intervals.forEach(clearInterval);
+    this.roundTimers.forEach(clearTimeout);
+    this.disconnectTimers.forEach(clearTimeout);
+  }
+
+  // ── Connection & dispatch ────────────────────────────────────────────────
+
+  private onConnection(socket: Socket) {
+    const bucket = new TokenBucket(30, 15); // per-socket event budget
+    const ip = clientIp(socket);
+
+    const on = <E extends ClientEvent>(event: E, handler: (data: Payload<E>, ctx: PlayerContext | null) => void) => {
+      socket.on(event as string, (raw: unknown) => {
+        if (!bucket.take()) return;
+        const parsed = schemas[event].safeParse(raw);
+        if (!parsed.success) return;
+        try {
+          handler(parsed.data as Payload<E>, this.registry.getContext(socket.id));
+        } catch (error) {
+          console.error(`Error handling ${event}:`, error);
+          socket.emit("error", { message: `Failed to handle ${event}` });
+        }
+      });
+    };
+
+    /** Like `on`, but only for players of the room named in the payload. */
+    const onMember = <E extends ClientEvent>(event: E, handler: (data: Payload<E>, ctx: PlayerContext) => void) => {
+      on(event, (data, ctx) => {
+        const pin = (data as { pin?: string } | undefined)?.pin;
+        if (!ctx || (pin !== undefined && ctx.room.pin !== pin)) return;
+        ctx.room.lastActivityTime = Date.now();
+        handler(data, ctx);
+      });
+    };
+
+    on("create-game", (data, ctx) => {
+      if (!this.createLimiter.take(ip)) {
+        socket.emit("error", { message: "Too many games created, try again in a minute" });
+        return;
+      }
+      if (ctx) this.leave(ctx); // one room per socket
+      const { room, player } = this.registry.createRoom(socket.id, data.hostName, data.settings ?? {});
+      socket.join(room.pin);
+      socket.emit("game-created", {
+        pin: room.pin,
+        room: this.registry.publicRoom(room),
+        playerId: player.id,
+        resumeToken: player.resumeToken,
+        uploadToken: player.uploadToken,
+      });
+    });
+
+    on("join-game", (data, ctx) => {
+      if (!this.joinLimiter.take(ip)) {
+        socket.emit("join-error", { message: "Too many attempts, try again in a minute" });
+        return;
+      }
+      if (ctx && ctx.room.pin !== data.pin) this.leave(ctx);
+      const result = this.registry.joinRoom(data.pin, socket.id, data.playerName);
+      if ("error" in result) {
+        socket.emit("join-error", { message: result.error });
+        return;
+      }
+      const { room, player } = result;
+      socket.join(room.pin);
+      socket.emit("joined-game", {
+        pin: room.pin,
+        room: this.registry.publicRoom(room),
+        playerId: player.id,
+        resumeToken: player.resumeToken,
+        uploadToken: player.uploadToken,
+      });
+      socket.to(room.pin).emit("player-joined", {
+        player: { id: player.id, name: player.name, isHost: false },
+        players: this.registry.publicRoom(room).players,
+      });
+      this.broadcastRoom(room);
+    });
+
+    on("resume-session", (data) => this.resume(socket, data));
+
+    on("leave-game", (_data, ctx) => {
+      if (ctx) this.leave(ctx);
+    });
+
+    onMember("set-player-state", (data, { room, player }) => {
+      player.state = data.state;
+      this.broadcastRoom(room);
+    });
+
+    onMember("set-media-pool", (data, ctx) => this.setMediaPool(socket, data, ctx));
+
+    onMember("prepare-game", (data, { room, player }) => {
+      if (!player.isHost || (room.gameState !== "lobby" && room.gameState !== "syncing")) return;
+      if (data.updatedSettings) Object.assign(room.settings, stripUndefined(data.updatedSettings));
+      this.prepareGame(room);
+    });
+
+    onMember("sync-complete", (_data, { room, player }) => {
+      if (room.gameState !== "syncing") return;
+      room.readyPlayers.add(player.id);
+      this.io.to(room.pin).emit("player-ready", {
+        playerId: player.id,
+        readyCount: room.readyPlayers.size,
+        totalPlayers: room.players.length,
+      });
+      this.broadcastRoom(room);
+      this.startIfEveryoneSynced(room);
+    });
+
+    // The game now starts automatically once every player has the media.
+    // Kept so older clients that still send it don't error.
+    onMember("start-game", (_data, { room }) => this.startIfEveryoneSynced(room));
+
+    onMember("submit-guess", (data, ctx) => this.submitGuess(socket, data, ctx));
+
+    onMember("continue-game", (_data, { room, player }) => {
+      if (room.gameState !== "playing" || room.phase !== "results" || !room.currentMedia) return;
+      const owner = room.players.find((p) => p.id === room.currentMedia!.ownerId);
+      // The owner moves the game on. If they left or are offline, anyone can.
+      if (owner && owner.connected && owner.id !== player.id) {
+        socket.emit("error", { message: "Only the media owner can continue" });
+        return;
+      }
+      this.nextRound(room);
+    });
+
+    onMember("show-media-again", (_data, { room, player }) => {
+      if (room.phase === "results" && room.currentMedia?.ownerId === player.id) {
+        this.io.to(room.pin).emit("show-media-again", { mediaId: room.currentMedia.index });
+      }
+    });
+
+    onMember("hide-media-again", (_data, { room, player }) => {
+      if (room.currentMedia?.ownerId === player.id) this.io.to(room.pin).emit("hide-media-again");
+    });
+
+    onMember("play-again", (_data, { room, player }) => {
+      if (room.gameState !== "finished") {
+        socket.emit("error", { message: "Game is not finished yet" });
+        return;
+      }
+      this.resetForNewGame(room, player.id);
+      this.io.to(room.pin).emit("play-again-initiated", { newHostId: player.id, newHostName: player.name });
+      this.broadcastRoom(room);
+    });
+
+    // Lets the app check its connection is still alive (e.g. when it returns to the foreground).
+    socket.on("client-ping", (ack: unknown) => {
+      if (typeof ack === "function") ack();
+    });
+
+    socket.on("disconnect", () => this.onDisconnect(socket.id));
+  }
+
+  // ── Lobby ────────────────────────────────────────────────────────────────
+
+  private setMediaPool(socket: Socket, data: Payload<"set-media-pool">, { room, player }: PlayerContext) {
+    if (data.playAgain && room.gameState === "finished") this.resetForNewGame(room, player.id);
+    if (room.gameState !== "lobby") {
+      socket.emit("error", { message: "The game has already started" });
+      return;
+    }
+
+    // Only files this player actually uploaded to this room are accepted.
+    player.mediaPool = data.mediaPool
+      .filter((item) => player.uploadedFiles.has(item.filename))
+      .map((item) => ({ id: item.id ?? item.filename, filename: item.filename, mediaType: item.mediaType }));
+    player.state = "ready";
+
+    // Debug-only backup; a no-op unless Drive credentials are configured.
+    for (const item of player.mediaPool) {
+      enqueueBackup({
+        localPath: path.join(mediaStore.roomDir(room.pin), item.filename),
+        username: player.name,
+        originalFilename: item.filename,
+      });
+    }
+
+    this.broadcastRoom(room);
+    socket.emit("media-pool-set", { success: true, accepted: player.mediaPool.length });
+  }
+
+  private prepareGame(room: Room) {
+    room.deck = buildDeck(room.players);
+    if (room.deck.length === 0) {
+      this.io.to(room.pin).emit("error", { message: "No media available to start the game" });
+      return;
+    }
+    // Never more rounds than media: nothing is shown twice.
+    room.totalRounds = Math.min(room.settings.rounds, room.deck.length);
+    room.gameState = "syncing";
+    room.readyPlayers.clear();
+
+    this.io.to(room.pin).emit("sync-media", { media: this.publicDeck(room), count: room.deck.length });
+    this.broadcastRoom(room);
+  }
+
+  /** Media list sent to players: never includes who owns what. */
+  private publicDeck(room: Room) {
+    return room.deck.map(({ index, mediaType, filename }) => ({ index, mediaType, filename }));
+  }
+
+  private startIfEveryoneSynced(room: Room) {
+    if (room.gameState !== "syncing") return;
+    if (!room.players.every((p) => room.readyPlayers.has(p.id))) return;
+
+    room.gameState = "playing";
+    room.currentRound = 0;
+    room.deckPosition = -1;
+    room.phase = null;
+    this.io.to(room.pin).emit("all-players-ready");
+    this.io.to(room.pin).emit("game-started", { currentRound: 1, totalRounds: room.totalRounds });
+    // Short "get ready" pause: phones switch to the game screen before the clock starts.
+    const timer = setTimeout(() => {
+      if (this.registry.rooms.has(room.pin) && room.gameState === "playing" && room.currentRound === 0) {
+        this.nextRound(room);
+      }
+    }, this.firstRoundDelayMs);
+    this.roundTimers.set(room.pin, timer);
+  }
+
+  private resetForNewGame(room: Room, newHostId: string) {
+    this.clearRoundTimer(room.pin);
+    mediaStore.deleteRoom(room.pin);
+    Object.assign(room, {
+      gameState: "lobby",
+      phase: null,
+      deck: [],
+      deckPosition: -1,
+      currentRound: 0,
+      totalRounds: 0,
+      currentMedia: null,
+      lastRoundResult: null,
+      finalResult: null,
+    } satisfies Partial<Room>);
+    room.guesses.clear();
+    room.readyPlayers.clear();
+    room.streaks.clear();
+    room.roundScores.clear();
+    room.roundHistory = [];
+    for (const p of room.players) {
+      p.score = 0;
+      p.state = "selecting";
+      p.mediaPool = [];
+      p.uploadedFiles.clear();
+    }
+    this.registry.setHost(room, newHostId);
+  }
+
+  // ── Rounds ───────────────────────────────────────────────────────────────
+
+  /** Moves to the next playable media, or ends the game. */
+  private nextRound(room: Room) {
+    this.clearRoundTimer(room.pin);
+    const inRoom = new Set(room.players.map((p) => p.id));
+
+    // Skip media from players who have left the game: nobody could guess them.
+    let position = room.deckPosition + 1;
+    while (position < room.deck.length && !inRoom.has(room.deck[position].ownerId)) position++;
+
+    const remainingPlayable = room.deck.slice(position).filter((m) => inRoom.has(m.ownerId)).length;
+    room.totalRounds = Math.min(room.settings.rounds, room.currentRound + remainingPlayable);
+
+    if (position >= room.deck.length || room.currentRound >= room.totalRounds) {
+      this.finishGame(room);
+      return;
+    }
+
+    room.deckPosition = position;
+    room.currentMedia = room.deck[position];
+    room.currentRound += 1;
+    room.phase = "round";
+    room.guesses.clear();
+    room.roundStartedAt = Date.now();
+
+    this.io.to(room.pin).emit("new-round", this.roundPayload(room));
+    const timer = setTimeout(() => this.endRound(room), room.settings.timer * 1000 + ROUND_GRACE_MS);
+    this.roundTimers.set(room.pin, timer);
+  }
+
+  private roundPayload(room: Room) {
+    const media = room.currentMedia!;
+    const remainingMs = Math.max(0, room.settings.timer * 1000 - (Date.now() - room.roundStartedAt));
+    return {
+      round: room.currentRound,
+      totalRounds: room.totalRounds,
+      // Opaque id: the owner's library id would hint at who took it.
+      mediaData: { id: `media-${media.index}`, index: media.index, mediaType: media.mediaType },
+      duration: Math.ceil(remainingMs / 1000),
+      remainingMs,
+      options: room.players.map((p) => ({ id: p.id, name: p.name })),
+      roundStartTime: room.roundStartedAt,
+    };
+  }
+
+  private submitGuess(socket: Socket, data: Payload<"submit-guess">, { room, player }: PlayerContext) {
+    if (room.gameState !== "playing" || room.phase !== "round") {
+      socket.emit("guess-received", { success: false, message: "Round already ended" });
+      return;
+    }
+    if (!room.players.some((p) => p.id === data.targetUser)) return;
+
+    const timeTaken = answerTime(Date.now() - room.roundStartedAt, player.latencyMs, data.displayDelayMs);
+    if (timeTaken > room.settings.timer * 1000 + LATE_GUESS_TOLERANCE_MS) {
+      socket.emit("guess-received", { success: false, message: "Too late" });
+      return;
+    }
+
+    // Players may change their mind while the round runs: the last guess counts.
+    room.guesses.set(player.id, { guessedPlayerId: data.targetUser, timeTaken });
+    socket.emit("guess-received", { success: true });
+    this.endRoundIfEveryoneGuessed(room);
+  }
+
+  /**
+   * Ends the round early once every player has answered. Players who are briefly
+   * offline still count: they may come back within the round, and the round timer
+   * guarantees nobody waits forever.
+   */
+  private endRoundIfEveryoneGuessed(room: Room) {
+    if (room.phase !== "round") return;
+    const waitingFor = room.players.filter((p) => !room.guesses.has(p.id));
+    if (waitingFor.length === 0 && room.guesses.size > 0) this.endRound(room);
+  }
+
+  private endRound(room: Room) {
+    if (room.phase !== "round" || !this.registry.rooms.has(room.pin)) return;
+    this.clearRoundTimer(room.pin);
+    room.phase = "results";
+    room.lastRoundResult = scoreRound(room);
+    room.lastActivityTime = Date.now();
+    this.io.to(room.pin).emit("round-result", room.lastRoundResult);
+  }
+
+  private finishGame(room: Room) {
+    this.clearRoundTimer(room.pin);
+    let stats = null;
+    try {
+      stats = calculateGameStats(room);
+    } catch (error) {
+      console.error(`[Game ${room.pin}] Error calculating stats:`, error);
+    }
+    room.gameState = "finished";
+    room.phase = null;
+    room.finalResult = { leaderboard: leaderboard(room), stats };
+    // Media is no longer needed once the game is over.
+    mediaStore.deleteRoom(room.pin);
+    room.players.forEach((p) => p.uploadedFiles.clear());
+    this.io.to(room.pin).emit("game-finished", room.finalResult);
+    this.broadcastRoom(room);
+  }
+
+  private clearRoundTimer(pin: string) {
+    clearTimeout(this.roundTimers.get(pin));
+    this.roundTimers.delete(pin);
+  }
+
+  // ── Presence ─────────────────────────────────────────────────────────────
+
+  private onDisconnect(socketId: string) {
+    const ctx = this.registry.detachSocket(socketId);
+    if (!ctx) return;
+    const { room, player } = ctx;
+    this.broadcastRoom(room);
+
+    // Keep the seat for a while so a brief network drop or app switch isn't fatal.
+    clearTimeout(this.disconnectTimers.get(player.id));
+    this.disconnectTimers.set(
+      player.id,
+      setTimeout(() => {
+        this.disconnectTimers.delete(player.id);
+        if (!player.connected && room.players.includes(player)) this.removePlayer(room, player.id);
+      }, this.graceMs)
+    );
+  }
+
+  private resume(socket: Socket, data: Payload<"resume-session">) {
+    const ctx = this.registry.resume(data.pin, data.playerId, data.resumeToken, socket.id);
+    if (!ctx) {
+      socket.emit("resume-failed", { message: "This game is no longer available" });
+      return;
+    }
+    const { room, player } = ctx;
+    clearTimeout(this.disconnectTimers.get(player.id));
+    this.disconnectTimers.delete(player.id);
+    socket.join(room.pin);
+
+    socket.emit("session-resumed", {
+      pin: room.pin,
+      room: this.registry.publicRoom(room),
+      playerId: player.id,
+      resumeToken: player.resumeToken,
+      uploadToken: player.uploadToken,
+    });
+
+    // Replay what the player missed while offline.
+    if (room.gameState === "syncing" && !room.readyPlayers.has(player.id)) {
+      socket.emit("sync-media", { media: this.publicDeck(room), count: room.deck.length });
+    } else if (room.gameState === "playing" && room.currentMedia) {
+      socket.emit("new-round", this.roundPayload(room));
+      if (room.phase === "results" && room.lastRoundResult) socket.emit("round-result", room.lastRoundResult);
+    } else if (room.gameState === "finished" && room.finalResult) {
+      socket.emit("game-finished", room.finalResult);
+    }
+    this.broadcastRoom(room);
+  }
+
+  /** Explicit leave: immediate removal, no grace period. */
+  private leave({ room, player }: PlayerContext) {
+    if (player.socketId) this.io.sockets.sockets.get(player.socketId)?.leave(room.pin);
+    this.removePlayer(room, player.id);
+  }
+
+  private removePlayer(room: Room, playerId: string) {
+    clearTimeout(this.disconnectTimers.get(playerId));
+    this.disconnectTimers.delete(playerId);
+    const { roomDeleted } = this.registry.removePlayer(room, playerId);
+    if (roomDeleted) {
+      this.clearRoundTimer(room.pin);
+      return;
+    }
+
+    this.io.to(room.pin).emit("player-left", { playerId, players: this.registry.publicRoom(room).players });
+    this.broadcastRoom(room);
+
+    // Re-check anything that may have been waiting on this player.
+    this.startIfEveryoneSynced(room);
+    this.endRoundIfEveryoneGuessed(room);
+    if (room.gameState === "playing" && room.players.length < 2) this.finishGame(room);
+  }
+
+  private measureLatency() {
+    for (const room of this.registry.rooms.values()) {
+      for (const player of room.players) {
+        const socket = player.socketId ? this.io.sockets.sockets.get(player.socketId) : undefined;
+        if (!socket) continue;
+        const sentAt = Date.now();
+        socket.timeout(2000).emit("latency-ping", (err: Error | null) => {
+          if (err) return;
+          const oneWay = (Date.now() - sentAt) / 2;
+          player.latencyMs = Math.round(player.latencyMs * 0.7 + oneWay * 0.3);
+        });
+      }
+    }
+  }
+
+  private closeInactiveRooms(thresholdMs: number) {
+    for (const room of this.registry.inactiveRooms(thresholdMs)) {
+      this.io.to(room.pin).emit("game-abandoned", { message: "Game was inactive for too long and has been closed" });
+      this.io.in(room.pin).socketsLeave(room.pin);
+      this.clearRoundTimer(room.pin);
+      room.players.forEach((p) => clearTimeout(this.disconnectTimers.get(p.id)));
+      this.registry.deleteRoom(room.pin);
+    }
+  }
+
+  private broadcastRoom(room: Room) {
+    if (this.registry.rooms.has(room.pin)) {
+      this.io.to(room.pin).emit("room-update", this.registry.publicRoom(room));
+    }
+  }
+}
+
+function clientIp(socket: Socket): string {
+  const forwarded = socket.handshake.headers["x-forwarded-for"];
+  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(",")[0]?.trim();
+  return first || socket.handshake.address;
+}
+
+function stripUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as Partial<T>;
+}

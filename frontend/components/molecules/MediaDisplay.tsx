@@ -16,6 +16,8 @@ interface MediaDisplayProps {
   media: MediaItem;
   showAsBackground?: boolean;
   playVideoWithSound?: boolean;
+  /** Called once the photo or the first video frame is visible. */
+  onReady?: () => void;
 }
 
 function getSourceUri(media: MediaItem): string | null {
@@ -23,7 +25,19 @@ function getSourceUri(media: MediaItem): string | null {
   return media.uri ?? null;
 }
 
-function GameVideo({ uri, width, height, muted }: { uri: string; width: number; height: number; muted: boolean }) {
+function GameVideo({
+  uri,
+  width,
+  height,
+  muted,
+  onReady,
+}: {
+  uri: string;
+  width: number;
+  height: number;
+  muted: boolean;
+  onReady?: () => void;
+}) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
     p.muted = muted;
@@ -40,11 +54,12 @@ function GameVideo({ uri, width, height, muted }: { uri: string; width: number; 
       style={{ width, height }}
       contentFit="cover"
       nativeControls={false}
+      onFirstFrameRender={onReady}
     />
   );
 }
 
-export function MediaDisplay({ media, showAsBackground = false, playVideoWithSound = true }: MediaDisplayProps) {
+export function MediaDisplay({ media, showAsBackground = false, playVideoWithSound = true, onReady }: MediaDisplayProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { width: screenWidth } = useWindowDimensions();
   const [aspectRatio, setAspectRatio] = useState<number>(
@@ -97,6 +112,7 @@ export function MediaDisplay({ media, showAsBackground = false, playVideoWithSou
             onLoad={(event) => {
               const { width, height } = event.source;
               if (width && height) setAspectRatio(width / height);
+              onReady?.();
             }}
           />
         )}
@@ -107,6 +123,7 @@ export function MediaDisplay({ media, showAsBackground = false, playVideoWithSou
             width={displayWidth}
             height={displayHeight}
             muted={!playVideoWithSound}
+            onReady={onReady}
           />
         )}
       </View>

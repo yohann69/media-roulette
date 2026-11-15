@@ -7,6 +7,8 @@ interface Player {
   name: string;
   isHost?: boolean;
   state?: "selecting" | "compressing" | "uploading" | "ready";
+  /** False while the player is temporarily offline (they keep their seat for a minute). */
+  connected?: boolean;
 }
 
 // Colors per in-progress state (keeps the tailwind palette already in use).
@@ -29,10 +31,12 @@ interface AnimatedPlayer {
 
 export function PlayerList({ players, currentUserId }: PlayerListProps) {
   let Crown: any = null;
+  let WifiOff: any = null;
   
   try {
     const lucide = require("lucide-react-native");
     Crown = lucide.Crown;
+    WifiOff = lucide.WifiOff;
   } catch {
     // Icons not available, will use text fallback
   }
@@ -101,6 +105,7 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
         const isUploading = player.state === "uploading";
         const isBusy = isSelecting || isCompressing || isUploading;
         const spinnerColor = STATE_SPINNER_COLOR[player.state || "selecting"] || "#9ca3af";
+        const isOffline = player.connected === false;
 
         if (!animated) {
           // If player doesn't have animation yet, create it immediately
@@ -111,13 +116,16 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
             <View
               key={player.id}
               className="px-3 py-2 bg-gray-800 rounded-lg flex-row items-center gap-1"
+              style={{ opacity: isOffline ? 0.4 : 1 }}
             >
               <Text className={`${isBusy ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
-              {isBusy && (
+              {isOffline && WifiOff ? (
+                <WifiOff size={12} color="#9ca3af" />
+              ) : isBusy ? (
                 <ActivityIndicator size="small" color={spinnerColor} />
-              )}
+              ) : null}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />
               ) : player.isHost ? (
@@ -130,7 +138,7 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
           );
         }
         const { scale, opacity } = animated;
-        const baseOpacity = isSelecting ? 0.5 : 1;
+        const baseOpacity = isOffline ? 0.4 : isSelecting ? 0.5 : 1;
 
         return (
           <Animated.View
@@ -144,9 +152,11 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
               <Text className={`${isBusy ? "text-gray-400" : "text-white"} text-sm`}>
                 {player.name}
               </Text>
-              {isBusy && (
+              {isOffline && WifiOff ? (
+                <WifiOff size={12} color="#9ca3af" />
+              ) : isBusy ? (
                 <ActivityIndicator size="small" color={spinnerColor} />
-              )}
+              ) : null}
               {player.isHost && Crown ? (
                 <Crown size={12} color="#fbbf24" />
               ) : player.isHost ? (

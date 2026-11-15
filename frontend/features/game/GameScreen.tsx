@@ -16,7 +16,7 @@ export function GameScreen() {
   const { room, currentPlayerId } = useSocket();
 
   const pin = params.pin || room?.pin || "";
-  const isHost = params.isHost === "true" || room?.players.find((p) => p.socketId === currentPlayerId)?.isHost || false;
+  const isHost = params.isHost === "true" || room?.players.find((p) => p.id === currentPlayerId)?.isHost || false;
 
   const {
     gameState,
@@ -35,6 +35,8 @@ export function GameScreen() {
     isShowingMediaAgain,
     handlePlayerSelect,
     handleTimeExpired,
+    handleMediaShown,
+    timeExpired,
     handleContinue,
     handleShowAgainStart,
     handleShowAgainEnd,
@@ -141,9 +143,10 @@ export function GameScreen() {
         currentMedia={currentMedia}
         players={players}
         selectedPlayer={selectedPlayer}
-        disabled={isDisabled}
+        disabled={isDisabled || timeExpired}
         onPlayerSelect={handlePlayerSelect}
         onTimeExpired={handleTimeExpired}
+        onMediaShown={handleMediaShown}
         playVideoWithSound={playVideoWithSound}
       />
     );

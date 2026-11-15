@@ -11,7 +11,6 @@ interface LobbyFooterProps {
   syncStatus: string;
   hostName: string;
   onPrepareGame: () => void;
-  onStartGame: () => void;
 }
 
 export function LobbyFooter({
@@ -23,7 +22,6 @@ export function LobbyFooter({
   syncStatus,
   hostName,
   onPrepareGame,
-  onStartGame,
 }: LobbyFooterProps) {
   const { t } = useTranslation();
 
@@ -31,8 +29,8 @@ export function LobbyFooter({
     return (
       <View className="px-6 py-3 pb-8 border-t border-gray-800 bg-black/80">
         <Button
-          title={isStarting ? t("lobby.starting") : t("lobby.startGame")}
-          onPress={allReady ? onStartGame : onPrepareGame}
+          title={isStarting || isSyncing ? syncStatus || t("lobby.starting") : t("lobby.startGame")}
+          onPress={onPrepareGame}
           variant="primary"
           disabled={isStarting || !canStart}
         />

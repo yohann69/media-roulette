@@ -1,6 +1,6 @@
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
 
 /**
  * Temporary, per-room storage for game media.
@@ -11,10 +11,11 @@ const crypto = require("crypto");
  * only served back to members of the same room.
  */
 
-const UPLOADS_DIR = path.join(__dirname, "uploads");
-const TMP_DIR = path.join(UPLOADS_DIR, "_tmp");
+// Overridable for tests; defaults to backend/uploads (next to src/ and dist/).
+export const UPLOADS_DIR = process.env.UPLOADS_DIR || path.resolve(import.meta.dirname, "..", "uploads");
+export const TMP_DIR = path.join(UPLOADS_DIR, "_tmp");
 
-const LIMITS = {
+export const LIMITS = {
   maxImageBytes: 4 * 1024 * 1024,
   maxVideoBytes: 20 * 1024 * 1024,
   maxFilesPerPlayer: 60,
@@ -22,7 +23,7 @@ const LIMITS = {
 
 const FILENAME_PATTERN = /^[a-f0-9]{32}\.(jpg|png|webp|mp4|mov)$/;
 
-const CONTENT_TYPES = {
+const CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
   png: "image/png",
   webp: "image/webp",
@@ -30,10 +31,18 @@ const CONTENT_TYPES = {
   mov: "video/quicktime",
 };
 
+export class HttpError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
 fs.mkdirSync(TMP_DIR, { recursive: true });
 
 /** Detects the real file type from its first bytes. Returns null when unsupported. */
-function detectType(filePath) {
+type DetectedType = { ext: string; kind: "photo" | "video" };
+
+function detectType(filePath: string): DetectedType | null {
   const fd = fs.openSync(filePath, "r");
   const header = Buffer.alloc(16);
   try {
@@ -56,11 +65,11 @@ function detectType(filePath) {
   return null;
 }
 
-function roomDir(pin) {
+export function roomDir(pin: string) {
   return path.join(UPLOADS_DIR, pin);
 }
 
-function safeUnlink(filePath) {
+function safeUnlink(filePath: string) {
   fs.rm(filePath, { force: true }, () => {});
 }
 
@@ -68,8 +77,8 @@ function safeUnlink(filePath) {
  * Validates a file multer wrote to the temp folder and moves it into the room
  * folder under a random name. Throws an Error with a `status` on rejection.
  */
-function acceptUpload(tmpPath, pin) {
-  let type;
+export function acceptUpload(tmpPath: string, pin: string) {
+  let type: DetectedType | null;
   try {
     type = detectType(tmpPath);
   } catch {
@@ -77,14 +86,14 @@ function acceptUpload(tmpPath, pin) {
   }
   if (!type) {
     safeUnlink(tmpPath);
-    throw Object.assign(new Error("Unsupported file type"), { status: 415 });
+    throw new HttpError(415, "Unsupported file type");
   }
 
   const size = fs.statSync(tmpPath).size;
   const maxBytes = type.kind === "video" ? LIMITS.maxVideoBytes : LIMITS.maxImageBytes;
   if (size > maxBytes) {
     safeUnlink(tmpPath);
-    throw Object.assign(new Error("File too large"), { status: 413 });
+    throw new HttpError(413, "File too large");
   }
 
   const filename = `${crypto.randomBytes(16).toString("hex")}.${type.ext}`;
@@ -94,28 +103,28 @@ function acceptUpload(tmpPath, pin) {
 }
 
 /** Absolute path of a room file, or null if the name isn't one we generated. */
-function resolveFile(pin, filename) {
+export function resolveFile(pin: string, filename: string) {
   if (!/^\d{6}$/.test(pin) || !FILENAME_PATTERN.test(filename)) return null;
   const filePath = path.join(roomDir(pin), filename);
   return fs.existsSync(filePath) ? filePath : null;
 }
 
-function contentTypeFor(filename) {
+export function contentTypeFor(filename: string) {
   return CONTENT_TYPES[path.extname(filename).slice(1)] || "application/octet-stream";
 }
 
-function deleteFile(pin, filename) {
+export function deleteFile(pin: string, filename: string) {
   if (!/^\d{6}$/.test(pin) || !FILENAME_PATTERN.test(filename)) return;
   safeUnlink(path.join(roomDir(pin), filename));
 }
 
-function deleteRoom(pin) {
+export function deleteRoom(pin: string) {
   if (!/^\d{6}$/.test(pin)) return;
   fs.rm(roomDir(pin), { recursive: true, force: true }, () => {});
 }
 
 /** Removes every room folder and temp file, e.g. left over from a previous run. */
-function clearAll() {
+export function clearAll() {
   for (const entry of fs.readdirSync(UPLOADS_DIR)) {
     if (entry === "_tmp") continue;
     fs.rmSync(path.join(UPLOADS_DIR, entry), { recursive: true, force: true });
@@ -124,16 +133,3 @@ function clearAll() {
     fs.rmSync(path.join(TMP_DIR, entry), { recursive: true, force: true });
   }
 }
-
-module.exports = {
-  UPLOADS_DIR,
-  TMP_DIR,
-  LIMITS,
-  acceptUpload,
-  resolveFile,
-  contentTypeFor,
-  deleteFile,
-  deleteRoom,
-  clearAll,
-  roomDir,
-};

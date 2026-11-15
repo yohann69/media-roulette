@@ -1,0 +1,337 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { arrives, FAKE_JPEG, sleep, TestEnv, waitFor, waitForMatch } from "./helpers.js";
+
+const PUBLIC_ROOM_KEYS = ["gameState", "pin", "players", "settings"];
+
+let env: TestEnv;
+
+beforeEach(async () => {
+  env = new TestEnv();
+  await env.start({ reconnectGraceMs: 500 });
+});
+
+afterEach(async () => {
+  await env.stop();
+});
+
+describe("no answer leaks", () => {
+  it("never sends media owners before the round result", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const roomUpdate = waitFor<any>(host.socket, "room-update");
+    await env.setPool(host, 2);
+    expect(Object.keys(await roomUpdate).sort()).toEqual(PUBLIC_ROOM_KEYS);
+    await env.setPool(p2, 2);
+
+    const sync = waitFor<any>(p2.socket, "sync-media");
+    const round = await env.startGame(host, [host, p2]);
+    const syncData = await sync;
+
+    expect(syncData.media.every((m: object) => Object.keys(m).sort().join() === "filename,index,mediaType")).toBe(true);
+    expect(round).not.toHaveProperty("actualOwnerId");
+    expect(round.mediaData.id).toMatch(/^media-\d+$/);
+
+    const result = waitFor<any>(host.socket, "round-result");
+    host.socket.emit("submit-guess", { pin: host.pin, targetUser: host.playerId });
+    p2.socket.emit("submit-guess", { pin: p2.pin, targetUser: host.playerId });
+    expect(typeof (await result).actualOwnerId).toBe("string");
+  });
+});
+
+describe("uploads", () => {
+  it("rejects unauthenticated, disguised and oversized files", async () => {
+    const host = await env.create();
+    expect((await env.upload(null)).status).toBe(401);
+    expect((await env.upload(host.uploadToken, Buffer.from("<html><script>alert(1)</script></html>"))).status).toBe(415);
+    expect((await env.upload(host.uploadToken, Buffer.concat([FAKE_JPEG, Buffer.alloc(5 * 1024 * 1024)]))).status).toBe(413);
+    expect((await env.upload(host.uploadToken)).status).toBe(200);
+  });
+
+  it("only serves media to players of the same room", async () => {
+    const host = await env.create();
+    const other = await env.create("Other");
+    const [file] = await env.setPool(host, 1);
+
+    expect((await fetch(`${env.url}/uploads/${file}`)).status).toBe(404);
+    expect((await fetch(`${env.url}/media/${host.pin}/${file}`)).status).toBe(401);
+    const cross = await fetch(`${env.url}/media/${host.pin}/${file}`, { headers: { "x-upload-token": other.uploadToken } });
+    expect(cross.status).toBe(403);
+    const ok = await fetch(`${env.url}/media/${host.pin}/${file}`, { headers: { "x-upload-token": host.uploadToken } });
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  it("ignores files a player didn't upload when building their pool", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const [hostFile] = await env.setPool(host, 1);
+    p2.socket.emit("set-media-pool", {
+      pin: p2.pin,
+      mediaPool: [{ id: "x", filename: hostFile, mediaType: "photo" }],
+    });
+    expect((await waitFor<any>(p2.socket, "media-pool-set")).accepted).toBe(0);
+  });
+
+  it("deletes a player's media when they leave", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const [file] = await env.setPool(p2, 1);
+    p2.socket.emit("leave-game", { pin: p2.pin });
+    await sleep(200);
+    const res = await fetch(`${env.url}/media/${host.pin}/${file}`, { headers: { "x-upload-token": host.uploadToken } });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("authorization and abuse", () => {
+  it("ignores events from sockets that aren't in the room", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 2);
+    await env.setPool(p2, 2);
+    await env.startGame(host, [host, p2]);
+
+    const outsider = await env.connect();
+    outsider.emit("submit-guess", { pin: host.pin, targetUser: host.playerId });
+    outsider.emit("continue-game", { pin: host.pin });
+    expect(await arrives(host.socket, "round-result", 600)).toBe(false);
+  });
+
+  it("rate-limits join attempts per address", async () => {
+    const socket = await env.connect();
+    let errors = 0;
+    socket.on("join-error", (e: { message: string }) => e.message.includes("Too many") && errors++);
+    for (let i = 0; i < 15; i++) socket.emit("join-game", { pin: String(100000 + i), playerName: "x" });
+    await sleep(300);
+    expect(errors).toBeGreaterThanOrEqual(5);
+  });
+
+  it("makes duplicate names unique and trims long ones", async () => {
+    const host = await env.create("Alexandra-the-Great-Of-Names");
+    const p2 = await env.join(host.pin, "Alex");
+    const p3 = env.join(host.pin, "alex");
+    const update = await waitFor<any>(p2.socket, "room-update");
+    await p3;
+    const names = (await waitFor<any>(host.socket, "room-update").catch(() => update)).players.map((p: any) => p.name);
+    expect(names[0].length).toBeLessThanOrEqual(16);
+    expect(names).toContain("alex 2");
+  });
+});
+
+describe("fair timing", () => {
+  it("measures answer time on the server and ignores client timestamps", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 2);
+    await env.setPool(p2, 2);
+    await env.startGame(host, [host, p2]);
+
+    await sleep(400);
+    const result = waitFor<any>(host.socket, "round-result");
+    // A forged timestamp claiming an instant answer must have no effect.
+    host.socket.emit("submit-guess", { pin: host.pin, targetUser: host.playerId, timestamp: 0 });
+    p2.socket.emit("submit-guess", { pin: p2.pin, targetUser: host.playerId, timestamp: Date.now() - 60_000 });
+    const { results } = await result;
+    for (const r of results) {
+      expect(r.timeTaken).toBeGreaterThanOrEqual(0);
+      expect(r.timeTaken).toBeLessThan(1000);
+    }
+  });
+
+  it("rejects guesses sent after the round's time is up", async () => {
+    const host = await env.create("Host", { rounds: 5, timer: 3 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 1);
+    await env.setPool(p2, 1);
+    await env.startGame(host, [host, p2]);
+    await sleep(3500); // past 3 s + tolerance, before the server's grace timer closes the round
+    host.socket.emit("submit-guess", { pin: host.pin, targetUser: host.playerId });
+    const ack = await waitFor<any>(host.socket, "guess-received");
+    expect(ack).toMatchObject({ success: false, message: "Too late" });
+  });
+
+  it("ends the round on the server's timer, without any client help", async () => {
+    const host = await env.create("Host", { rounds: 5, timer: 3 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 1);
+    await env.setPool(p2, 1);
+    await env.startGame(host, [host, p2]);
+    const result = await waitFor<any>(host.socket, "round-result", 6000);
+    expect(result.results.every((r: any) => r.tooSlow)).toBe(true);
+  });
+});
+
+describe("game start", () => {
+  it("leaves a short get-ready pause before the first round", async () => {
+    await env.stop();
+    env = new TestEnv();
+    await env.start({ reconnectGraceMs: 500, firstRoundDelayMs: 1000 });
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 1);
+    await env.setPool(p2, 1);
+    const started = waitFor(host.socket, "game-started").then(() => Date.now());
+    const round = waitFor(host.socket, "new-round").then(() => Date.now());
+    await env.startGame(host, [host, p2]);
+    expect((await round) - (await started)).toBeGreaterThanOrEqual(900);
+  });
+});
+
+describe("games never get stuck", () => {
+  it("starts on its own once everyone has the media", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 1);
+    await env.setPool(p2, 1);
+    const round = await env.startGame(host, [host, p2]);
+    expect(round.round).toBe(1);
+  });
+
+  it("starts when a player who was still downloading leaves", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const p3 = await env.join(host.pin, "P3");
+    for (const s of [host, p2, p3]) await env.setPool(s, 1);
+
+    const round = waitFor<any>(host.socket, "new-round");
+    host.socket.once("sync-media", () => host.socket.emit("sync-complete", { pin: host.pin }));
+    p2.socket.once("sync-media", () => p2.socket.emit("sync-complete", { pin: p2.pin }));
+    host.socket.emit("prepare-game", { pin: host.pin });
+    await sleep(200);
+    p3.socket.emit("leave-game", { pin: p3.pin });
+    expect((await round).round).toBe(1);
+  });
+
+  it("lets others continue when the media owner left on the results screen", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const p3 = await env.join(host.pin, "P3");
+    for (const s of [host, p2, p3]) await env.setPool(s, 2);
+    await env.startGame(host, [host, p2, p3]);
+
+    const result = waitFor<any>(host.socket, "round-result");
+    for (const s of [host, p2, p3]) s.socket.emit("submit-guess", { pin: s.pin, targetUser: s.playerId });
+    const { actualOwnerId } = await result;
+
+    const sessions = [host, p2, p3];
+    const owner = sessions.find((s) => s.playerId === actualOwnerId)!;
+    const others = sessions.filter((s) => s !== owner);
+    owner.socket.emit("leave-game", { pin: owner.pin });
+    await sleep(200);
+
+    const next = waitFor<any>(others[0].socket, "new-round");
+    others[0].socket.emit("continue-game", { pin: others[0].pin });
+    const round = await next;
+    expect(round.round).toBe(2);
+    expect(round.options.map((o: any) => o.id)).not.toContain(owner.playerId);
+  });
+
+  it("never repeats media when there are more rounds than media", async () => {
+    const host = await env.create("Host", { rounds: 10, timer: 3 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 2);
+    await env.setPool(p2, 1);
+    const first = await env.startGame(host, [host, p2]);
+    expect(first.totalRounds).toBe(3);
+
+    const seen = [first.mediaData.index];
+    for (let round = 1; round <= 3; round++) {
+      const result = waitFor<any>(host.socket, "round-result");
+      host.socket.emit("submit-guess", { pin: host.pin, targetUser: host.playerId });
+      p2.socket.emit("submit-guess", { pin: p2.pin, targetUser: host.playerId });
+      const { actualOwnerId } = await result;
+      const owner = actualOwnerId === host.playerId ? host : p2;
+      const next = round < 3 ? waitFor<any>(host.socket, "new-round") : waitFor<any>(host.socket, "game-finished");
+      owner.socket.emit("continue-game", { pin: owner.pin });
+      const data = await next;
+      if (round < 3) seen.push(data.mediaData.index);
+    }
+    expect(new Set(seen).size).toBe(3);
+  });
+});
+
+describe("reconnection", () => {
+  it("lets a player resume mid-round and replays the current round", async () => {
+    const host = await env.create("Host", { rounds: 5, timer: 10 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 2);
+    await env.setPool(p2, 2);
+    await env.startGame(host, [host, p2]);
+
+    p2.socket.close();
+    await sleep(100);
+    const fresh = await env.connect();
+    const resumed = waitFor<any>(fresh, "session-resumed");
+    const replay = waitFor<any>(fresh, "new-round");
+    fresh.emit("resume-session", { pin: p2.pin, playerId: p2.playerId, resumeToken: p2.resumeToken });
+    expect((await resumed).playerId).toBe(p2.playerId);
+    const round = await replay;
+    expect(round.round).toBe(1);
+    expect(round.remainingMs).toBeGreaterThan(0);
+    expect(round.remainingMs).toBeLessThanOrEqual(10_000);
+
+    // The resumed player can still play.
+    const result = waitFor<any>(host.socket, "round-result");
+    fresh.emit("submit-guess", { pin: p2.pin, targetUser: host.playerId });
+    host.socket.emit("submit-guess", { pin: host.pin, targetUser: host.playerId });
+    const { results } = await result;
+    expect(results.find((r: any) => r.playerId === p2.playerId).tooSlow).toBe(false);
+  });
+
+  it("doesn't end the round early while a player is briefly offline", async () => {
+    await env.stop();
+    env = new TestEnv();
+    await env.start({ reconnectGraceMs: 5000 });
+    const host = await env.create("Host", { rounds: 5, timer: 5 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 1);
+    await env.setPool(p2, 1);
+    await env.startGame(host, [host, p2]);
+
+    p2.socket.close();
+    await sleep(100);
+    host.socket.emit("submit-guess", { pin: host.pin, targetUser: host.playerId });
+    expect(await arrives(host.socket, "round-result", 600)).toBe(false);
+
+    // P2 comes back in time and still gets to answer.
+    const fresh = await env.connect();
+    const replay = waitFor<any>(fresh, "new-round");
+    fresh.emit("resume-session", { pin: p2.pin, playerId: p2.playerId, resumeToken: p2.resumeToken });
+    await replay;
+    const result = waitFor<any>(host.socket, "round-result");
+    fresh.emit("submit-guess", { pin: p2.pin, targetUser: host.playerId });
+    const { results } = await result;
+    expect(results.find((r: any) => r.playerId === p2.playerId).tooSlow).toBe(false);
+  });
+
+  it("refuses to resume with a wrong token", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    p2.socket.close();
+    const fresh = await env.connect();
+    fresh.emit("resume-session", { pin: p2.pin, playerId: p2.playerId, resumeToken: "not-the-token" });
+    expect(await arrives(fresh, "resume-failed")).toBe(true);
+  });
+
+  it("removes a player who doesn't come back within the grace period", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const left = waitFor<any>(host.socket, "player-left", 2000);
+    p2.socket.close();
+    expect((await left).playerId).toBe(p2.playerId);
+  });
+
+  it("keeps the host while they are briefly offline, then promotes someone else", async () => {
+    const host = await env.create();
+    const p2 = await env.join(host.pin, "P2");
+    const offlineUpdate = waitForMatch<any>(p2.socket, "room-update", (room) =>
+      room.players.some((p: any) => p.id === host.playerId && !p.connected)
+    );
+    host.socket.close();
+    const offline = (await offlineUpdate).players.find((p: any) => p.id === host.playerId);
+    expect(offline).toMatchObject({ isHost: true, connected: false });
+
+    const left = await waitFor<any>(p2.socket, "player-left", 2000);
+    expect(left.players.find((p: any) => p.id === p2.playerId).isHost).toBe(true);
+  });
+});

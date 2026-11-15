@@ -1,436 +1,334 @@
 import { create } from "zustand";
+import { AppState } from "react-native";
 import { io, Socket } from "socket.io-client";
 
 export type PlayerState = "selecting" | "compressing" | "uploading" | "ready";
 
-interface Room {
-    pin: string;
-    players: Array<{
-        socketId: string;
-        name: string;
-        isHost: boolean;
-        score: number;
-        state?: PlayerState;
-    }>;
-    settings: {
-        rounds: number;
-        timer: number;
-        mode: string;
-        playVideoWithSound?: boolean;
-        blindMode?: boolean;
-    };
-    gameState: "lobby" | "syncing" | "playing" | "finished";
+export interface RoomPlayer {
+  /** Stable player id (survives reconnects). */
+  id: string;
+  name: string;
+  isHost: boolean;
+  score: number;
+  state: PlayerState;
+  /** False while the player is temporarily offline. */
+  connected: boolean;
+  /** Number of media items the player has confirmed. */
+  mediaCount: number;
+}
+
+export interface Room {
+  pin: string;
+  players: RoomPlayer[];
+  settings: {
+    rounds: number;
+    timer: number;
+    mode: string;
+    playVideoWithSound?: boolean;
+    blindMode?: boolean;
+  };
+  gameState: "lobby" | "syncing" | "playing" | "finished";
+}
+
+/** What the server needs to let us back into a game after a disconnect. */
+interface Session {
+  pin: string;
+  playerId: string;
+  resumeToken: string;
+  uploadToken: string;
+}
+
+interface JoinPayload extends Session {
+  room: Room;
 }
 
 export type UploadStage = "idle" | "compressing" | "uploading";
 
 interface SocketState {
-    socket: Socket | null;
-    isConnected: boolean;
-    connectionFailed: boolean;
-    room: Room | null;
-    currentPlayerId: string | null;
-    localMediaMap: Map<number, string>; // index -> local file URI
-    uploadToken: string | null; // authorizes this player's media uploads for the current room
-    // Latest "new-round" payload. The server sends "game-started" and the first
-    // "new-round" back to back, before the game screen has mounted its listeners.
-    lastNewRound: any | null;
-    uploadStage: UploadStage;
-    uploadProgress: number; // 0..1
-    wasKicked: boolean; // true when socket reconnected while we had a room (server already removed us)
-    setUploadStatus: (stage: UploadStage, progress: number) => void;
-    clearKicked: () => void;
-    connect: () => void;
-    disconnect: () => void;
-    createGame: (hostName: string, settings: any) => Promise<string | null>;
-    joinGame: (pin: string, playerName: string) => Promise<boolean>;
-    leaveGame: (pin: string) => Promise<void>;
-    setPlayerState: (pin: string, state: PlayerState) => Promise<void>;
-    setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
-    prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
-    notifySyncComplete: (pin: string) => Promise<void>;
-    startGame: (pin: string) => Promise<boolean>;
-    setLocalMediaMap: (map: Map<number, string>) => void;
-  submitGuess: (pin: string, targetUser: string, timestamp: number) => Promise<boolean>;
+  socket: Socket | null;
+  isConnected: boolean;
+  connectionFailed: boolean;
+  room: Room | null;
+  /** Our stable player id in the current room. */
+  currentPlayerId: string | null;
+  session: Session | null;
+  /** Authorizes our media uploads/downloads for the current room. */
+  uploadToken: string | null;
+  localMediaMap: Map<number, string>; // media index -> local file URI
+  /**
+   * Latest "new-round" payload. The first round can arrive before the game screen
+   * has mounted (and a resumed session replays it), so screens read it on mount.
+   */
+  lastNewRound: any | null;
+  uploadStage: UploadStage;
+  uploadProgress: number; // 0..1
+  /** True when we lost our seat in a game (resume failed or the room is gone). */
+  wasKicked: boolean;
+
+  connect: () => void;
+  disconnect: () => void;
+  /** Listens to a server event. Returns a function that removes the listener. */
+  subscribe: (event: string, handler: (...args: any[]) => void) => () => void;
+  setUploadStatus: (stage: UploadStage, progress: number) => void;
+  setLocalMediaMap: (map: Map<number, string>) => void;
+  clearKicked: () => void;
+
+  createGame: (hostName: string, settings: any) => Promise<string | null>;
+  joinGame: (pin: string, playerName: string) => Promise<boolean>;
+  leaveGame: (pin: string) => Promise<void>;
+  setPlayerState: (pin: string, state: PlayerState) => Promise<void>;
+  setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
+  prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
+  notifySyncComplete: (pin: string) => Promise<void>;
+  submitGuess: (pin: string, targetUser: string, displayDelayMs?: number) => Promise<boolean>;
   continueGame: (pin: string) => Promise<boolean>;
-  notifyTimeExpired: (pin: string) => Promise<void>;
   showMediaAgain: (pin: string) => void;
   hideMediaAgain: (pin: string) => void;
   playAgain: (pin: string) => Promise<boolean>;
-  onPlayerJoined: (callback: (data: any) => void) => void;
-    onPlayerLeft: (callback: (data: any) => void) => void;
-    onSyncMedia: (callback: (data: any) => void) => void;
-    onPlayerReady: (callback: (data: any) => void) => void;
-    onAllPlayersReady: (callback: (data: any) => void) => void;
-    onGameStarted: (callback: (data: any) => void) => void;
-           onNewRound: (callback: (data: any) => void) => void;
-           onRoundResult: (callback: (data: any) => void) => void;
-           onGameFinished: (callback: (data: any) => void) => void;
-           onRoomDeleted: (callback: (data: any) => void) => void;
-           onRoomUpdate: (callback: (data: any) => void) => void;
-    onShowMediaAgain: (callback: (data: any) => void) => void;
-    onHideMediaAgain: (callback: () => void) => void;
-    onPlayAgainInitiated: (callback: (data: any) => void) => void;
-           cleanup: () => void;
 }
 
 // Override with EXPO_PUBLIC_SERVER_URL (e.g. in .env.local) to use a self-hosted or local server.
 export const SOCKET_URL = process.env.EXPO_PUBLIC_SERVER_URL || "https://backend-production-1f8a.up.railway.app";
 
-function createSocketHandlers(set: any, get: any) {
-    let connectionErrorCount = 0;
-    let hasConnectedOnce = false;
-    const MAX_CONNECTION_ERRORS = 3;
+const REQUEST_TIMEOUT_MS = 5000;
 
-    return {
-        connect: () => {
-            const { socket } = get();
-            if (socket?.connected) return;
-
-            // Reset connection failed state when attempting to connect
-            set({ connectionFailed: false });
-
-            const newSocket = io(SOCKET_URL, {
-                transports: ["websocket"],
-                reconnection: true,
-                reconnectionDelay: 1000,
-                reconnectionAttempts: 5,
-            });
-
-            newSocket.on("connect", () => {
-                connectionErrorCount = 0; // Reset on successful connection
-                const isReconnect = hasConnectedOnce;
-                hasConnectedOnce = true;
-                const currentRoom = get().room;
-
-                // If we reconnect while we still think we have a room, the backend
-                // has already removed us (server kicks on disconnect). Surface this
-                // to the UI so the user is sent home instead of seeing a stale lobby.
-                if (isReconnect && currentRoom) {
-                    set({
-                        socket: newSocket,
-                        isConnected: true,
-                        connectionFailed: false,
-                        currentPlayerId: newSocket.id,
-                        room: null,
-                        localMediaMap: new Map(),
-                        uploadToken: null,
-                        uploadStage: "idle",
-                        uploadProgress: 0,
-                        wasKicked: true,
-                    });
-                } else {
-                    set({
-                        socket: newSocket,
-                        isConnected: true,
-                        connectionFailed: false,
-                        currentPlayerId: newSocket.id,
-                    });
-                }
-            });
-
-            newSocket.on("new-round", (data: any) => {
-                set({ lastNewRound: data });
-            });
-            newSocket.on("game-finished", () => {
-                set({ lastNewRound: null });
-            });
-
-            newSocket.on("disconnect", () => {
-                set({ isConnected: false });
-            });
-
-            newSocket.on("connect_error", () => {
-                connectionErrorCount++;
-                set({ isConnected: false });
-                
-                // Only set connection failed after multiple failed attempts
-                if (connectionErrorCount >= MAX_CONNECTION_ERRORS) {
-                    set({ connectionFailed: true });
-                }
-            });
-
-            // Listen for reconnection attempts
-            newSocket.on("reconnect_attempt", () => {
-                // Silently retrying, no UI feedback needed
-            });
-
-            set({ socket: newSocket });
-        },
-
-        disconnect: () => {
-            const { socket } = get();
-            if (socket) {
-                socket.disconnect();
-                hasConnectedOnce = false;
-                set({ socket: null, isConnected: false, connectionFailed: false, room: null, currentPlayerId: null, localMediaMap: new Map(), uploadToken: null, uploadStage: "idle", uploadProgress: 0, wasKicked: false });
-            }
-        },
-
-        setUploadStatus: (stage: UploadStage, progress: number) => {
-            set({ uploadStage: stage, uploadProgress: Math.max(0, Math.min(1, progress)) });
-        },
-
-        clearKicked: () => {
-            set({ wasKicked: false });
-        },
+/**
+ * Emits `event` and resolves with the first of `success` / `failure` events.
+ * Every listener and the timeout are always cleaned up.
+ */
+function request<T>(
+  socket: Socket,
+  event: string,
+  payload: unknown,
+  success: string,
+  failures: string[] = ["error"],
+  timeoutMs = REQUEST_TIMEOUT_MS
+): Promise<{ ok: true; data: T } | { ok: false }> {
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.off(success, onSuccess);
+      failures.forEach((f) => socket.off(f, onFailure));
     };
+    const onSuccess = (data: T) => {
+      cleanup();
+      resolve({ ok: true, data });
+    };
+    const onFailure = () => {
+      cleanup();
+      resolve({ ok: false });
+    };
+    const timer = setTimeout(onFailure, timeoutMs);
+    socket.once(success, onSuccess);
+    failures.forEach((f) => socket.once(f, onFailure));
+    socket.emit(event, payload);
+  });
 }
 
-function createGameHandlers(get: any, set: any) {
-    return {
-        createGame: async (hostName: string, settings: any): Promise<string | null> => {
-            const { socket } = get();
-            if (!socket?.connected) return null;
+const EMPTY_GAME_STATE = {
+  room: null,
+  currentPlayerId: null,
+  session: null,
+  uploadToken: null,
+  localMediaMap: new Map<number, string>(),
+  lastNewRound: null,
+  uploadStage: "idle" as UploadStage,
+  uploadProgress: 0,
+};
 
-            return new Promise((resolve) => {
-                socket.emit("create-game", { hostName, settings });
-                socket.once("game-created", (data: { pin: string; room: Room; uploadToken: string }) => {
-                    set({ room: data.room, uploadToken: data.uploadToken });
-                    resolve(data.pin);
-                });
-                socket.once("error", () => resolve(null));
-                setTimeout(() => resolve(null), 5000);
-            });
-        },
-
-        joinGame: async (pin: string, playerName: string): Promise<boolean> => {
-            const { socket } = get();
-            if (!socket?.connected) return false;
-
-            return new Promise((resolve) => {
-                socket.emit("join-game", { pin, playerName });
-                socket.once("joined-game", (data: { pin: string; room: Room; uploadToken: string }) => {
-                    set({ room: data.room, uploadToken: data.uploadToken });
-                    resolve(true);
-                });
-                socket.once("join-error", () => resolve(false));
-                socket.once("error", () => resolve(false));
-                setTimeout(() => resolve(false), 5000);
-            });
-        },
-
-        leaveGame: async (pin: string): Promise<void> => {
-            const { socket } = get();
-            if (!socket?.connected) return;
-            
-            socket.emit("leave-game", { pin });
-            // Clear room state when leaving
-            set({ room: null, uploadToken: null, lastNewRound: null });
-        },
-
-        setPlayerState: async (pin: string, state: PlayerState): Promise<void> => {
-            const { socket } = get();
-            if (!socket?.connected) return;
-            socket.emit("set-player-state", { pin, state });
-        },
-
-        setMediaPool: async (pin: string, mediaPool: any[], playAgain?: boolean): Promise<boolean> => {
-            const { socket } = get();
-            if (!socket?.connected) return false;
-
-            return new Promise((resolve) => {
-                socket.emit("set-media-pool", { pin, mediaPool, playAgain: !!playAgain });
-                socket.once("media-pool-set", (data: { success: boolean }) => resolve(data.success));
-                socket.once("error", () => resolve(false));
-                setTimeout(() => resolve(false), 15000);
-            });
-        },
-
-        prepareGame: async (pin: string, updatedSettings?: any): Promise<void> => {
-            const { socket } = get();
-            if (!socket?.connected) return;
-            socket.emit("prepare-game", { pin, updatedSettings });
-        },
-
-        notifySyncComplete: async (pin: string): Promise<void> => {
-             const { socket } = get();
-            if (!socket?.connected) return;
-            socket.emit("sync-complete", { pin });
-        },
-
-        startGame: async (pin: string): Promise<boolean> => {
-            const { socket } = get();
-            if (!socket?.connected) return false;
-
-            return new Promise((resolve) => {
-                socket.emit("start-game", { pin });
-                socket.once("game-started", (data: any) => resolve(true));
-                socket.once("error", () => resolve(false));
-            });
-        },
-        
-        setLocalMediaMap: (map: Map<number, string>) => {
-            set({ localMediaMap: map });
-        },
-
-        submitGuess: async (pin: string, targetUser: string, timestamp: number): Promise<boolean> => {
-            const { socket } = get();
-            if (!socket?.connected) return false;
-
-            return new Promise((resolve) => {
-                socket.emit("submit-guess", { pin, targetUser, timestamp });
-                socket.once("guess-received", (data: { success: boolean }) => resolve(data.success));
-                socket.once("error", () => resolve(false));
-                setTimeout(() => resolve(false), 5000);
-            });
-        },
-
-        continueGame: async (pin: string): Promise<boolean> => {
-            const { socket } = get();
-            if (!socket?.connected) return false;
-
-            return new Promise((resolve) => {
-                socket.emit("continue-game", { pin });
-                socket.once("error", () => resolve(false));
-                setTimeout(() => resolve(true), 1000);
-            });
-        },
-
-        notifyTimeExpired: async (pin: string): Promise<void> => {
-            const { socket } = get();
-            if (!socket?.connected) return;
-
-            socket.emit("time-expired", { pin });
-        },
-
-        showMediaAgain: (pin: string) => {
-            const { socket } = get();
-            if (!socket?.connected) return;
-            socket.emit("show-media-again", { pin });
-        },
-
-        hideMediaAgain: (pin: string) => {
-            const { socket } = get();
-            if (!socket?.connected) return;
-            socket.emit("hide-media-again", { pin });
-        },
-
-        playAgain: async (pin: string): Promise<boolean> => {
-            const { socket } = get();
-            if (!socket?.connected) return false;
-
-            return new Promise((resolve) => {
-                socket.emit("play-again", { pin });
-                socket.once("play-again-initiated", () => resolve(true));
-                socket.once("error", () => resolve(false));
-                setTimeout(() => resolve(false), 5000);
-            });
-        },
+export const useSocket = create<SocketState>((set, get) => {
+  /** Stores what the server sent when we created, joined or resumed a game. */
+  const enterRoom = (data: JoinPayload) => {
+    const session: Session = {
+      pin: data.pin,
+      playerId: data.playerId,
+      resumeToken: data.resumeToken,
+      uploadToken: data.uploadToken,
     };
-}
+    set({ room: data.room, session, currentPlayerId: data.playerId, uploadToken: data.uploadToken });
+  };
 
-function createEventHandlers(get: any, set: any) {
-    return {
-        onPlayerJoined: (callback: (data: any) => void) => {
-            get().socket?.on("player-joined", (data: any) => {
-                const { room } = get();
-                if (room) set({ room: { ...room, players: data.players } });
-                callback(data);
-            });
-        },
+  const loseRoom = () => set({ ...EMPTY_GAME_STATE, localMediaMap: new Map(), wasKicked: true });
 
-        onPlayerLeft: (callback: (data: any) => void) => {
-            get().socket?.on("player-left", (data: any) => {
-                const { room } = get();
-                if (room) set({ room: { ...room, players: data.players } });
-                callback(data);
-            });
-        },
-        
-        onSyncMedia: (callback: (data: any) => void) => {
-            get().socket?.on("sync-media", callback);
-        },
-
-        onPlayerReady: (callback: (data: any) => void) => {
-            get().socket?.on("player-ready", callback);
-        },
-
-        onAllPlayersReady: (callback: (data: any) => void) => {
-            get().socket?.on("all-players-ready", callback);
-        },
-
-        onGameStarted: (callback: (data: any) => void) => {
-            get().socket?.on("game-started", callback);
-        },
-
-        onNewRound: (callback: (data: any) => void) => {
-            get().socket?.on("new-round", callback);
-        },
-
-        onRoundResult: (callback: (data: any) => void) => {
-            get().socket?.on("round-result", callback);
-        },
-
-        onGameFinished: (callback: (data: any) => void) => {
-            get().socket?.on("game-finished", callback);
-        },
-
-        onRoomDeleted: (callback: (data: any) => void) => {
-            get().socket?.on("room-deleted", (data: any) => {
-                set({ room: null });
-                callback(data);
-            });
-        },
-
-        onRoomUpdate: (callback: (data: any) => void) => {
-            get().socket?.on("room-update", (data: Room) => {
-                set({ room: data });
-                callback(data);
-            });
-        },
-
-        onShowMediaAgain: (callback: (data: any) => void) => {
-            const socket = get().socket;
-            if (!socket) return;
-            // Remove any existing listener to avoid duplicates
-            socket.off("show-media-again");
-            socket.on("show-media-again", (data: any) => {
-                console.log("Received show-media-again event", data);
-                callback(data);
-            });
-        },
-
-        onHideMediaAgain: (callback: () => void) => {
-            const socket = get().socket;
-            if (!socket) return;
-            // Remove any existing listener to avoid duplicates
-            socket.off("hide-media-again");
-            socket.on("hide-media-again", () => {
-                console.log("Received hide-media-again event");
-                callback();
-            });
-        },
-
-        onPlayAgainInitiated: (callback: (data: any) => void) => {
-            const socket = get().socket;
-            if (!socket) return;
-            socket.off("play-again-initiated");
-            socket.on("play-again-initiated", (data: any) => {
-                console.log("Received play-again-initiated event", data);
-                callback(data);
-            });
-        },
-
-        cleanup: () => {
-            get().socket?.removeAllListeners();
-        },
-    };
-}
-
-export const useSocket = create<SocketState>((set, get) => ({
+  return {
     socket: null,
     isConnected: false,
     connectionFailed: false,
-    room: null,
-    currentPlayerId: null,
-    localMediaMap: new Map(),
-    uploadToken: null,
-    lastNewRound: null,
-    uploadStage: "idle",
-    uploadProgress: 0,
     wasKicked: false,
-    ...createSocketHandlers(set, get),
-    ...createGameHandlers(get, set),
-    ...createEventHandlers(get, set),
-}));
+    ...EMPTY_GAME_STATE,
+
+    connect: () => {
+      const existing = get().socket;
+      if (existing) {
+        if (!existing.connected) existing.connect();
+        return;
+      }
+
+      set({ connectionFailed: false });
+      let connectionErrorCount = 0;
+
+      const socket = io(SOCKET_URL, {
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: Infinity,
+      });
+
+      socket.on("connect", () => {
+        connectionErrorCount = 0;
+        set({ isConnected: true, connectionFailed: false });
+        // Back after a drop (network change, app in background...): take our seat back.
+        const { session } = get();
+        if (session) socket.emit("resume-session", session);
+      });
+
+      socket.on("disconnect", () => set({ isConnected: false }));
+
+      socket.on("connect_error", () => {
+        connectionErrorCount++;
+        set({ isConnected: false });
+        if (connectionErrorCount >= 3) set({ connectionFailed: true });
+      });
+
+      // Lets the server measure our network delay, for fair answer times.
+      socket.on("latency-ping", (ack?: () => void) => ack?.());
+
+      // Room state is kept current here, whatever screen is showing.
+      socket.on("room-update", (room: Room) => {
+        if (get().room?.pin === room.pin) set({ room });
+      });
+      socket.on("session-resumed", (data: JoinPayload) => enterRoom(data));
+      socket.on("resume-failed", loseRoom);
+      socket.on("game-abandoned", loseRoom);
+      // Remember when the round arrived: time spent before it's on screen (e.g. while
+      // switching to the game screen) is reported to the server.
+      socket.on("new-round", (data: any) => set({ lastNewRound: { ...data, receivedAt: Date.now() } }));
+      socket.on("game-finished", () => set({ lastNewRound: null }));
+
+      // Coming back to the foreground: a connection that died while the phone was
+      // locked may still look open. Check it right away instead of waiting for the
+      // heartbeat, and reconnect (then resume) if it doesn't answer.
+      AppState.addEventListener("change", (state) => {
+        if (state !== "active") return;
+        if (!socket.connected) {
+          socket.connect();
+          return;
+        }
+        socket.timeout(2000).emit("client-ping", (err: Error | null) => {
+          if (err) {
+            socket.disconnect();
+            socket.connect();
+          }
+        });
+      });
+
+      set({ socket });
+    },
+
+    disconnect: () => {
+      get().socket?.disconnect();
+      set({ socket: null, isConnected: false, connectionFailed: false, wasKicked: false, ...EMPTY_GAME_STATE, localMediaMap: new Map() });
+    },
+
+    subscribe: (event, handler) => {
+      const socket = get().socket;
+      if (!socket) return () => {};
+      socket.on(event, handler);
+      return () => {
+        socket.off(event, handler);
+      };
+    },
+
+    setUploadStatus: (stage, progress) => {
+      set({ uploadStage: stage, uploadProgress: Math.max(0, Math.min(1, progress)) });
+    },
+
+    setLocalMediaMap: (map) => set({ localMediaMap: map }),
+
+    clearKicked: () => set({ wasKicked: false }),
+
+    createGame: async (hostName, settings) => {
+      const { socket } = get();
+      if (!socket?.connected) return null;
+      const res = await request<JoinPayload>(socket, "create-game", { hostName, settings }, "game-created");
+      if (!res.ok) return null;
+      enterRoom(res.data);
+      return res.data.pin;
+    },
+
+    joinGame: async (pin, playerName) => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+      const res = await request<JoinPayload>(socket, "join-game", { pin, playerName }, "joined-game", ["join-error", "error"]);
+      if (!res.ok) return false;
+      enterRoom(res.data);
+      return true;
+    },
+
+    leaveGame: async (pin) => {
+      get().socket?.emit("leave-game", { pin });
+      set({ ...EMPTY_GAME_STATE, localMediaMap: new Map() });
+    },
+
+    setPlayerState: async (pin, state) => {
+      get().socket?.emit("set-player-state", { pin, state });
+    },
+
+    setMediaPool: async (pin, mediaPool, playAgain) => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+      const res = await request<{ success: boolean }>(
+        socket,
+        "set-media-pool",
+        { pin, mediaPool, playAgain: !!playAgain },
+        "media-pool-set",
+        ["error"],
+        15000
+      );
+      return res.ok && res.data.success;
+    },
+
+    prepareGame: async (pin, updatedSettings) => {
+      get().socket?.emit("prepare-game", { pin, updatedSettings });
+    },
+
+    notifySyncComplete: async (pin) => {
+      get().socket?.emit("sync-complete", { pin });
+    },
+
+    submitGuess: async (pin, targetUser, displayDelayMs) => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+      const res = await request<{ success: boolean }>(
+        socket,
+        "submit-guess",
+        { pin, targetUser, displayDelayMs },
+        "guess-received"
+      );
+      return res.ok && res.data.success;
+    },
+
+    continueGame: async (pin) => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+      socket.emit("continue-game", { pin });
+      return true;
+    },
+
+    showMediaAgain: (pin) => {
+      get().socket?.emit("show-media-again", { pin });
+    },
+
+    hideMediaAgain: (pin) => {
+      get().socket?.emit("hide-media-again", { pin });
+    },
+
+    playAgain: async (pin) => {
+      const { socket } = get();
+      if (!socket?.connected) return false;
+      const res = await request(socket, "play-again", { pin }, "play-again-initiated");
+      return res.ok;
+    },
+  };
+});
