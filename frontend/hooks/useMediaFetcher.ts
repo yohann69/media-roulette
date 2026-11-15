@@ -1,15 +1,6 @@
 import { useState, useEffect } from "react";
-import * as MediaLibrary from "expo-media-library";
-import { fetchRandomMedia, MediaType } from "../utils/fetchRandomMedia";
-
-interface MediaAsset {
-  id: string;
-  uri: string;
-  mediaType: "photo" | "video";
-  width: number;
-  height: number;
-  creationTime: number;
-}
+import { getPermissionsAsync, requestPermissionsAsync } from "expo-media-library";
+import { fetchRandomMedia, MediaAsset, MediaType } from "../utils/fetchRandomMedia";
 
 interface UseMediaFetcherReturn {
   media: MediaAsset[];
@@ -32,31 +23,22 @@ export function useMediaFetcher(
 
   const requestPermission = async (): Promise<boolean> => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      const { status } = await requestPermissionsAsync();
       const granted = status === "granted";
       setPermissionGranted(granted);
-      if (!granted) {
-        setError("Media library permission denied");
-      }
+      if (!granted) setError("Media library permission denied");
       return granted;
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to request permission";
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : "Failed to request permission");
       setPermissionGranted(false);
       return false;
     }
   };
 
-  const fetchMedia = async (
-    count: number = initialCount,
-    type: MediaType = initialType
-  ) => {
+  const fetchMedia = async (count: number = initialCount, type: MediaType = initialType) => {
     if (!permissionGranted) {
       const granted = await requestPermission();
-      if (!granted) {
-        return;
-      }
+      if (!granted) return;
     }
 
     setLoading(true);
@@ -64,27 +46,23 @@ export function useMediaFetcher(
 
     try {
       const fetchedMedia = await fetchRandomMedia(count, type);
-      
-      // If we already have media (reroll), update incrementally
+
       if (media.length > 0 && media.length === fetchedMedia.length) {
-        // Update items one by one with a small delay for smooth animation
+        // Reroll: swap items one by one for a smooth animation
         for (let i = 0; i < fetchedMedia.length; i++) {
           setTimeout(() => {
-            setMedia(prev => {
+            setMedia((prev) => {
               const updated = [...prev];
               updated[i] = fetchedMedia[i];
               return updated;
             });
-          }, i * 30); // 30ms delay between each item
+          }, i * 30);
         }
       } else {
-        // Initial load: set all at once
         setMedia(fetchedMedia);
       }
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch media";
-      setError(errorMessage);
+      setError(err instanceof Error ? err.message : "Failed to fetch media");
       setMedia([]);
     } finally {
       setLoading(false);
@@ -96,21 +74,8 @@ export function useMediaFetcher(
   };
 
   useEffect(() => {
-    // Check existing permission status
-    MediaLibrary.getPermissionsAsync().then(({ status }) => {
-      setPermissionGranted(status === "granted");
-    });
+    getPermissionsAsync().then(({ status }) => setPermissionGranted(status === "granted"));
   }, []);
 
-  return {
-    media,
-    loading,
-    error,
-    permissionGranted,
-    requestPermission,
-    fetchMedia,
-    reroll,
-  };
+  return { media, loading, error, permissionGranted, requestPermission, fetchMedia, reroll };
 }
-
-

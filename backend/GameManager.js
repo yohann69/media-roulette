@@ -1,9 +1,76 @@
-const fs = require("fs-extra");
-const path = require("path");
+const crypto = require("crypto");
+const mediaStore = require("./mediaStore");
 
 class GameManager {
   constructor() {
     this.rooms = new Map();
+    // Upload tokens authorize a player's media uploads/downloads for one room.
+    // They are only ever sent to the player they belong to.
+    this.uploadTokens = new Map(); // token -> { pin, socketId }
+    this.tokenBySocket = new Map(); // socketId -> token
+  }
+
+  issueUploadToken(pin, socketId) {
+    this.revokeUploadToken(socketId);
+    const token = crypto.randomBytes(24).toString("base64url");
+    this.uploadTokens.set(token, { pin, socketId });
+    this.tokenBySocket.set(socketId, token);
+    return token;
+  }
+
+  revokeUploadToken(socketId) {
+    const token = this.tokenBySocket.get(socketId);
+    if (token) this.uploadTokens.delete(token);
+    this.tokenBySocket.delete(socketId);
+  }
+
+  /** Returns { pin, socketId, room } for a valid token whose player is still in the room. */
+  resolveUploadToken(token) {
+    if (typeof token !== "string") return null;
+    const entry = this.uploadTokens.get(token);
+    if (!entry) return null;
+    const room = this.rooms.get(entry.pin);
+    if (!room || !this.isMember(entry.pin, entry.socketId)) return null;
+    return { ...entry, room };
+  }
+
+  isMember(pin, socketId) {
+    const room = this.rooms.get(pin);
+    return !!room && room.players.some((p) => p.socketId === socketId);
+  }
+
+  /** Remembers a file a player uploaded so it can be validated and cleaned up later. */
+  recordUpload(pin, socketId, filename) {
+    const room = this.rooms.get(pin);
+    if (!room) return false;
+    if (!room.uploadedFiles.has(socketId)) room.uploadedFiles.set(socketId, new Set());
+    const files = room.uploadedFiles.get(socketId);
+    if (files.size >= mediaStore.LIMITS.maxFilesPerPlayer) return false;
+    files.add(filename);
+    return true;
+  }
+
+  uploadCount(pin, socketId) {
+    return this.rooms.get(pin)?.uploadedFiles.get(socketId)?.size ?? 0;
+  }
+
+  /**
+   * The only view of a room that is ever sent to clients. Internal state such as
+   * who owns which media, other players' files or round history stays on the server.
+   */
+  publicRoom(room) {
+    if (!room) return null;
+    return {
+      pin: room.pin,
+      players: room.players.map(({ socketId, name, isHost, score, state }) => ({ socketId, name, isHost, score, state })),
+      settings: room.settings,
+      gameState: room.gameState,
+    };
+  }
+
+  /** Media list sent to players before a game: no owner information. */
+  publicGameMedia(room) {
+    return room.gameMedia.map(({ index, mediaType, filename }) => ({ index, mediaType, filename }));
   }
 
   generatePIN() {
@@ -36,6 +103,7 @@ class GameManager {
         blindMode: settings.blindMode !== undefined ? settings.blindMode : false,
       },
       uploadedMedia: new Map(), // socketId -> Array<MediaItem>
+      uploadedFiles: new Map(), // socketId -> Set<filename> (every file received, pooled or not)
       gameMedia: [], // Selected media for the game
       currentRound: 0,
       gameState: "lobby",
@@ -85,14 +153,17 @@ class GameManager {
         room.players.splice(playerIndex, 1);
         room.uploadedMedia.delete(socketId);
         room.readyPlayers.delete(socketId);
+        this.revokeUploadToken(socketId);
+        // A player who leaves takes their media with them.
+        room.uploadedFiles.get(socketId)?.forEach((filename) => mediaStore.deleteFile(pin, filename));
+        room.uploadedFiles.delete(socketId);
 
         if (player.isHost) {
           // Only tear the room down when nobody is left. If other players
           // are still here, promote a random one to host so the game / lobby
           // can keep going instead of being disbanded.
           if (room.players.length === 0) {
-            this.cleanupRoomFiles(pin);
-            this.rooms.delete(pin);
+            this.deleteRoom(pin);
             return { pin, roomDeleted: true };
           }
           const randomIndex = Math.floor(Math.random() * room.players.length);
@@ -106,31 +177,18 @@ class GameManager {
   }
 
   cleanupRoomFiles(pin) {
-    // We should delete files associated with this room
-    // Since we store all in 'uploads/', and we don't have a DB, 
-    // we rely on the filename map in the room object before deleting it.
+    const room = this.rooms.get(pin);
+    if (room) room.uploadedFiles.clear();
+    mediaStore.deleteRoom(pin);
+  }
+
+  /** Fully removes a room: files, tokens and state. */
+  deleteRoom(pin) {
     const room = this.rooms.get(pin);
     if (!room) return;
-
-    // Collect all filenames from uploadedMedia
-    const filesToDelete = [];
-    
-    // From uploaded pools
-    room.uploadedMedia.forEach((mediaList) => {
-        mediaList.forEach(m => {
-            if (m.filename) filesToDelete.push(m.filename);
-        });
-    });
-
-    // Delete files
-    const UPLOADS_DIR = path.join(__dirname, "uploads");
-    filesToDelete.forEach(filename => {
-        try {
-            fs.unlink(path.join(UPLOADS_DIR, filename), (err) => {
-                // Ignore errors (file might not exist)
-            });
-        } catch (e) { }
-    });
+    this.cleanupRoomFiles(pin);
+    room.players.forEach((p) => this.revokeUploadToken(p.socketId));
+    this.rooms.delete(pin);
   }
 
   getRoom(pin) { return this.rooms.get(pin); }
@@ -211,11 +269,18 @@ class GameManager {
 
   setPlayerMedia(pin, socketId, mediaPool) {
     const room = this.rooms.get(pin);
-    if (room) {
-      room.uploadedMedia.set(socketId, mediaPool);
-      return true;
-    }
-    return false;
+    if (!room || !Array.isArray(mediaPool)) return false;
+    // Only accept files this player actually uploaded to this room.
+    const ownFiles = room.uploadedFiles.get(socketId) || new Set();
+    const pool = mediaPool
+      .filter((item) => item && typeof item.filename === "string" && ownFiles.has(item.filename))
+      .map((item) => ({
+        id: String(item.id ?? item.filename),
+        filename: item.filename,
+        mediaType: item.mediaType === "video" ? "video" : "photo",
+      }));
+    room.uploadedMedia.set(socketId, pool);
+    return true;
   }
 
   prepareGameMedia(pin) {

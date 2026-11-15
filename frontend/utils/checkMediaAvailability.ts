@@ -1,5 +1,5 @@
-import * as MediaLibrary from "expo-media-library";
-import { MediaType } from "./fetchRandomMedia";
+import { getPermissionsAsync, requestPermissionsAsync } from "expo-media-library";
+import { queryCandidates } from "./fetchRandomMedia";
 
 interface MediaAvailabilityResult {
   hasEnough: boolean;
@@ -7,76 +7,53 @@ interface MediaAvailabilityResult {
   videoCount: number;
   requiredPhotos: number;
   requiredVideos: number;
+  /** True when the user only granted access to a subset of their library (iOS / Android 14+). */
+  limitedAccess: boolean;
+}
+
+type Mode = "Photo" | "Video" | "Mix" | "Blind";
+
+function requirements(mode: Mode) {
+  // Mix needs a full selection grid in each phase (20 photos then 20 videos).
+  return {
+    requiredPhotos: mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 20 : 0,
+    requiredVideos: mode === "Video" ? 10 : mode === "Mix" ? 20 : 0,
+  };
 }
 
 /**
- * Checks if the user has enough media in their gallery for the selected game mode
- * @param mode - Game mode: 'Photo', 'Video', 'Mix', or 'Blind'
- * @returns Promise with availability result
+ * Checks that the user has enough usable media for the selected game mode,
+ * asking for library access if it hasn't been granted yet.
  */
-export async function checkMediaAvailability(mode: "Photo" | "Video" | "Mix" | "Blind"): Promise<MediaAvailabilityResult> {
+export async function checkMediaAvailability(mode: Mode): Promise<MediaAvailabilityResult> {
+  const { requiredPhotos, requiredVideos } = requirements(mode);
+  const empty = { hasEnough: false, photoCount: 0, videoCount: 0, requiredPhotos, requiredVideos, limitedAccess: false };
+
   try {
-    // Request permission if needed
-    const { status } = await MediaLibrary.getPermissionsAsync();
-    if (status !== "granted") {
-      const { status: newStatus } = await MediaLibrary.requestPermissionsAsync();
-      if (newStatus !== "granted") {
-        return {
-          hasEnough: false,
-          photoCount: 0,
-          videoCount: 0,
-          // Require at least 20 photos and 20 videos for Mix mode so the
-          // selection grid can always show a full set in each phase.
-          requiredPhotos: mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 20 : 0,
-          requiredVideos: mode === "Video" ? 10 : mode === "Mix" ? 20 : 0,
-        };
-      }
+    let permission = await getPermissionsAsync();
+    if (permission.status !== "granted") {
+      permission = await requestPermissionsAsync();
+      if (permission.status !== "granted") return empty;
     }
 
-    let photoCount = 0;
-    let videoCount = 0;
-
-    if (mode === "Photo" || mode === "Blind" || mode === "Mix") {
-      const photos = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.photo,
-        first: 1, // We only need the count
-      });
-      photoCount = photos.totalCount;
-    }
-
-    if (mode === "Video" || mode === "Mix") {
-      const videos = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.video,
-        first: 1, // We only need the count
-      });
-      videoCount = videos.totalCount;
-    }
-
-    // Base media requirements per mode:
-    // - Photo / Blind: at least 10 photos
-    // - Video: at least 10 videos
-    // - Mix: at least 20 photos AND 20 videos
-    const requiredPhotos = mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 20 : 0;
-    const requiredVideos = mode === "Video" ? 10 : mode === "Mix" ? 20 : 0;
-
-    const hasEnough = photoCount >= requiredPhotos && videoCount >= requiredVideos;
+    // We don't need the library's full size, just enough usable items once
+    // screenshots are filtered out.
+    const CHECK_LIMIT = 500;
+    const [photos, videos] = await Promise.all([
+      requiredPhotos > 0 ? queryCandidates("photo", CHECK_LIMIT) : Promise.resolve([]),
+      requiredVideos > 0 ? queryCandidates("video", CHECK_LIMIT) : Promise.resolve([]),
+    ]);
 
     return {
-      hasEnough,
-      photoCount,
-      videoCount,
+      hasEnough: photos.length >= requiredPhotos && videos.length >= requiredVideos,
+      photoCount: photos.length,
+      videoCount: videos.length,
       requiredPhotos,
       requiredVideos,
+      limitedAccess: permission.accessPrivileges === "limited",
     };
   } catch (error) {
     console.error("Error checking media availability:", error);
-    return {
-      hasEnough: false,
-      photoCount: 0,
-      videoCount: 0,
-      requiredPhotos: mode === "Photo" || mode === "Blind" ? 10 : mode === "Mix" ? 20 : 0,
-      requiredVideos: mode === "Video" ? 10 : mode === "Mix" ? 20 : 0,
-    };
+    return empty;
   }
 }
-

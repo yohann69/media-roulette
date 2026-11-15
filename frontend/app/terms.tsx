@@ -29,7 +29,7 @@ export default function TermsScreen() {
         <Text className="text-gray-200 text-sm leading-6 mb-4">
           {t("terms.section1Body", {
             defaultValue:
-              "PhotoRoulette is a casual party game. It randomly selects photos and videos from the devices of players in a room and shows them to everyone so they can guess who took them.",
+              "Media Roulette is a casual party game. It randomly selects photos and videos from the devices of players in a room and shows them to everyone so they can guess who took them.",
           })}
         </Text>
 
@@ -69,7 +69,7 @@ export default function TermsScreen() {
         <Text className="text-gray-200 text-sm leading-6 mb-4">
           {t("terms.section5Body", {
             defaultValue:
-              "PhotoRoulette is provided “as is” without any guarantees. Use it at your own risk. The developer cannot be held liable for any loss, damage or issues arising from the use of the app.",
+              "Media Roulette is provided “as is” without any guarantees. Use it at your own risk. The developer cannot be held liable for any loss, damage or issues arising from the use of the app.",
           })}
         </Text>
 

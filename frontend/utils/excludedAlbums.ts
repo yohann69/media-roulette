@@ -1,13 +1,10 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const EXCLUDED_ALBUMS_KEY = "@photoroulette:excludedAlbums";
+import { getStoredItem, setStoredItem, STORAGE_KEYS } from "./storage";
 
 export async function loadExcludedAlbums(): Promise<Set<string>> {
   try {
-    const raw = await AsyncStorage.getItem(EXCLUDED_ALBUMS_KEY);
+    const raw = await getStoredItem(STORAGE_KEYS.excludedAlbums);
     if (!raw) return new Set();
-    const ids = JSON.parse(raw) as string[];
-    return new Set(ids);
+    return new Set(JSON.parse(raw) as string[]);
   } catch (error) {
     console.error("Failed to load excluded albums", error);
     return new Set();
@@ -16,11 +13,8 @@ export async function loadExcludedAlbums(): Promise<Set<string>> {
 
 export async function saveExcludedAlbums(ids: Set<string>): Promise<void> {
   try {
-    const arr = Array.from(ids);
-    await AsyncStorage.setItem(EXCLUDED_ALBUMS_KEY, JSON.stringify(arr));
+    await setStoredItem(STORAGE_KEYS.excludedAlbums, JSON.stringify(Array.from(ids)));
   } catch (error) {
     console.error("Failed to save excluded albums", error);
   }
 }
-
-

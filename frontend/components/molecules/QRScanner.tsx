@@ -44,9 +44,11 @@ export function QRScanner({ visible, onClose, onScan }: QRScannerProps) {
     
     setScanned(true);
     
-    if (data.startsWith("photoroulette://")) {
+    // "photoroulette://" is the scheme used before the app was renamed.
+    const scheme = ["mediaroulette://", "photoroulette://"].find((s) => data.startsWith(s));
+    if (scheme) {
       try {
-        const httpUrl = data.replace("photoroulette://", "http://");
+        const httpUrl = data.replace(scheme, "http://");
         const url = new URL(httpUrl);
         const pin = url.searchParams.get("pin");
         if (pin && /^\d{6}$/.test(pin)) {

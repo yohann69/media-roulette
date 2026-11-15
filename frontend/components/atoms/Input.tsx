@@ -9,6 +9,9 @@ interface InputProps {
   error?: string;
   autoFocus?: boolean;
   keyboardType?: "default" | "numeric" | "email-address" | "phone-pad" | "number-pad";
+  maxLength?: number;
+  autoCorrect?: boolean;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
 }
 
 export function Input({
@@ -19,6 +22,9 @@ export function Input({
   error,
   autoFocus = false,
   keyboardType = "default",
+  maxLength,
+  autoCorrect,
+  autoCapitalize,
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -36,6 +42,9 @@ export function Input({
         onBlur={() => setIsFocused(false)}
         autoFocus={autoFocus}
         keyboardType={keyboardType}
+        maxLength={maxLength}
+        autoCorrect={autoCorrect}
+        autoCapitalize={autoCapitalize}
         className={`bg-gray-800 text-white px-4 py-3 rounded-xl border-2 ${
           error ? "border-red-500" : isFocused ? "border-primary" : "border-gray-700"
         }`}

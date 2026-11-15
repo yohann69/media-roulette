@@ -1,4 +1,5 @@
-import { View, Image, ActivityIndicator, Pressable, DimensionValue } from "react-native";
+import { View, ActivityIndicator, Pressable, DimensionValue } from "react-native";
+import { Image } from "expo-image";
 import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
 
@@ -87,7 +88,10 @@ export function MediaGrid({
           <Pressable
             key={`grid-item-${index}`}
             onPress={() => item && onItemPress?.(item)}
-            onPressIn={() => {
+            // A real long press: a plain touch (for example starting a scroll)
+            // must not open the full-screen preview.
+            delayLongPress={250}
+            onLongPress={() => {
               if (item) {
                 onItemLongPressStart?.(item);
               }
@@ -106,8 +110,10 @@ export function MediaGrid({
                 item.mediaType === "photo" ? (
                   <Image
                     source={{ uri: item.uri }}
-                    className="w-full h-full"
-                    resizeMode="cover"
+                    style={{ width: "100%", height: "100%" }}
+                    contentFit="cover"
+                    recyclingKey={item.id}
+                    transition={150}
                   />
                 ) : (
                   <View className="w-full h-full bg-black items-center justify-center">
@@ -116,8 +122,10 @@ export function MediaGrid({
                         crashes and memory pressure on some devices. */}
                     <Image
                       source={{ uri: item.uri }}
-                      className="w-full h-full opacity-70"
-                      resizeMode="cover"
+                      style={{ width: "100%", height: "100%", opacity: 0.7 }}
+                      contentFit="cover"
+                      recyclingKey={item.id}
+                      transition={150}
                     />
                     <View className="absolute inset-0 items-center justify-center">
                       <View className="w-10 h-10 rounded-full bg-black/70 items-center justify-center border border-white/60">

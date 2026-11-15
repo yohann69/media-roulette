@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { io, Socket } from "socket.io-client";
-import { processMediaPool } from "../utils/mediaConverter";
 
 export type PlayerState = "selecting" | "compressing" | "uploading" | "ready";
 
@@ -32,6 +31,10 @@ interface SocketState {
     room: Room | null;
     currentPlayerId: string | null;
     localMediaMap: Map<number, string>; // index -> local file URI
+    uploadToken: string | null; // authorizes this player's media uploads for the current room
+    // Latest "new-round" payload. The server sends "game-started" and the first
+    // "new-round" back to back, before the game screen has mounted its listeners.
+    lastNewRound: any | null;
     uploadStage: UploadStage;
     uploadProgress: number; // 0..1
     wasKicked: boolean; // true when socket reconnected while we had a room (server already removed us)
@@ -71,7 +74,8 @@ interface SocketState {
            cleanup: () => void;
 }
 
-export const SOCKET_URL = "https://backend-production-1f8a.up.railway.app";
+// Override with EXPO_PUBLIC_SERVER_URL (e.g. in .env.local) to use a self-hosted or local server.
+export const SOCKET_URL = process.env.EXPO_PUBLIC_SERVER_URL || "https://backend-production-1f8a.up.railway.app";
 
 function createSocketHandlers(set: any, get: any) {
     let connectionErrorCount = 0;
@@ -110,6 +114,7 @@ function createSocketHandlers(set: any, get: any) {
                         currentPlayerId: newSocket.id,
                         room: null,
                         localMediaMap: new Map(),
+                        uploadToken: null,
                         uploadStage: "idle",
                         uploadProgress: 0,
                         wasKicked: true,
@@ -122,6 +127,13 @@ function createSocketHandlers(set: any, get: any) {
                         currentPlayerId: newSocket.id,
                     });
                 }
+            });
+
+            newSocket.on("new-round", (data: any) => {
+                set({ lastNewRound: data });
+            });
+            newSocket.on("game-finished", () => {
+                set({ lastNewRound: null });
             });
 
             newSocket.on("disconnect", () => {
@@ -151,7 +163,7 @@ function createSocketHandlers(set: any, get: any) {
             if (socket) {
                 socket.disconnect();
                 hasConnectedOnce = false;
-                set({ socket: null, isConnected: false, connectionFailed: false, room: null, currentPlayerId: null, localMediaMap: new Map(), uploadStage: "idle", uploadProgress: 0, wasKicked: false });
+                set({ socket: null, isConnected: false, connectionFailed: false, room: null, currentPlayerId: null, localMediaMap: new Map(), uploadToken: null, uploadStage: "idle", uploadProgress: 0, wasKicked: false });
             }
         },
 
@@ -173,8 +185,8 @@ function createGameHandlers(get: any, set: any) {
 
             return new Promise((resolve) => {
                 socket.emit("create-game", { hostName, settings });
-                socket.once("game-created", (data: { pin: string; room: Room }) => {
-                    set({ room: data.room });
+                socket.once("game-created", (data: { pin: string; room: Room; uploadToken: string }) => {
+                    set({ room: data.room, uploadToken: data.uploadToken });
                     resolve(data.pin);
                 });
                 socket.once("error", () => resolve(null));
@@ -188,8 +200,8 @@ function createGameHandlers(get: any, set: any) {
 
             return new Promise((resolve) => {
                 socket.emit("join-game", { pin, playerName });
-                socket.once("joined-game", (data: { pin: string; room: Room }) => {
-                    set({ room: data.room });
+                socket.once("joined-game", (data: { pin: string; room: Room; uploadToken: string }) => {
+                    set({ room: data.room, uploadToken: data.uploadToken });
                     resolve(true);
                 });
                 socket.once("join-error", () => resolve(false));
@@ -204,7 +216,7 @@ function createGameHandlers(get: any, set: any) {
             
             socket.emit("leave-game", { pin });
             // Clear room state when leaving
-            set({ room: null });
+            set({ room: null, uploadToken: null, lastNewRound: null });
         },
 
         setPlayerState: async (pin: string, state: PlayerState): Promise<void> => {
@@ -413,6 +425,8 @@ export const useSocket = create<SocketState>((set, get) => ({
     room: null,
     currentPlayerId: null,
     localMediaMap: new Map(),
+    uploadToken: null,
+    lastNewRound: null,
     uploadStage: "idle",
     uploadProgress: 0,
     wasKicked: false,

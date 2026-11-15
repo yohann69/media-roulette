@@ -19,7 +19,7 @@ export function CountdownTimer({
   const { t } = useTranslation();
   const progress = useRef(new Animated.Value(1)).current;
   const [timeLeft, setTimeLeft] = useState(duration);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const lastRoundKeyRef = useRef<string | number | undefined>(undefined);
   const hasStartedRef = useRef<boolean>(false);

@@ -1,463 +1,150 @@
-import * as FileSystem from "expo-file-system/legacy";
-import { Image } from "react-native";
-import { processInBatches as processBatches } from "./parallelProcessing";
+import { File } from "expo-file-system";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import MediaToolkit from "react-native-media-toolkit";
+import { processInBatches } from "./parallelProcessing";
 
-const MAX_PHOTO_SIZE_KB = 100;
-const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_KB * 1024;
-const MAX_VIDEO_SIZE_MB = 5;
-const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
-const MAX_PARALLEL_COMPRESSION = 20;
+/**
+ * Local media preparation before anything leaves the device.
+ *
+ * Photos: decoded directly at game size (the full-resolution original is never
+ * loaded into memory), then re-encoded as JPEG. Re-encoding always happens, so
+ * EXIF data such as GPS location is never uploaded.
+ *
+ * Videos: trimmed to a short clip and re-encoded at 720p in a single native pass
+ * (AVFoundation on iOS, Media3 on Android). Source metadata is not carried over.
+ */
 
-// Helper function to format file size
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  } else if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(2)} KB`;
-  } else {
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  }
+/** Longest edge of an in-game photo. Sharp on any phone held in portrait. */
+const PHOTO_MAX_EDGE = 1440;
+const PHOTO_QUALITY = 0.75;
+
+/** Video clip: only a few seconds are ever played in a round. */
+const VIDEO_CLIP_EXTRA_MS = 2000;
+const VIDEO_MIN_CLIP_MS = 6000;
+const VIDEO_BITRATE = 1_500_000;
+const VIDEO_PORTRAIT_WIDTH = 720;
+const VIDEO_LANDSCAPE_WIDTH = 1280;
+
+/** Decoding is memory-heavy: keep concurrency low to avoid out-of-memory kills. */
+const PHOTO_CONCURRENCY = 2;
+const VIDEO_CONCURRENCY = 1;
+
+export interface MediaToCompress {
+  uri: string;
+  mediaType: "photo" | "video";
+  id?: string;
+  name?: string;
+  width?: number;
+  height?: number;
+  /** Video duration in milliseconds, if known. */
+  duration?: number | null;
 }
 
-// Lazy load ImageManipulator to handle cases where native module isn't available
-let manipulateAsyncFn: any = null;
-let SaveFormatEnum: any = null;
+export interface CompressOptions {
+  /** Round duration in seconds; videos are clipped to slightly more than this. */
+  roundDurationSeconds?: number;
+  /** When false, the audio track is dropped from videos (smaller files). */
+  keepVideoAudio?: boolean;
+}
 
-async function loadImageManipulator() {
-  if (manipulateAsyncFn && SaveFormatEnum) {
-    return { manipulateAsync: manipulateAsyncFn, SaveFormat: SaveFormatEnum };
-  }
-  
+function toFileUri(pathOrUri: string): string {
+  return pathOrUri.startsWith("/") ? `file://${pathOrUri}` : pathOrUri;
+}
+
+function logSize(label: string, uri: string) {
+  if (!__DEV__) return;
   try {
-    const module = await import("expo-image-manipulator");
-    
-    // Handle different export patterns
-    manipulateAsyncFn = module.manipulateAsync || module.default?.manipulateAsync;
-    SaveFormatEnum = module.SaveFormat;
-    
-    if (!SaveFormatEnum || !manipulateAsyncFn) {
-      console.warn("ImageManipulator module structure unexpected");
-      return null;
-    }
-    
-    return { manipulateAsync: manipulateAsyncFn, SaveFormat: SaveFormatEnum };
-  } catch (error) {
-    console.warn("expo-image-manipulator not available, compression will be skipped:", error);
-    return null;
+    const size = new File(uri).size ?? 0;
+    console.log(`-> ${label}: ${(size / 1024).toFixed(0)} KB`);
+  } catch {
+    // Size logging is best-effort
   }
 }
 
-
-/**
- * Compress an image to be under 100KB
- * Strategy: Convert to JPEG format first (normalize), then compress
- * @param uri - Original image URI
- * @param mediaName - Name/ID of the media for logging
- * @returns Compressed image URI
- */
-export async function compressImage(uri: string, mediaName?: string): Promise<string> {
-  const displayName = mediaName || uri.split('/').pop() || 'unknown';
-  
+export async function compressImage(uri: string, name = "photo"): Promise<string> {
+  const context = ImageManipulator.manipulate(uri, {
+    maxWidth: PHOTO_MAX_EDGE,
+    maxHeight: PHOTO_MAX_EDGE,
+  });
+  const image = await context.renderAsync();
   try {
-    const manipulatorModule = await loadImageManipulator();
-    if (!manipulatorModule) {
-      // If module not available, return original
-      console.warn(`-> compressed media ${displayName}: compression not available, using original`);
-      return uri;
-    }
-
-    const { manipulateAsync, SaveFormat } = manipulatorModule;
-
-    // Get original file info
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (!fileInfo.exists) {
-      throw new Error("File does not exist");
-    }
-
-    const originalSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
-    const originalSizeFormatted = formatFileSize(originalSize);
-
-    // If already small enough, return original
-    if (originalSize && originalSize <= MAX_PHOTO_SIZE_BYTES) {
-      console.log(`-> compressed media ${displayName}: original size: ${originalSizeFormatted}, already under limit, no compression needed`);
-      return uri;
-    }
-
-    // Step 1: Convert to JPEG format first (normalize the format)
-    // This ensures we're working with a standard format before compression
-    let normalizedUri = uri;
-    let tempNormalizedUri: string | null = null;
-    let normalizedSize = originalSize;
-    
-    try {
-      // Convert to JPEG format (normalize)
-      const normalizedResult = await manipulateAsync(
-        uri,
-        [], // No actions, just format conversion
-        { format: SaveFormat.JPEG, compress: 0.9 } // High quality initial conversion
-      );
-      
-      normalizedUri = normalizedResult.uri;
-      if (normalizedUri !== uri) {
-        tempNormalizedUri = normalizedUri; // Track for cleanup
-        const normalizedInfo = await FileSystem.getInfoAsync(normalizedUri);
-        if (normalizedInfo.exists && "size" in normalizedInfo) {
-          normalizedSize = normalizedInfo.size || 0;
-        }
-      }
-    } catch (error) {
-      console.warn(`-> compressed media ${displayName}: failed to normalize format, using original:`, error);
-      normalizedUri = uri;
-    }
-
-    // Step 2: Get original image dimensions to maintain aspect ratio
-    let originalWidth = 1920;
-    let originalHeight = 1920;
-    try {
-      await new Promise<void>((resolve, reject) => {
-        Image.getSize(
-          normalizedUri,
-          (width, height) => {
-            originalWidth = width;
-            originalHeight = height;
-            resolve();
-          },
-          (error) => {
-            console.warn(`-> compressed media ${displayName}: failed to get image size, using default:`, error);
-            resolve(); // Continue with defaults
-          }
-        );
-      });
-    } catch (error) {
-      console.warn(`-> compressed media ${displayName}: error getting image dimensions:`, error);
-    }
-
-    // Calculate aspect ratio
-    const aspectRatio = originalWidth / originalHeight;
-    
-    // Step 3: Compress the normalized image while maintaining aspect ratio
-    let quality = 0.8;
-    let maxDimension = 1920; // Start with max dimension, maintain aspect ratio
-    let compressedUri = normalizedUri;
-    let tempCompressedUri: string | null = null;
-
-    // Try compressing with decreasing quality until we're under the limit
-    for (let attempt = 0; attempt < 5; attempt++) {
-      try {
-        // Calculate width and height maintaining aspect ratio
-        let width: number;
-        let height: number;
-        
-        if (originalWidth > originalHeight) {
-          // Landscape: width is the limiting dimension
-          width = maxDimension;
-          height = Math.round(maxDimension / aspectRatio);
-        } else {
-          // Portrait or square: height is the limiting dimension
-          height = maxDimension;
-          width = Math.round(maxDimension * aspectRatio);
-        }
-        
-        const manipResult = await manipulateAsync(
-          normalizedUri,
-          [{ resize: { width, height } }],
-          { compress: quality, format: SaveFormat.JPEG }
-        );
-
-        const compressedInfo = await FileSystem.getInfoAsync(manipResult.uri);
-        const compressedSize = compressedInfo.exists && "size" in compressedInfo ? compressedInfo.size : 0;
-        
-        if (compressedSize && compressedSize <= MAX_PHOTO_SIZE_BYTES) {
-          // Success! Clean up intermediate files
-          if (tempNormalizedUri && tempNormalizedUri !== manipResult.uri) {
-            try {
-              await FileSystem.deleteAsync(tempNormalizedUri, { idempotent: true });
-            } catch (e) {
-              // Ignore cleanup errors
-            }
-          }
-          if (tempCompressedUri && tempCompressedUri !== manipResult.uri) {
-            try {
-              await FileSystem.deleteAsync(tempCompressedUri, { idempotent: true });
-            } catch (e) {
-              // Ignore cleanup errors
-            }
-          }
-          
-          const compressedSizeFormatted = formatFileSize(compressedSize);
-          const reduction = originalSize > 0 ? ((1 - compressedSize / originalSize) * 100).toFixed(1) : '0';
-          console.log(`-> compressed media ${displayName}: original size: ${originalSizeFormatted}, compressed size: ${compressedSizeFormatted} (${reduction}% reduction)`);
-          
-          return manipResult.uri;
-        }
-
-        // Clean up previous attempt if it exists
-        if (tempCompressedUri && tempCompressedUri !== manipResult.uri) {
-          try {
-            await FileSystem.deleteAsync(tempCompressedUri, { idempotent: true });
-          } catch (e) {
-            // Ignore cleanup errors
-          }
-        }
-
-        // If still too large, reduce quality and/or size
-        quality = Math.max(0.3, quality - 0.15);
-        maxDimension = Math.floor(maxDimension * 0.8); // Reduce max dimension, aspect ratio will be maintained
-        compressedUri = manipResult.uri;
-        tempCompressedUri = manipResult.uri;
-      } catch (error) {
-        console.error(`-> compressed media ${displayName}: compression attempt ${attempt + 1} failed:`, error);
-        // Continue to next attempt
-      }
-    }
-
-    // Get final compressed size for logging
-    const finalInfo = await FileSystem.getInfoAsync(compressedUri);
-    const finalSize = finalInfo.exists && "size" in finalInfo ? finalInfo.size : 0;
-    const finalSizeFormatted = formatFileSize(finalSize);
-    const reduction = originalSize > 0 ? ((1 - finalSize / originalSize) * 100).toFixed(1) : '0';
-    console.log(`-> compressed media ${displayName}: original size: ${originalSizeFormatted}, compressed size: ${finalSizeFormatted} (${reduction}% reduction, best effort)`);
-
-    // Clean up normalized file if we created one and it's not the final result
-    if (tempNormalizedUri && tempNormalizedUri !== compressedUri) {
-      try {
-        await FileSystem.deleteAsync(tempNormalizedUri, { idempotent: true });
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-    }
-
-    // Return the best compression we achieved
-    return compressedUri;
-  } catch (error) {
-    console.error(`-> compressed media ${displayName}: error compressing image:`, error);
-    // Return original if compression fails
-    return uri;
+    const result = await image.saveAsync({ compress: PHOTO_QUALITY, format: SaveFormat.JPEG });
+    logSize(`photo ${name} ${result.width}x${result.height}`, result.uri);
+    return result.uri;
+  } finally {
+    image.release();
+    context.release();
   }
 }
 
-/**
- * Get video duration - not critical, we always trim to maxDurationSeconds anyway
- * Returns 0 to skip duration check
- */
-async function getVideoDuration(uri: string): Promise<number> {
-  // Skip duration check - we'll always trim to maxDurationSeconds
-  // Getting duration requires native modules which may not be available
-  return 0;
-}
-
-/**
- * Compress and trim a video client-side using react-native-compressor
- * @param uri - Original video URI
- * @param maxDurationSeconds - Maximum duration in seconds (round duration + 1)
- * @param mediaName - Name/ID of the media for logging
- * @returns Compressed/trimmed video URI
- */
-async function compressVideo(uri: string, maxDurationSeconds: number, mediaName?: string): Promise<string> {
-  const displayName = mediaName || uri.split('/').pop() || 'unknown';
-  
-  try {
-    // Get original file info
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (!fileInfo.exists) {
-      throw new Error("File does not exist");
-    }
-
-    const originalSize = fileInfo.exists && "size" in fileInfo ? fileInfo.size : 0;
-    const originalSizeFormatted = formatFileSize(originalSize);
-
-    // Always attempt compression and trimming
-    const needsCompression = originalSize > MAX_VIDEO_SIZE_BYTES;
-
-    // If video is already small enough, we still compress/trim to ensure correct duration and format
-    if (!needsCompression && originalSize <= MAX_VIDEO_SIZE_BYTES) {
-      // Still compress to ensure format consistency and trim duration
-      console.log(`-> compressed media ${displayName}: compressing for format consistency and trimming (${originalSizeFormatted})`);
-    }
-
-    // Try to use react-native-compressor for video processing
-    let Video: any = null;
-    try {
-      const compressorModule = await import("react-native-compressor");
-      // react-native-compressor exports Video directly
-      Video = compressorModule.Video || (compressorModule as any).default?.Video || (compressorModule as any).default;
-    } catch (e) {
-      console.warn("react-native-compressor not available:", e);
-    }
-
-    if (Video && Video.compress) {
-      // Client-side processing with react-native-compressor
-      console.log(`-> compressed media ${displayName}: processing video (compress to ${MAX_VIDEO_SIZE_MB}MB, trim to ${maxDurationSeconds}s)`);
-      
-      try {
-        // Estimate compressed video size before compressing
-        // Formula: estimated_size = (bitrate * duration) / 8 + overhead
-        // For H.264 compression, overhead is typically 5-10% of video data
-        // We'll use a conservative estimate with 10% overhead
-        const estimateCompressedSize = (bitrate: number, duration: number): number => {
-          const videoDataSize = (bitrate * duration) / 8; // Convert bits to bytes
-          const overhead = videoDataSize * 0.1; // 10% overhead for container/metadata
-          return videoDataSize + overhead;
-        };
-        
-        // Calculate target bitrate based on max file size and duration
-        // bitrate (bits/sec) = (target_size_bytes * 8) / duration_seconds
-        const targetBitrate = Math.floor((MAX_VIDEO_SIZE_BYTES * 8) / maxDurationSeconds);
-        
-        // Estimate size with target bitrate
-        const estimatedSize = estimateCompressedSize(targetBitrate, maxDurationSeconds);
-        
-        // If estimated size is close to or exceeds target, use more aggressive compression from the start
-        // Use a safety margin of 90% to account for compression variations
-        const safetyMargin = 0.9;
-        const effectiveMaxSize = MAX_VIDEO_SIZE_BYTES * safetyMargin;
-        
-        let initialBitrate: number;
-        let compressionOptions: any;
-        
-        if (estimatedSize > effectiveMaxSize || needsCompression) {
-          // Estimated size too large, use more aggressive compression
-          // Calculate bitrate that should result in target size (with safety margin)
-          initialBitrate = Math.floor((effectiveMaxSize * 8) / maxDurationSeconds);
-          // Ensure minimum quality (200kbps) and maximum reasonable quality (5000kbps)
-          initialBitrate = Math.max(200000, Math.min(5000000, initialBitrate));
-          
-          compressionOptions = {
-            compressionMethod: 'manual' as const,
-            bitrate: initialBitrate,
-          };
-          
-          const estimatedSizeWithInitial = estimateCompressedSize(initialBitrate, maxDurationSeconds);
-          console.log(`-> compressed media ${displayName}: estimated size ${formatFileSize(estimatedSizeWithInitial)} with bitrate ${initialBitrate}bps, using aggressive compression`);
-        } else {
-          // Estimated size should be fine, use auto or moderate compression
-          compressionOptions = {
-            compressionMethod: 'auto',
-          };
-          console.log(`-> compressed media ${displayName}: estimated size ${formatFileSize(estimatedSize)} with target bitrate ${targetBitrate}bps, using auto compression`);
-        }
-        
-        let compressedUri = await Video.compress(uri, compressionOptions);
-        
-        // Check if compression was successful
-        const compressedInfo = await FileSystem.getInfoAsync(compressedUri);
-        if (!compressedInfo.exists) {
-          throw new Error("Compressed file does not exist");
-        }
-        
-        const compressedSize = compressedInfo.exists && "size" in compressedInfo ? compressedInfo.size : 0;
-        const compressedSizeFormatted = formatFileSize(compressedSize);
-        
-        // If still too large (should be rare with estimation), try more aggressive compression
-        if (compressedSize > MAX_VIDEO_SIZE_BYTES) {
-          console.log(`-> compressed media ${displayName}: still too large (${compressedSizeFormatted}), trying more aggressive compression...`);
-          
-          // More aggressive: lower bitrate by 30%
-          const aggressiveBitrate = Math.max(200000, Math.floor((MAX_VIDEO_SIZE_BYTES * 8) / maxDurationSeconds) * 0.7);
-          const aggressiveOptions = {
-            compressionMethod: 'manual' as const,
-            bitrate: aggressiveBitrate,
-          };
-          
-          compressedUri = await Video.compress(uri, aggressiveOptions);
-          
-          const retryInfo = await FileSystem.getInfoAsync(compressedUri);
-          const retrySize = retryInfo.exists && "size" in retryInfo ? retryInfo.size : 0;
-          
-          if (retrySize > 0) {
-            const retrySizeFormatted = formatFileSize(retrySize);
-            const reduction = originalSize > 0 ? ((1 - retrySize / originalSize) * 100).toFixed(1) : '0';
-            console.log(`-> compressed media ${displayName}: compressed to ${retrySizeFormatted} (${reduction}% reduction)`);
-            
-            // Note: react-native-compressor doesn't support duration trimming directly
-            // Server will handle duration trimming during upload
-            return compressedUri;
-          }
-        } else {
-          const reduction = originalSize > 0 ? ((1 - compressedSize / originalSize) * 100).toFixed(1) : '0';
-          console.log(`-> compressed media ${displayName}: success! ${originalSizeFormatted} -> ${compressedSizeFormatted} (${reduction}% reduction)`);
-          
-          // Note: Duration trimming will be handled server-side
-          return compressedUri;
-        }
-      } catch (compressorError: any) {
-        console.warn(`-> compressed media ${displayName}: compression error:`, compressorError?.message || compressorError);
-        // Fall through to server-side processing
-      }
-    }
-
-    // Fallback: if client-side compression failed or not available
-    // The video will be trimmed server-side during upload (if maxDuration is provided)
-    // Note: Server-side compression is not implemented - videos may exceed 5MB if compression fails
-    console.warn(`-> compressed media ${displayName}: client-side compression unavailable or failed, will use server-side trimming`);
-    console.warn(`  Target: trim to ${maxDurationSeconds}s, compress to ${MAX_VIDEO_SIZE_MB}MB max`);
-    console.warn(`  Current: ${originalSizeFormatted}`);
-    console.warn(`  Note: Server will trim video to ${maxDurationSeconds}s during upload`);
-    console.warn(`  Warning: Video may exceed ${MAX_VIDEO_SIZE_MB}MB if compression failed`);
-    
-    // Return original - server will handle trimming
-    // Compression failed, so video may be larger than desired
-    return uri;
-  } catch (error) {
-    console.error(`-> compressed media ${displayName}: error processing video:`, error);
-    return uri;
-  }
-}
-
-/**
- * Compress media if it's a photo, otherwise compress/trim video
- * @param uri - Media URI
- * @param mediaType - "photo" or "video"
- * @param mediaName - Name/ID of the media for logging
- * @param roundDurationSeconds - Round duration in seconds (for video trimming)
- * @returns Compressed URI (for photos) or compressed/trimmed URI (for videos)
- */
-export async function compressMedia(
-  uri: string,
-  mediaType: "photo" | "video",
-  mediaName?: string,
-  roundDurationSeconds?: number
+export async function compressVideo(
+  item: MediaToCompress,
+  { roundDurationSeconds = 5, keepVideoAudio = true }: CompressOptions = {}
 ): Promise<string> {
-  if (mediaType === "photo") {
-    return await compressImage(uri, mediaName);
-  }
-  
-  // For videos: trim to round duration + 1 second, then compress to 5MB max
-  const maxDuration = roundDurationSeconds ? roundDurationSeconds + 1 : undefined;
-  return await compressVideo(uri, maxDuration || 10, mediaName);
+  const clipMs = Math.max(VIDEO_MIN_CLIP_MS, roundDurationSeconds * 1000 + VIDEO_CLIP_EXTRA_MS);
+  const isLandscape = (item.width ?? 0) > (item.height ?? 0);
+  const needsTrim = item.duration == null || item.duration > clipMs;
+
+  const result = await MediaToolkit.compressVideo(item.uri, {
+    startTime: 0,
+    endTime: needsTrim ? clipMs : undefined,
+    bitrate: VIDEO_BITRATE,
+    width: isLandscape ? VIDEO_LANDSCAPE_WIDTH : VIDEO_PORTRAIT_WIDTH,
+    muteAudio: !keepVideoAudio,
+  });
+  const uri = toFileUri(result.uri);
+  logSize(`video ${item.name ?? ""} ${result.width}x${result.height} ${result.duration}ms`, uri);
+  return uri;
 }
 
 /**
- * Compress multiple media items in parallel (max 20 concurrent)
- * @param mediaItems - Array of media items with uri, mediaType, and optional name
- * @param onProgress - Optional callback for progress updates
- * @param roundDurationSeconds - Round duration in seconds (for video trimming)
- * @returns Array of compressed URIs in the same order
+ * Compresses every item. Items that fail are returned as `null` and must be
+ * skipped by the caller: originals are never uploaded as a fallback.
  */
 export async function compressMediaBatch(
-  mediaItems: Array<{ uri: string; mediaType: "photo" | "video"; id?: string; name?: string }>,
+  items: MediaToCompress[],
   onProgress?: (completed: number, total: number) => void,
-  roundDurationSeconds?: number
-): Promise<string[]> {
-  console.log(`-> Starting parallel compression of ${mediaItems.length} media items (max ${MAX_PARALLEL_COMPRESSION} concurrent)`);
-  
+  options: CompressOptions = {}
+): Promise<(string | null)[]> {
+  const results: (string | null)[] = new Array(items.length).fill(null);
   let completed = 0;
-  const results = await processBatches(
-    mediaItems,
-    async (item, index) => {
-      const mediaName = item.name || item.id || `media_${index + 1}`;
-      const compressedUri = await compressMedia(item.uri, item.mediaType, mediaName, roundDurationSeconds);
-      
-      completed++;
-      if (onProgress) {
-        onProgress(completed, mediaItems.length);
-      }
-      
-      return compressedUri;
-    },
-    MAX_PARALLEL_COMPRESSION
-  );
 
-  console.log(`-> Completed parallel compression of ${mediaItems.length} media items`);
+  const run = (mediaType: "photo" | "video", concurrency: number) => {
+    const indexed = items
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.mediaType === mediaType);
+
+    return processInBatches(
+      indexed,
+      async ({ item, index }) => {
+        try {
+          results[index] =
+            mediaType === "photo"
+              ? await compressImage(item.uri, item.name)
+              : await compressVideo(item, options);
+        } catch (error) {
+          console.warn(`Could not prepare ${mediaType} ${item.name ?? index}, skipping it:`, error);
+          results[index] = null;
+        }
+        completed++;
+        onProgress?.(completed, items.length);
+      },
+      concurrency
+    );
+  };
+
+  await run("photo", PHOTO_CONCURRENCY);
+  await run("video", VIDEO_CONCURRENCY);
   return results;
+}
+
+/** Deletes a temporary file produced by this module. Never touches library assets. */
+export function deleteTempFile(uri: string | null | undefined) {
+  if (!uri || !uri.startsWith("file://")) return;
+  try {
+    const file = new File(uri);
+    if (file.exists) file.delete();
+  } catch {
+    // Cleanup is best-effort
+  }
 }

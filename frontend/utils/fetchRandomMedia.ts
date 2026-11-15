@@ -1,21 +1,33 @@
-import * as MediaLibrary from "expo-media-library";
+import { Album, AssetField, MediaSubtype, MediaType as LibraryMediaType, Query } from "expo-media-library";
+import type { AssetMetadata } from "expo-media-library";
 import { loadExcludedAlbums } from "./excludedAlbums";
 
 export type MediaType = "photo" | "video" | "mixed";
 
-interface MediaAsset {
+export interface MediaAsset {
+  /** Media library id (`ph://…` on iOS, `content://…` on Android). */
   id: string;
+  /**
+   * URI usable by expo-image, expo-image-manipulator and the video toolkit.
+   * The library id is directly loadable on both platforms, so no file path has
+   * to be resolved (which on iOS could trigger an iCloud download).
+   */
   uri: string;
   mediaType: "photo" | "video";
   width: number;
   height: number;
   creationTime: number;
+  /** Duration in milliseconds (videos only). */
+  duration: number | null;
 }
 
-/**
- * Shuffles an array using Fisher-Yates algorithm
- */
-function shuffleArray<T>(array: T[]): T[] {
+/** How many of the most recent items are eligible for the random draw. */
+const CANDIDATE_POOL_SIZE = 5000;
+/** Videos longer than this are skipped: only a short clip is used in-game. */
+export const MAX_VIDEO_DURATION_MS = 10 * 60 * 1000;
+const MIN_VIDEO_DURATION_MS = 1000;
+
+function shuffle<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -24,155 +36,82 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
-/**
- * Fetches random media items from the device
- * @param count - Number of items to return (default: 20)
- * @param type - Type of media to fetch: 'photo', 'video', or 'mixed'
- * @returns Array of media assets
- */
-export async function fetchRandomMedia(
-  count: number = 20,
-  type: MediaType = "mixed"
-): Promise<MediaAsset[]> {
-  try {
-    // Load excluded albums and build a set of excluded asset IDs
-    const excludedAlbumIds = await loadExcludedAlbums();
-    const excludedAssetIds = new Set<string>();
+async function loadExcludedAssetIds(): Promise<Set<string>> {
+  const excludedAlbumIds = await loadExcludedAlbums();
+  const ids = new Set<string>();
+  if (excludedAlbumIds.size === 0) return ids;
 
-    if (excludedAlbumIds.size > 0) {
-      const allAlbums = await MediaLibrary.getAlbumsAsync();
-      const targetAlbums = allAlbums.filter((a) => excludedAlbumIds.has(a.id));
-
-      if (targetAlbums.length > 0) {
-        const results = await Promise.all(
-          targetAlbums.map((album) =>
-            MediaLibrary.getAssetsAsync({
-              album,
-              first: 10000,
-            })
-          )
-        );
-
-        results.forEach((res) => {
-          res.assets.forEach((asset) => excludedAssetIds.add(asset.id));
-        });
-      }
-    }
-
-    let allAssets: MediaLibrary.Asset[] = [];
-
-    if (type === "photo" || type === "mixed") {
-      const photos = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.photo,
-        first: 1000, // Fetch a large batch
-        sortBy: MediaLibrary.SortBy.creationTime,
-      });
-      const filtered = photos.assets.filter(
-        (asset) => !excludedAssetIds.has(asset.id)
-      );
-      allAssets = [...allAssets, ...filtered];
-    }
-
-    if (type === "video" || type === "mixed") {
-      const videos = await MediaLibrary.getAssetsAsync({
-        mediaType: MediaLibrary.MediaType.video,
-        first: 1000, // Fetch a large batch
-        sortBy: MediaLibrary.SortBy.creationTime,
-      });
-      const filtered = videos.assets.filter(
-        (asset) => !excludedAssetIds.has(asset.id)
-      );
-      allAssets = [...allAssets, ...filtered];
-    }
-
-    // Shuffle all assets
-    const shuffled = shuffleArray(allAssets);
-
-    if (type === "photo") {
-      // For photo mode: only photos, exactly count items
-      const photos = shuffled.filter(
-        (asset) => asset.mediaType === MediaLibrary.MediaType.photo
-      );
-      const selected = shuffleArray(photos).slice(0, Math.min(count, photos.length));
-
-      return selected.map((asset) => ({
-        id: asset.id,
-        uri: asset.uri,
-        mediaType: "photo" as const,
-        width: asset.width,
-        height: asset.height,
-        creationTime: asset.creationTime,
-      }));
-    }
-
-    if (type === "video") {
-      // For video mode: only videos, exactly count items
-      const videos = shuffled.filter(
-        (asset) => asset.mediaType === MediaLibrary.MediaType.video
-      );
-      const selected = shuffleArray(videos).slice(0, Math.min(count, videos.length));
-
-      return selected.map((asset) => ({
-        id: asset.id,
-        uri: asset.uri,
-        mediaType: "video" as const,
-        width: asset.width,
-        height: asset.height,
-        creationTime: asset.creationTime,
-      }));
-    }
-
-    if (type === "mixed") {
-      // For mixed: pick 20 photos first, then 20 videos (40 total)
-      const photos = shuffled.filter(
-        (asset) => asset.mediaType === MediaLibrary.MediaType.photo
-      );
-      const videos = shuffled.filter(
-        (asset) => asset.mediaType === MediaLibrary.MediaType.video
-      );
-
-      const photoCount = Math.min(20, photos.length);
-      const videoCount = Math.min(20, videos.length);
-
-      const selectedPhotos = shuffleArray(photos).slice(0, photoCount);
-      const selectedVideos = shuffleArray(videos).slice(0, videoCount);
-
-      return [
-        ...selectedPhotos.map((asset) => ({
-          id: asset.id,
-          uri: asset.uri,
-          mediaType: "photo" as const,
-          width: asset.width,
-          height: asset.height,
-          creationTime: asset.creationTime,
-        })),
-        ...selectedVideos.map((asset) => ({
-          id: asset.id,
-          uri: asset.uri,
-          mediaType: "video" as const,
-          width: asset.width,
-          height: asset.height,
-          creationTime: asset.creationTime,
-        })),
-      ];
-    }
-
-    // Fallback: just pick random items
-    const selected = shuffled.slice(0, Math.min(count, shuffled.length));
-
-    return selected.map((asset) => ({
-      id: asset.id,
-      uri: asset.uri,
-      mediaType:
-        asset.mediaType === MediaLibrary.MediaType.photo ? "photo" : "video",
-      width: asset.width,
-      height: asset.height,
-      creationTime: asset.creationTime,
-    }));
-  } catch (error) {
-    console.error("Error fetching media:", error);
-    throw error;
-  }
+  const results = await Promise.all(
+    Array.from(excludedAlbumIds).map((albumId) =>
+      new Album(albumId).getAssets().catch(() => []) // album may have been deleted
+    )
+  );
+  results.forEach((assets) => assets.forEach((asset) => ids.add(asset.id)));
+  return ids;
 }
 
+/**
+ * Lightweight metadata for the media the game may use. Screenshots and screen
+ * recordings are skipped (they rarely make good rounds and often contain private
+ * conversations), as are videos that are too short or too long to clip.
+ */
+export async function queryCandidates(
+  kind: "photo" | "video",
+  limit: number = CANDIDATE_POOL_SIZE
+): Promise<AssetMetadata[]> {
+  let query = new Query()
+    .eq(AssetField.MEDIA_TYPE, kind === "photo" ? LibraryMediaType.IMAGE : LibraryMediaType.VIDEO)
+    .orderBy({ key: AssetField.CREATION_TIME, ascending: false })
+    .limit(limit);
 
+  if (kind === "video") {
+    query = query
+      .gte(AssetField.DURATION, MIN_VIDEO_DURATION_MS)
+      .lte(AssetField.DURATION, MAX_VIDEO_DURATION_MS);
+  }
+
+  const items = await query.exeForMetadata();
+  return items.filter(
+    (item) =>
+      !item.mediaSubtypes?.includes(MediaSubtype.SCREENSHOT) &&
+      !item.mediaSubtypes?.includes(MediaSubtype.SCREEN_RECORDING)
+  );
+}
+
+function toMediaAsset(item: AssetMetadata, kind: "photo" | "video"): MediaAsset {
+  return {
+    id: item.id,
+    uri: item.id,
+    mediaType: kind,
+    width: item.width ?? 0,
+    height: item.height ?? 0,
+    creationTime: item.creationTime ?? 0,
+    duration: item.duration,
+  };
+}
+
+async function pickRandom(kind: "photo" | "video", count: number, excluded: Set<string>) {
+  const candidates = (await queryCandidates(kind)).filter((item) => !excluded.has(item.id));
+  return shuffle(candidates)
+    .slice(0, count)
+    .map((item) => toMediaAsset(item, kind));
+}
+
+/**
+ * Picks random media from the device library.
+ * - "photo" / "video": `count` items of that type.
+ * - "mixed": up to 20 photos followed by up to 20 videos.
+ */
+export async function fetchRandomMedia(count: number = 20, type: MediaType = "mixed"): Promise<MediaAsset[]> {
+  const excluded = await loadExcludedAssetIds();
+
+  if (type === "photo" || type === "video") {
+    return pickRandom(type, count, excluded);
+  }
+
+  const [photos, videos] = await Promise.all([
+    pickRandom("photo", 20, excluded),
+    pickRandom("video", 20, excluded),
+  ]);
+  return [...photos, ...videos];
+}

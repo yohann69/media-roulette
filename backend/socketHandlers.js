@@ -1,8 +1,15 @@
 const path = require("path");
 const { calculateAndEmitRoundResults, startNewRound } = require("./gameUtils");
 const { enqueueBackup } = require("./utils/driveBackup");
+const mediaStore = require("./mediaStore");
 
-const UPLOADS_DIR = path.join(__dirname, "uploads");
+const MAX_NAME_LENGTH = 16;
+const PLAYER_STATES = new Set(["selecting", "compressing", "uploading", "ready"]);
+
+function cleanName(name) {
+    const trimmed = String(name ?? "").trim().slice(0, MAX_NAME_LENGTH);
+    return trimmed || "Player";
+}
 
 function setupSocket(io, gameManager, roundStartTimes) {
     io.on("connection", (socket) => {
@@ -10,18 +17,14 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
         socket.on("create-game", (data) => {
             try {
-                const { hostName, settings } = data;
-                const room = gameManager.createRoom(socket.id, hostName, settings);
+                const { hostName, settings } = data || {};
+                const room = gameManager.createRoom(socket.id, cleanName(hostName), settings || {});
                 socket.join(room.pin);
 
                 socket.emit("game-created", {
                     pin: room.pin,
-                    room: {
-                        pin: room.pin,
-                        players: room.players,
-                        settings: room.settings,
-                        gameState: room.gameState,
-                    },
+                    room: gameManager.publicRoom(room),
+                    uploadToken: gameManager.issueUploadToken(room.pin, socket.id),
                 });
             } catch (error) {
                 socket.emit("error", { message: "Failed to create game" });
@@ -31,7 +34,8 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
         socket.on("join-game", (data) => {
             try {
-                const { pin, playerName } = data;
+                const pin = String(data?.pin ?? "");
+                const playerName = cleanName(data?.playerName);
                 const result = gameManager.joinRoom(pin, socket.id, playerName);
 
                 if (!result.success) {
@@ -45,12 +49,8 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
                 socket.emit("joined-game", {
                     pin: room.pin,
-                    room: {
-                        pin: room.pin,
-                        players: room.players,
-                        settings: room.settings,
-                        gameState: room.gameState,
-                    },
+                    room: gameManager.publicRoom(room),
+                    uploadToken: gameManager.issueUploadToken(room.pin, socket.id),
                 });
 
                 socket.to(pin).emit("player-joined", {
@@ -59,11 +59,11 @@ function setupSocket(io, gameManager, roundStartTimes) {
                         name: playerName,
                         isHost: false,
                     },
-                    players: room.players,
+                    players: gameManager.publicRoom(room).players,
                 });
 
                 // Emit room-update to all clients (including the new joiner) for auto-refresh
-                io.to(pin).emit("room-update", room);
+                io.to(pin).emit("room-update", gameManager.publicRoom(room));
             } catch (error) {
                 socket.emit("error", { message: "Failed to join game" });
             }
@@ -81,10 +81,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 }
 
                 const player = room.players.find(p => p.socketId === socket.id);
-                if (player) {
+                if (player && PLAYER_STATES.has(state)) {
                     player.state = state;
                     gameManager.updateActivity(pin); // Track activity
-                    io.to(pin).emit("room-update", room);
+                    io.to(pin).emit("room-update", gameManager.publicRoom(room));
                 }
             } catch (error) {
                 socket.emit("error", { message: "Failed to set player state" });
@@ -95,10 +95,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
         // Set media pool (after upload)
         socket.on("set-media-pool", (data) => {
             try {
-                const { pin, mediaPool, playAgain } = data;
+                const { pin, mediaPool, playAgain } = data || {};
                 const room = gameManager.getRoom(pin);
 
-                if (!room) {
+                if (!room || !gameManager.isMember(pin, socket.id)) {
                     socket.emit("error", { message: "Room not found" });
                     return;
                 }
@@ -108,8 +108,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     gameManager.setNewHost(pin, socket.id);
                 }
 
-                // Store uploaded media info for this player
+                // Store uploaded media info for this player (only files they uploaded)
                 gameManager.setPlayerMedia(pin, socket.id, mediaPool);
+                const acceptedPool = room.uploadedMedia.get(socket.id) || [];
 
                 // Update player state to ready
                 const player = room.players.find(p => p.socketId === socket.id);
@@ -119,11 +120,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
                 // Fire-and-forget background backup to Google Drive. Never blocks the
                 // game flow; failures are logged inside the worker.
-                if (Array.isArray(mediaPool) && player) {
-                    for (const item of mediaPool) {
-                        if (!item || !item.filename) continue;
+                if (player) {
+                    for (const item of acceptedPool) {
                         enqueueBackup({
-                            localPath: path.join(UPLOADS_DIR, item.filename),
+                            localPath: path.join(mediaStore.roomDir(pin), item.filename),
                             username: player.name,
                             originalFilename: item.filename,
                         });
@@ -131,7 +131,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 }
 
                 gameManager.updateActivity(pin); // Track activity
-                io.to(pin).emit("room-update", room);
+                io.to(pin).emit("room-update", gameManager.publicRoom(room));
                 socket.emit("media-pool-set", { success: true });
             } catch (error) {
                 socket.emit("error", { message: "Failed to set media pool" });
@@ -164,8 +164,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 }
 
                 // Send media list to all players to download
+                // Never include who owns which media: that's the answer.
                 io.to(pin).emit("sync-media", {
-                    media: gameMedia,
+                    media: gameManager.publicGameMedia(room),
                     count: gameMedia.length
                 });
 
@@ -179,9 +180,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
         // Client finished downloading files
         socket.on("sync-complete", (data) => {
             try {
-                const { pin } = data;
+                const { pin } = data || {};
                 const room = gameManager.getRoom(pin);
-                if (!room) return;
+                if (!room || !gameManager.isMember(pin, socket.id)) return;
 
                 // Don't process if game already started
                 if (room.gameState === "playing") {
@@ -198,7 +199,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 });
 
                 // Emit room-update when player becomes ready
-                io.to(pin).emit("room-update", room);
+                io.to(pin).emit("room-update", gameManager.publicRoom(room));
 
                 // Check if everyone is ready and game is still in syncing state
                 // Only emit once to prevent multiple game starts
@@ -214,10 +215,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
         // Actually start the game (after sync)
         socket.on("start-game", (data) => {
             try {
-                const { pin } = data;
+                const { pin } = data || {};
                 const room = gameManager.getRoom(pin);
 
-                if (!room) return;
+                if (!room || room.hostSocketId !== socket.id) return;
 
                 if (!gameManager.areAllPlayersReady(pin)) {
                     socket.emit("error", { message: "Not all players are ready" });
@@ -242,10 +243,10 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
         socket.on("submit-guess", (data) => {
             try {
-                const { pin, targetUser, timestamp } = data;
+                const { pin, targetUser, timestamp } = data || {};
                 const room = gameManager.getRoom(pin);
 
-                if (!room || room.gameState !== "playing") return;
+                if (!room || room.gameState !== "playing" || !gameManager.isMember(pin, socket.id)) return;
 
                 // Don't process guesses if results have already been calculated
                 if (room.roundResultsCalculated) {
@@ -282,9 +283,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
 
         socket.on("time-expired", (data) => {
             try {
-                const { pin } = data;
+                const { pin } = data || {};
                 const room = gameManager.getRoom(pin);
-                if (!room || room.gameState !== "playing") return;
+                if (!room || room.gameState !== "playing" || !gameManager.isMember(pin, socket.id)) return;
 
                 console.log(`[Game ${pin}] Timer expired. Calculating results...`);
 
@@ -418,7 +419,7 @@ function setupSocket(io, gameManager, roundStartTimes) {
                 });
                 
                 // Emit room update so all clients refresh
-                io.to(pin).emit("room-update", room);
+                io.to(pin).emit("room-update", gameManager.publicRoom(room));
             } catch (error) {
                 console.error("Error in play-again:", error);
                 socket.emit("error", { message: "Failed to initiate play again" });
@@ -438,8 +439,8 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     roundStartTimes.delete(result.pin);
                     io.to(result.pin).emit("room-deleted", { message: "Host left the game" });
                 } else {
-                    io.to(result.pin).emit("player-left", { socketId: socket.id, players: result.room.players });
-                    io.to(result.pin).emit("room-update", result.room);
+                    io.to(result.pin).emit("player-left", { socketId: socket.id, players: gameManager.publicRoom(result.room).players });
+                    io.to(result.pin).emit("room-update", gameManager.publicRoom(result.room));
                 }
             } catch (error) {
                 console.error("Error in leave-game:", error);
@@ -453,9 +454,9 @@ function setupSocket(io, gameManager, roundStartTimes) {
                     roundStartTimes.delete(result.pin);
                     io.to(result.pin).emit("room-deleted", { message: "Host left the game" });
                 } else {
-                    io.to(result.pin).emit("player-left", { socketId: socket.id, players: result.room.players });
+                    io.to(result.pin).emit("player-left", { socketId: socket.id, players: gameManager.publicRoom(result.room).players });
                     // Emit room-update to all clients for auto-refresh
-                    io.to(result.pin).emit("room-update", result.room);
+                    io.to(result.pin).emit("room-update", gameManager.publicRoom(result.room));
                 }
             }
         });

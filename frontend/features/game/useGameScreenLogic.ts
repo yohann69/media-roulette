@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
-import * as FileSystem from "expo-file-system/legacy";
+import { Directory, Paths } from "expo-file-system";
 import { useSocket } from "../../stores/useSocket";
 import { useGameEvents } from "../../hooks/useGameEvents";
 
@@ -52,34 +52,42 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
   const [actualOwnerId, setActualOwnerId] = useState<string | null>(null);
   const [isShowingMediaAgain, setIsShowingMediaAgain] = useState(false);
 
-  useGameEvents({
-    onNewRound: (data) => {
-      // Resolve local file URI
-      let uri = data.mediaData.uri;
-      if (data.mediaData.index !== undefined && localMediaMap.has(data.mediaData.index)) {
-          uri = localMediaMap.get(data.mediaData.index);
-      }
+  const handleNewRound = (data: any) => {
+    // Resolve local file URI
+    let uri = data.mediaData.uri;
+    if (data.mediaData.index !== undefined && localMediaMap.has(data.mediaData.index)) {
+        uri = localMediaMap.get(data.mediaData.index);
+    }
 
-      setCurrentRound(data.round);
-      setTotalRounds(data.totalRounds);
-      setCurrentMedia({
-          ...data.mediaData,
-          uri,
-      });
-      setTimerDuration(data.duration);
-      setRoundStartTime(data.roundStartTime);
-      setPlayers(data.options);
-      setSelectedPlayer(null);
-      setTimeExpired(false);
-      setTimerActive(true);
-      setGameState("reveal");
-      setRoundResults(null);
-      setIsShowingMediaAgain(false);
-      // Set the owner ID from the new-round event so we can disable selection for the owner
-      if (data.actualOwnerId) {
-        setActualOwnerId(data.actualOwnerId);
-      }
-    },
+    setCurrentRound(data.round);
+    setTotalRounds(data.totalRounds);
+    setCurrentMedia({
+        ...data.mediaData,
+        uri,
+    });
+    setTimerDuration(data.duration);
+    setRoundStartTime(data.roundStartTime);
+    setPlayers(data.options);
+    setSelectedPlayer(null);
+    setTimeExpired(false);
+    setTimerActive(true);
+    setGameState("reveal");
+    setRoundResults(null);
+    setIsShowingMediaAgain(false);
+    // The owner is only revealed with the round result.
+    setActualOwnerId(null);
+  };
+
+  // The first round can arrive before this screen mounts (the server sends it
+  // right after "game-started"): pick it up from the store.
+  useEffect(() => {
+    const pending = useSocket.getState().lastNewRound;
+    if (pending) handleNewRound(pending);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useGameEvents({
+    onNewRound: handleNewRound,
     onRoundResult: (data) => {
       setActualOwnerId(data.actualOwnerId);
       setRoundResults(data);
@@ -97,9 +105,8 @@ export function useGameScreenLogic(pin: string, isHost: boolean) {
       
       // Cleanup local files
       try {
-          const cacheDir = FileSystem.cacheDirectory || "";
-          const gameDir = `${cacheDir}game_${pin}/`;
-          await FileSystem.deleteAsync(gameDir, { idempotent: true });
+          const gameDir = new Directory(Paths.cache, `game_${pin}`);
+          if (gameDir.exists) gameDir.delete();
           setLocalMediaMap(new Map()); // Clear map
       } catch (e) {
           console.error("Cleanup error:", e);

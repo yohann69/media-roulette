@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "PhotoRoulette",
+    "name": "Media Roulette",
     "tagline": "Jouons ensemble !"
   },
   "common": {
@@ -46,7 +46,7 @@
     "requestingPermission": "Demande d'autorisation...",
     "loadingNewItems": "Chargement de nouveaux éléments...",
     "permissionRequired": "Autorisation requise",
-    "permissionMessage": "Nous avons besoin d'accéder à vos photos et vidéos pour jouer à PhotoRoulette.",
+    "permissionMessage": "Nous avons besoin d'accéder à vos photos et vidéos pour jouer à Media Roulette.",
     "grantPermission": "Accorder l'autorisation",
     "reroll": "Relancer",
     "ready": "Prêt",

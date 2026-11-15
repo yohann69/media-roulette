@@ -1,36 +1,29 @@
 import { useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getStoredItem, removeStoredItem, setStoredItem, STORAGE_KEYS } from "../utils/storage";
 
-const USERNAME_KEY = "@photoroulette:username";
+export const MAX_USERNAME_LENGTH = 16;
 
 export function useUsername() {
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUsername();
+    getStoredItem(STORAGE_KEYS.username)
+      .then((saved) => {
+        if (saved) setUsername(saved.slice(0, MAX_USERNAME_LENGTH));
+      })
+      .catch((error) => console.error("Error loading username:", error))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const loadUsername = async () => {
-    try {
-      const saved = await AsyncStorage.getItem(USERNAME_KEY);
-      if (saved) {
-        setUsername(saved);
-      }
-    } catch (error) {
-      console.error("Error loading username:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const saveUsername = async (value: string) => {
+    const next = value.slice(0, MAX_USERNAME_LENGTH);
+    setUsername(next);
     try {
-      setUsername(value);
-      if (value.trim()) {
-        await AsyncStorage.setItem(USERNAME_KEY, value.trim());
+      if (next.trim()) {
+        await setStoredItem(STORAGE_KEYS.username, next.trim());
       } else {
-        await AsyncStorage.removeItem(USERNAME_KEY);
+        await removeStoredItem(STORAGE_KEYS.username);
       }
     } catch (error) {
       console.error("Error saving username:", error);
@@ -43,5 +36,3 @@ export function useUsername() {
     isLoading,
   };
 }
-
-

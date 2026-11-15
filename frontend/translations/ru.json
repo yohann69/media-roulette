@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "PhotoRoulette",
+    "name": "Media Roulette",
     "tagline": "Давайте играть вместе!"
   },
   "common": {
@@ -46,7 +46,7 @@
     "requestingPermission": "Запрос разрешения...",
     "loadingNewItems": "Загрузка новых элементов...",
     "permissionRequired": "Требуется разрешение",
-    "permissionMessage": "Нам нужен доступ к вашим фотографиям и видео для игры в PhotoRoulette.",
+    "permissionMessage": "Нам нужен доступ к вашим фотографиям и видео для игры в Media Roulette.",
     "grantPermission": "Предоставить разрешение",
     "reroll": "Перебросить",
     "ready": "Готово",

@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import * as MediaLibrary from "expo-media-library";
+import { Album, getPermissionsAsync, requestPermissionsAsync } from "expo-media-library";
 import { useTranslation } from "../hooks/useTranslation";
 import { Button } from "../components/atoms/Button";
 import { loadExcludedAlbums, saveExcludedAlbums } from "../utils/excludedAlbums";
 
 type SettingsView = "root" | "albums";
 type SortMode = "alpha" | "count";
+type AlbumRow = { id: string; title: string; assetCount: number };
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
 
   const [view, setView] = useState<SettingsView>("root");
-  const [albums, setAlbums] = useState<MediaLibrary.Album[]>([]);
+  const [albums, setAlbums] = useState<AlbumRow[]>([]);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [loadingAlbums, setLoadingAlbums] = useState(false);
@@ -38,17 +39,24 @@ export default function SettingsScreen() {
   const loadAlbums = async () => {
     try {
       setLoadingAlbums(true);
-      const { status } = await MediaLibrary.getPermissionsAsync();
+      const { status } = await getPermissionsAsync();
       let granted = status === "granted";
       if (!granted) {
-        const res = await MediaLibrary.requestPermissionsAsync();
+        const res = await requestPermissionsAsync();
         granted = res.status === "granted";
       }
       setPermissionGranted(granted);
       if (!granted) return;
 
-      const all = await MediaLibrary.getAlbumsAsync();
-      setAlbums(all);
+      const metadata = await Album.getAlbumsMetadata();
+      const rows = await Promise.all(
+        metadata.map(async (album) => ({
+          id: album.id,
+          title: album.title,
+          assetCount: await new Album(album.id).getAssetCount().catch(() => 0),
+        }))
+      );
+      setAlbums(rows);
     } catch (error) {
       console.error("Error loading albums", error);
     } finally {

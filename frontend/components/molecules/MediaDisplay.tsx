@@ -1,7 +1,7 @@
-import { View, Image, useWindowDimensions } from "react-native";
+import { View, useWindowDimensions, Animated, StyleSheet } from "react-native";
 import { useEffect, useRef, useState } from "react";
-import { Animated } from "react-native";
-import { Video, ResizeMode } from "expo-av";
+import { Image } from "expo-image";
+import { useVideoPlayer, VideoView } from "expo-video";
 
 interface MediaItem {
   id: string;
@@ -18,146 +18,98 @@ interface MediaDisplayProps {
   playVideoWithSound?: boolean;
 }
 
+function getSourceUri(media: MediaItem): string | null {
+  if (media.base64) return `data:image/jpeg;base64,${media.base64}`;
+  return media.uri ?? null;
+}
+
+function GameVideo({ uri, width, height, muted }: { uri: string; width: number; height: number; muted: boolean }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = muted;
+    p.play();
+  });
+
+  useEffect(() => {
+    player.muted = muted;
+  }, [player, muted]);
+
+  return (
+    <VideoView
+      player={player}
+      style={{ width, height }}
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
+}
+
 export function MediaDisplay({ media, showAsBackground = false, playVideoWithSound = true }: MediaDisplayProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const videoRef = useRef<Video>(null);
   const { width: screenWidth } = useWindowDimensions();
-  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
-  const [aspectRatio, setAspectRatio] = useState<number>(1);
-
-  const imageSource = media.base64
-    ? { uri: `data:image/jpeg;base64,${media.base64}` }
-    : media.uri
-    ? { uri: media.uri }
-    : null;
+  const [aspectRatio, setAspectRatio] = useState<number>(
+    media.width && media.height ? media.width / media.height : 1
+  );
+  const uri = getSourceUri(media);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [media.id, fadeAnim]);
 
-  // Cleanup video on unmount or media change
   useEffect(() => {
-    return () => {
-      if (videoRef.current) {
-        videoRef.current.unloadAsync().catch(() => {
-          // Ignore cleanup errors
-        });
-      }
-    };
-  }, [media.id]);
+    if (media.width && media.height) setAspectRatio(media.width / media.height);
+  }, [media.id, media.width, media.height]);
 
-  useEffect(() => {
-    if (imageSource && media.mediaType === "photo" && !showAsBackground) {
-      Image.getSize(
-        imageSource.uri,
-        (width, height) => {
-          setImageDimensions({ width, height });
-          // Calculate aspect ratio: width/height
-          // If height > width, it's portrait (aspectRatio < 1)
-          // If height < width, it's landscape (aspectRatio > 1)
-          setAspectRatio(width / height);
-        },
-        () => {
-          // Fallback to provided dimensions or default
-          if (media.width && media.height) {
-            setAspectRatio(media.width / media.height);
-          } else {
-            setAspectRatio(1);
-          }
-        }
-      );
-    } else if (media.width && media.height) {
-      setAspectRatio(media.width / media.height);
-    }
-  }, [imageSource, media, showAsBackground]);
-
-  // Determine if portrait (height > width) or landscape (height < width)
-  // aspectRatio = width/height, so:
-  // - If height > width: aspectRatio < 1 (portrait)
-  // - If height < width: aspectRatio > 1 (landscape)
-  // - If height = width: aspectRatio = 1 (square, treat as landscape)
-  const isPortrait = aspectRatio < 1;
-  
-  // Portrait: 3:4 aspect ratio (width:height = 3:4)
-  // Landscape: 4:3 aspect ratio (width:height = 4:3)
-  const targetAspectRatio = isPortrait ? 3 / 4 : 4 / 3;
-  
-  // Calculate display dimensions based on target aspect ratio
-  // Ensure the container maintains the correct aspect ratio for cropping
-  const maxWidth = screenWidth - 48; // Account for padding
-  const displayWidth = maxWidth;
-  // Calculate height to maintain target aspect ratio (3:4 for portrait, 4:3 for landscape)
+  // Portrait media is framed 3:4, landscape (and square) 4:3.
+  const targetAspectRatio = aspectRatio < 1 ? 3 / 4 : 4 / 3;
+  const displayWidth = screenWidth - 48;
   const displayHeight = displayWidth / targetAspectRatio;
 
   if (showAsBackground) {
-    // Blurred/darkened background version
+    // Videos have no still frame to blur; the dark screen background is used instead.
+    if (!uri || media.mediaType !== "photo") return null;
     return (
-      <View className="absolute inset-0">
-        {imageSource && (
-          <Image
-            source={imageSource}
-            className="w-full h-full"
-            resizeMode="cover"
-            blurRadius={20}
-            style={{ opacity: 0.3 }}
-          />
-        )}
+      <View style={StyleSheet.absoluteFill}>
+        <Image
+          source={{ uri }}
+          style={[StyleSheet.absoluteFill, { opacity: 0.3 }]}
+          contentFit="cover"
+          blurRadius={20}
+          transition={0}
+        />
       </View>
     );
   }
 
   return (
     <Animated.View style={{ opacity: fadeAnim }} className="mb-6">
-      {media.mediaType === "photo" ? (
-        <View 
-          className="rounded-2xl overflow-hidden bg-gray-900"
-          style={{ width: displayWidth, height: displayHeight }}
-        >
-          {imageSource && (
-            <Image
-              source={imageSource}
-              style={{ 
-                width: displayWidth, 
-                height: displayHeight,
-                // Ensure image fills container and crops without deformation
-              }}
-              resizeMode="cover"
-            />
-          )}
-        </View>
-      ) : (
-        <View 
-          className="rounded-2xl overflow-hidden bg-gray-900"
-          style={{ width: displayWidth, height: displayHeight }}
-        >
-          {imageSource ? (
-            <Video
-              ref={videoRef}
-              source={{ uri: imageSource.uri }}
-              style={{ width: displayWidth, height: displayHeight }}
-              resizeMode={ResizeMode.COVER}
-              shouldPlay={true}
-              isLooping={true}
-              isMuted={!playVideoWithSound}
-              volume={playVideoWithSound ? 1.0 : 0.0}
-              onLoad={() => {
-                // Video loaded, start playing
-                videoRef.current?.playAsync();
-              }}
-            />
-          ) : (
-            <View className="w-full h-full items-center justify-center">
-              <View className="w-20 h-20 rounded-full bg-secondary items-center justify-center">
-                <View className="w-0 h-0 border-l-[20px] border-l-white border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent ml-1" />
-              </View>
-            </View>
-          )}
-        </View>
-      )}
+      <View
+        className="rounded-2xl overflow-hidden bg-gray-900"
+        style={{ width: displayWidth, height: displayHeight }}
+      >
+        {uri && media.mediaType === "photo" && (
+          <Image
+            source={{ uri }}
+            style={{ width: displayWidth, height: displayHeight }}
+            contentFit="cover"
+            transition={0}
+            onLoad={(event) => {
+              const { width, height } = event.source;
+              if (width && height) setAspectRatio(width / height);
+            }}
+          />
+        )}
+        {uri && media.mediaType === "video" && (
+          <GameVideo
+            key={media.id}
+            uri={uri}
+            width={displayWidth}
+            height={displayHeight}
+            muted={!playVideoWithSound}
+          />
+        )}
+      </View>
     </Animated.View>
   );
 }

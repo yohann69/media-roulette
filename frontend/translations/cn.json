@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "PhotoRoulette",
+    "name": "Media Roulette",
     "tagline": "让我们一起玩吧！"
   },
   "common": {
@@ -46,7 +46,7 @@
     "requestingPermission": "正在请求权限...",
     "loadingNewItems": "正在加载新项目...",
     "permissionRequired": "需要权限",
-    "permissionMessage": "我们需要访问您的照片和视频才能玩PhotoRoulette。",
+    "permissionMessage": "我们需要访问您的照片和视频才能玩Media Roulette。",
     "grantPermission": "授予权限",
     "reroll": "重新选择",
     "ready": "准备就绪",

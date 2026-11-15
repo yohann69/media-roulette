@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "expo-router";
-import * as FileSystem from "expo-file-system/legacy";
+import { Directory, File, Paths } from "expo-file-system";
+import { processInBatches } from "../utils/parallelProcessing";
 import { useSocket, SOCKET_URL } from "../stores/useSocket";
 import { useTranslation } from "./useTranslation";
 
@@ -63,26 +64,31 @@ export function useLobbySync({ pin, isHost }: UseLobbySyncParams) {
       const { media } = data;
 
       try {
-        const cacheDir = FileSystem.cacheDirectory || "";
-        const gameDir = `${cacheDir}game_${pin}/`;
-        await FileSystem.makeDirectoryAsync(gameDir, { intermediates: true });
+        const gameDir = new Directory(Paths.cache, `game_${pin}`);
+        if (!gameDir.exists) gameDir.create({ intermediates: true });
 
+        const { uploadToken } = useSocket.getState();
         const newLocalMap = new Map<number, string>();
+        let completed = 0;
 
-        for (let i = 0; i < media.length; i++) {
-          const item = media[i];
-          const fileUrl = `${SOCKET_URL}/uploads/${item.filename}`;
-          const fileUri = `${gameDir}${item.filename}`;
-
-          const downloadRes = await FileSystem.downloadAsync(fileUrl, fileUri);
-          if (downloadRes.status !== 200) {
-            console.error("Failed to download file:", item.filename);
-          } else {
-            newLocalMap.set(item.index, fileUri);
-          }
-
-          setSyncProgress((i + 1) / media.length);
-        }
+        await processInBatches(
+          media as Array<{ index: number; filename: string }>,
+          async (item) => {
+            try {
+              const file = await File.downloadFileAsync(
+                `${SOCKET_URL}/media/${pin}/${item.filename}`,
+                new File(gameDir, item.filename),
+                { headers: { "x-upload-token": uploadToken ?? "" }, idempotent: true }
+              );
+              newLocalMap.set(item.index, file.uri);
+            } catch (error) {
+              console.error("Failed to download file:", item.filename, error);
+            }
+            completed++;
+            setSyncProgress(completed / media.length);
+          },
+          3
+        );
 
         setLocalMediaMap(newLocalMap);
         setSyncStatus(t("lobby.waitingForOthers"));

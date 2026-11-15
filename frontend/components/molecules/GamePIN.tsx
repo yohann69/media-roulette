@@ -6,7 +6,7 @@ interface GamePINProps {
 }
 
 export function GamePIN({ pin }: GamePINProps) {
-  const qrValue = `photoroulette://join?pin=${pin}`;
+  const qrValue = `mediaroulette://join?pin=${pin}`;
 
   return (
     <View className="items-center mb-8">

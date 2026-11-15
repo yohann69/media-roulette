@@ -56,15 +56,15 @@ function startNewRound(pin, io, gameManager, roundStartTimes) {
         round: room.currentRound,
         totalRounds: room.settings.rounds,
         mediaData: {
-            id: media.id,
-            index: media.index, // Used to find file locally
+            // Opaque id: the owner's library id would be a hint about who took it.
+            id: `media-${media.index}`,
+            index: media.index, // Used to find the downloaded file locally
             mediaType: media.mediaType,
-            // URI/Base64 not needed, clients load from local storage using ID/Index
         },
         duration: room.settings.timer,
         options,
         roundStartTime,
-        actualOwnerId: room.currentMediaOwnerId, // Send owner ID so clients can disable selection
+        // The owner is only revealed with the round result.
     });
 
     console.log(`Round ${room.currentRound} started for game ${pin}`);

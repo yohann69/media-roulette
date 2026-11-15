@@ -1,5 +1,5 @@
 import { View, Text, Animated, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, BackHandler, Pressable, Keyboard, Vibration } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "../../components/atoms/Input";
 import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
@@ -10,7 +10,7 @@ import { QRScanner } from "../../components/molecules/QRScanner";
 import { AnimatedLogo } from "../../components/molecules/AnimatedLogo";
 import { CustomModal } from "../../components/molecules/Modal";
 import { Button } from "../../components/atoms/Button";
-import { useUsername } from "../../hooks/useUsername";
+import { MAX_USERNAME_LENGTH, useUsername } from "../../hooks/useUsername";
 import { useGameSettings, GameSettings } from "../../hooks/useGameSettings";
 import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -19,9 +19,11 @@ import { checkMediaAvailability } from "../../utils/checkMediaAvailability";
 
 // Safely import lucide-react-native icons
 let CameraIcon: any = null;
+let SettingsIcon: any = null;
 try {
   const lucide = require("lucide-react-native");
   CameraIcon = lucide.Camera;
+  SettingsIcon = lucide.Settings;
 } catch {
   // Icon not available, will use text fallback
 }
@@ -40,9 +42,10 @@ const ROUND_OPTIONS = [10, 25, 50, 100];
 export function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const { joinPin } = useLocalSearchParams<{ joinPin?: string }>();
   const { username, setUsername, isLoading } = useUsername();
   const { saveSettings } = useGameSettings();
-  const { connect, createGame, joinGame, isConnected, connectionFailed, room } = useSocket();
+  const { connect, createGame, joinGame, leaveGame, isConnected, connectionFailed } = useSocket();
 
   const [screenState, setScreenState] = useState<ScreenState>("home");
   const [selectedMode, setSelectedMode] = useState<"Photo" | "Video" | "Mix" | "Blind">("Photo");
@@ -72,6 +75,14 @@ export function HomeScreen() {
   useEffect(() => {
     connect();
   }, [connect]);
+
+  // Opened from a lobby QR code (mediaroulette://join?pin=...): prefill the join form.
+  useEffect(() => {
+    if (joinPin && /^\d{6}$/.test(joinPin)) {
+      setPin(joinPin);
+      setScreenState("join");
+    }
+  }, [joinPin]);
 
   // Listen for connection errors
   useEffect(() => {
@@ -186,10 +197,12 @@ export function HomeScreen() {
     setScreenState("create-settings");
   };
 
-  const handleSettingsConfirm = async () => {
+  // `selectedTimer` is passed explicitly: reading the `timer` state here would
+  // return the value from the render in which the button was pressed.
+  const handleSettingsConfirm = async (selectedTimer: number) => {
     const settings: any = {
       rounds,
-      timer,
+      timer: selectedTimer,
       mode: selectedMode === "Blind" ? "Photo" : selectedMode, // Blind mode uses Photo mode but with blindMode flag
       playVideoWithSound: (selectedMode === "Video" || selectedMode === "Mix") ? playVideoWithSound : undefined,
       blindMode: selectedMode === "Blind", // Set blindMode flag if Blind mode is selected
@@ -249,9 +262,11 @@ export function HomeScreen() {
       // First join the game to get room settings
       const success = await joinGame(pinToUse.trim(), username || "Player");
       if (success) {
-        // Get the room mode from socket store
-        const roomMode = room?.settings?.mode || "Photo";
-        const blindMode = room?.settings?.blindMode || false;
+        // Read the room from the store: the `room` captured by this render is
+        // still the pre-join value.
+        const joinedRoom = useSocket.getState().room;
+        const roomMode = joinedRoom?.settings?.mode || "Photo";
+        const blindMode = joinedRoom?.settings?.blindMode || false;
         const modeToCheck = blindMode ? "Blind" : (roomMode === "Photo" ? "Photo" : roomMode === "Video" ? "Video" : "Mix");
 
         // Check media availability
@@ -270,6 +285,9 @@ export function HomeScreen() {
               ? `• ${mediaCheck.videoCount} videos`
               : `• ${mediaCheck.photoCount} photos\n• ${mediaCheck.videoCount} videos`;
 
+          // We're already in the room on the server: leave it so we don't
+          // block the lobby as a player who can never become ready.
+          await leaveGame(pinToUse.trim());
           setMediaErrorText(t("common.notEnoughMediaForMode", { required, available }));
           setShowMediaError(true);
           setIsJoining(false);
@@ -382,7 +400,11 @@ export function HomeScreen() {
                     onPress={() => router.push("/settings")}
                     className="w-10 h-10 rounded-full bg-black/60 border border-gray-800 items-center justify-center"
                   >
-                    <Text className="text-white text-lg">⚙️</Text>
+                    {SettingsIcon ? (
+                      <SettingsIcon size={20} color="#ffffff" />
+                    ) : (
+                      <Text className="text-white text-lg">⚙️</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
@@ -422,6 +444,9 @@ export function HomeScreen() {
                         onChangeText={setUsername}
                         placeholder={username ? undefined : t("home.usernamePlaceholder")}
                         autoFocus={!username}
+                        maxLength={MAX_USERNAME_LENGTH}
+                        autoCorrect={false}
+                        autoCapitalize="words"
                       />
                     </Animated.View>
 
@@ -535,7 +560,7 @@ export function HomeScreen() {
                               setTimer(seconds);
                               // Auto-continue when timer is selected
                               setTimeout(() => {
-                                handleSettingsConfirm();
+                                handleSettingsConfirm(seconds);
                               }, 200);
                             }}
                             color={currentColor}
@@ -561,7 +586,7 @@ export function HomeScreen() {
                           setTimer(seconds);
                           // Auto-continue when timer is selected
                           setTimeout(() => {
-                            handleSettingsConfirm();
+                            handleSettingsConfirm(seconds);
                           }, 200);
                         }}
                         color={currentColor}
