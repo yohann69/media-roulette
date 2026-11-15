@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
-import { clearGameMedia } from "../../utils/gameMedia";
+import * as Haptics from "expo-haptics";
+import { clearGameMedia, isPreparedUri } from "../../utils/gameMedia";
 import { useSocket } from "../../stores/useSocket";
 import { useSocketEvent } from "../../hooks/useSocketEvent";
 
@@ -16,7 +17,7 @@ interface MediaItem {
   mediaType: "photo" | "video";
 }
 
-type GameState = "reveal" | "result" | "leaderboard" | "podium";
+type GameState = "reveal" | "result" | "leaderboard" | "podium" | "skipped";
 
 /** Must match the server's MAX_DISPLAY_DELAY_CREDIT_MS. */
 const MAX_DISPLAY_DELAY_CREDIT_MS = 1500;
@@ -29,6 +30,7 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     continueGame,
     showMediaAgain,
     hideMediaAgain,
+    skipMedia,
     playAgain,
     leaveGame,
     setLocalMediaMap,
@@ -93,6 +95,15 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
   useSocketEvent("new-round", handleNewRound);
 
   useSocketEvent("round-result", (data: any) => {
+    const mine = data.results?.find((r: any) => r.playerId === useSocket.getState().currentPlayerId);
+    if (mine && data.actualOwnerId !== mine.playerId) {
+      const feedback = mine.isCorrect
+        ? Haptics.NotificationFeedbackType.Success
+        : mine.tooSlow
+          ? Haptics.NotificationFeedbackType.Warning
+          : Haptics.NotificationFeedbackType.Error;
+      Haptics.notificationAsync(feedback).catch(() => {});
+    }
     setActualOwnerId(data.actualOwnerId);
     setRoundResults(data);
     setTimerActive(false);
@@ -111,6 +122,12 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     // Other players' media is no longer needed on this phone.
     clearGameMedia(pin);
     setLocalMediaMap(new Map());
+  });
+
+  // The owner hid their media: the next one follows right after.
+  useSocketEvent("round-skipped", () => {
+    setTimerActive(false);
+    setGameState("skipped");
   });
 
   useSocketEvent("show-media-again", () => setIsShowingMediaAgain(true));
@@ -149,6 +166,7 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     if (timeExpired || !pin) return;
     // Players can change their mind while the round runs; the last guess counts.
     setSelectedPlayer(playerId);
+    Haptics.selectionAsync().catch(() => {});
     const displayDelayMs = Math.max(0, (mediaShownAt.current ?? Date.now()) - roundReceivedAt.current);
     await submitGuess(pin, playerId, displayDelayMs);
   };
@@ -157,6 +175,13 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
   const handleTimeExpired = () => {
     setTimeExpired(true);
     setTimerActive(false);
+  };
+
+  /** Long-press on the media: if it's ours, hide it. Does nothing on others' media. */
+  const handleMediaLongPress = () => {
+    if (!pin || gameState !== "reveal" || !isPreparedUri(currentMedia?.uri)) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    skipMedia(pin);
   };
 
   const handleContinue = async () => {
@@ -203,6 +228,7 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     handlePlayerSelect,
     handleTimeExpired,
     handleMediaShown,
+    handleMediaLongPress,
     handleContinue,
     handleShowAgainStart,
     handleShowAgainEnd,

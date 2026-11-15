@@ -96,6 +96,8 @@ interface SocketState {
   submitGuess: (pin: string, targetUser: string, displayDelayMs?: number) => Promise<boolean>;
   continueGame: (pin: string) => Promise<boolean>;
   showMediaAgain: (pin: string) => void;
+  /** Hides our own media during its round (the round is dropped). */
+  skipMedia: (pin: string) => void;
   hideMediaAgain: (pin: string) => void;
   playAgain: (pin: string) => Promise<boolean>;
 }
@@ -371,6 +373,10 @@ export const useSocket = create<SocketState>((set, get) => {
       if (!socket?.connected) return false;
       socket.emit("continue-game", { pin });
       return true;
+    },
+
+    skipMedia: (pin) => {
+      get().socket?.emit("skip-media", { pin });
     },
 
     showMediaAgain: (pin) => {

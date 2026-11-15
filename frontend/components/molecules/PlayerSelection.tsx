@@ -40,6 +40,9 @@ export function PlayerSelection({
             return (
               <View key={rowIndex}>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={player.name}
+                  accessibilityState={{ selected: isSelected, disabled }}
                   onPress={() => onSelect(player.id)}
                   disabled={disabled}
                   className={`py-4 px-6 rounded-xl border-2 w-full ${
@@ -71,6 +74,9 @@ export function PlayerSelection({
                 return (
                   <TouchableOpacity
                     key={player.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={player.name}
+                    accessibilityState={{ selected: isSelected, disabled }}
                     onPress={() => onSelect(player.id)}
                     disabled={disabled}
                     className={`py-4 px-6 rounded-xl border-2 ${

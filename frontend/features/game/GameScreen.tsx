@@ -36,6 +36,7 @@ export function GameScreen() {
     handlePlayerSelect,
     handleTimeExpired,
     handleMediaShown,
+    handleMediaLongPress,
     timeExpired,
     handleContinue,
     handleShowAgainStart,
@@ -147,6 +148,7 @@ export function GameScreen() {
         onPlayerSelect={handlePlayerSelect}
         onTimeExpired={handleTimeExpired}
         onMediaShown={handleMediaShown}
+        onMediaLongPress={handleMediaLongPress}
         playVideoWithSound={playVideoWithSound}
       />
     );
@@ -156,7 +158,7 @@ export function GameScreen() {
   return (
     <View className="flex-1 bg-black items-center justify-center">
       <Button
-        title={t("game.waitingRound")}
+        title={gameState === "skipped" ? t("game.skipped") : t("game.waitingRound")}
         onPress={() => {}}
         variant="secondary"
         disabled

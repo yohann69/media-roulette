@@ -26,6 +26,11 @@ export function storePrepared(sourceUri: string, id: string, mediaType: "photo" 
   return destination.uri;
 }
 
+/** Whether a playable URI is one of our own prepared files (i.e. we own this media). */
+export function isPreparedUri(uri: string | undefined): boolean {
+  return !!uri && uri.includes(`/${PREPARED}/`);
+}
+
 export function clearPrepared() {
   deleteDirectory(PREPARED);
 }

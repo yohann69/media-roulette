@@ -56,6 +56,8 @@ export const schemas = {
     displayDelayMs: z.number().min(0).max(60_000).optional(),
   }),
   "continue-game": z.object({ pin }),
+  /** The owner hides their own media during its round: the round is dropped. */
+  "skip-media": z.object({ pin }),
   "show-media-again": z.object({ pin }),
   "hide-media-again": z.object({ pin }),
   "play-again": z.object({ pin }),

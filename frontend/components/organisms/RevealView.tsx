@@ -1,4 +1,4 @@
-import { View, Text } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useEffect, useRef } from "react";
 import { Animated } from "react-native";
 import { CountdownTimer } from "../molecules/CountdownTimer";
@@ -33,6 +33,8 @@ interface RevealViewProps {
   onTimeExpired: () => void;
   /** Called once the media is visible: the countdown starts from there. */
   onMediaShown?: () => void;
+  /** Long-press on the media (owners use it to hide their own media). */
+  onMediaLongPress?: () => void;
   playVideoWithSound?: boolean;
 }
 
@@ -48,6 +50,7 @@ export function RevealView({
   onPlayerSelect,
   onTimeExpired,
   onMediaShown,
+  onMediaLongPress,
   playVideoWithSound = true,
 }: RevealViewProps) {
   const { t } = useTranslation();
@@ -73,7 +76,9 @@ export function RevealView({
             <Text className="text-white text-2xl font-bold mb-1">
               {t("game.round", { current: currentRound, total: totalRounds })}
             </Text>
-            <Text className="text-gray-300 text-sm mb-4">{t("game.whoTookPhoto")}</Text>
+            <Text className="text-gray-300 text-sm mb-4">
+              {currentMedia?.mediaType === "video" ? t("game.whoTookVideo") : t("game.whoTookPhoto")}
+            </Text>
             <CountdownTimer
               duration={timerDuration}
               onComplete={onTimeExpired}
@@ -85,7 +90,9 @@ export function RevealView({
           {/* Center: Media display */}
           <View className="items-center justify-center flex-1">
             {currentMedia && (
-              <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} onReady={onMediaShown} />
+              <Pressable onLongPress={onMediaLongPress} delayLongPress={700} accessible={false}>
+                <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} onReady={onMediaShown} />
+              </Pressable>
             )}
           </View>
 

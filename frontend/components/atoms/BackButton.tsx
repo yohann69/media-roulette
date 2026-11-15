@@ -22,6 +22,8 @@ export function BackButton({ onPress, variant = "icon" }: BackButtonProps) {
   if (variant === "text") {
     return (
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={t("common.back")}
         onPress={handlePress}
         className="py-2 px-4"
         activeOpacity={0.7}
@@ -42,6 +44,8 @@ export function BackButton({ onPress, variant = "icon" }: BackButtonProps) {
     // Fallback to text if icon not available
     return (
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={t("common.back")}
         onPress={handlePress}
         className="py-2 px-4"
         activeOpacity={0.7}
@@ -53,6 +57,8 @@ export function BackButton({ onPress, variant = "icon" }: BackButtonProps) {
 
   return (
     <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={t("common.back")}
       onPress={handlePress}
       className="p-2"
       activeOpacity={0.7}

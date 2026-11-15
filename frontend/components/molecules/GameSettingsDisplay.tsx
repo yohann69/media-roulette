@@ -6,19 +6,15 @@ interface GameSettingsDisplayProps {
     rounds: number;
     timer: number;
     mode: string;
+    blindMode?: boolean;
   };
 }
 
 export function GameSettingsDisplay({ settings }: GameSettingsDisplayProps) {
   const { t } = useTranslation();
 
-  const getModeEmoji = (mode: string) => {
-    if (mode === "Photo") return "📸";
-    if (mode === "Video") return "🎞️";
-    return "🎉";
-  };
-
   const getModeLabel = (mode: string) => {
+    if (settings.blindMode) return t("gameSettings.blind");
     if (mode === "Photo") return t("gameSettings.photo");
     if (mode === "Video") return t("gameSettings.video");
     return t("gameSettings.mix");
@@ -35,7 +31,8 @@ export function GameSettingsDisplay({ settings }: GameSettingsDisplayProps) {
           {t("gameSettingsDisplay.timer", { seconds: settings.timer })}
         </Text>
         <Text className="text-white text-sm">
-          {t("gameSettingsDisplay.mode", { emoji: getModeEmoji(settings.mode), mode: getModeLabel(settings.mode) })}
+          {/* Mode labels already start with their emoji. */}
+          {t("gameSettingsDisplay.mode", { emoji: "", mode: getModeLabel(settings.mode) }).replace(/\s+/g, " ")}
         </Text>
       </View>
     </View>

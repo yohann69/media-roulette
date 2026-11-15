@@ -123,6 +123,9 @@ export function WiggleButton({
       ]}
     >
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled }}
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}

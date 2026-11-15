@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getPermissionsAsync, requestPermissionsAsync } from "expo-media-library";
-import { fetchRandomMedia, MediaAsset, MediaType } from "../utils/fetchRandomMedia";
+import { fetchRandomMedia, MediaAsset, MediaType, pickReplacement } from "../utils/fetchRandomMedia";
 
 interface UseMediaFetcherReturn {
   media: MediaAsset[];
@@ -10,6 +10,12 @@ interface UseMediaFetcherReturn {
   requestPermission: () => Promise<boolean>;
   fetchMedia: (count?: number, type?: MediaType) => Promise<void>;
   reroll: () => Promise<void>;
+  /**
+   * Replaces a single item with another random one of the same type. When the
+   * library has nothing else to offer, the item is removed instead (the last
+   * remaining item is kept). Returns false if nothing changed.
+   */
+  replaceItem: (index: number) => Promise<boolean>;
 }
 
 export function useMediaFetcher(
@@ -73,9 +79,34 @@ export function useMediaFetcher(
     await fetchMedia(initialCount, initialType);
   };
 
+  // Every item ever shown in this selection, so a swap never brings one back.
+  const seenIds = useRef(new Set<string>());
+  useEffect(() => {
+    media.forEach((m) => seenIds.current.add(m.id));
+  }, [media]);
+
+  const replaceItem = async (index: number): Promise<boolean> => {
+    const current = media[index];
+    if (!current) return false;
+    try {
+      const replacement = await pickReplacement(current.mediaType, seenIds.current);
+      if (!replacement) {
+        if (media.length <= 1) return false;
+        setMedia((prev) => prev.filter((m) => m.id !== current.id));
+        return true;
+      }
+      seenIds.current.add(replacement.id);
+      setMedia((prev) => prev.map((m, i) => (i === index ? replacement : m)));
+      return true;
+    } catch (err) {
+      console.warn("Could not swap media:", err);
+      return false;
+    }
+  };
+
   useEffect(() => {
     getPermissionsAsync().then(({ status }) => setPermissionGranted(status === "granted"));
   }, []);
 
-  return { media, loading, error, permissionGranted, requestPermission, fetchMedia, reroll };
+  return { media, loading, error, permissionGranted, requestPermission, fetchMedia, reroll, replaceItem };
 }

@@ -69,6 +69,9 @@ export function Button({
     return (
         <Animated.View style={animatedStyle} className="w-full">
             <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={title}
+                accessibilityState={{ disabled, busy: loading }}
                 onPress={onPress}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}

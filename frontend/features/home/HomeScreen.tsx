@@ -1,5 +1,6 @@
 import { View, Text, Animated, Image, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, BackHandler, Pressable, Keyboard, Vibration } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "../../components/atoms/Input";
 import { BackgroundSlideshow } from "../../components/molecules/BackgroundSlideshow";
@@ -16,6 +17,7 @@ import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 import { createSpringAnimation } from "../../utils/wiggleAnimation";
 import { checkMediaAvailability } from "../../utils/checkMediaAvailability";
+import { getPermissionsAsync, presentPermissionsPicker } from "expo-media-library";
 
 // Safely import lucide-react-native icons
 let CameraIcon: any = null;
@@ -41,6 +43,7 @@ const ROUND_OPTIONS = [10, 25, 50, 100];
 
 export function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { joinPin } = useLocalSearchParams<{ joinPin?: string }>();
   const { username, setUsername, isLoading } = useUsername();
@@ -58,6 +61,9 @@ export function HomeScreen() {
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
   const [showMediaError, setShowMediaError] = useState(false);
+  const [mediaAccessLimited, setMediaAccessLimited] = useState(false);
+  const [showPermissionInfo, setShowPermissionInfo] = useState(false);
+  const permissionInfoResolve = useRef<(() => void) | null>(null);
   const [mediaErrorText, setMediaErrorText] = useState("");
   const [showConnectionError, setShowConnectionError] = useState(false);
   const [hasJoinError, setHasJoinError] = useState(false);
@@ -145,7 +151,15 @@ export function HomeScreen() {
   const isUsernameValid = username.trim().length > 0;
   const currentColor = MODE_COLORS[selectedMode];
 
+  // Buttons spring in after each step change: a tap during that animation can
+  // land on the background, which means "go back". Ignore those taps.
+  const lastStepChange = useRef(0);
+  useEffect(() => {
+    lastStepChange.current = Date.now();
+  }, [screenState]);
+
   const handleBackgroundPress = useCallback(() => {
+    if (Date.now() - lastStepChange.current < 800) return;
     if (screenState === "create-mode") {
       setScreenState("home");
     } else if (screenState === "create-rounds") {
@@ -199,6 +213,25 @@ export function HomeScreen() {
 
   // `selectedTimer` is passed explicitly: reading the `timer` state here would
   // return the value from the render in which the button was pressed.
+  /**
+   * The first time, explain what happens with the player's photos before the
+   * system permission prompt appears.
+   */
+  const explainPermissionIfNeeded = async () => {
+    const { status } = await getPermissionsAsync();
+    if (status !== "undetermined") return;
+    await new Promise<void>((resolve) => {
+      permissionInfoResolve.current = resolve;
+      setShowPermissionInfo(true);
+    });
+  };
+
+  const closePermissionInfo = () => {
+    setShowPermissionInfo(false);
+    permissionInfoResolve.current?.();
+    permissionInfoResolve.current = null;
+  };
+
   const handleSettingsConfirm = async (selectedTimer: number) => {
     const settings: any = {
       rounds,
@@ -209,6 +242,7 @@ export function HomeScreen() {
     };
 
     // Check media availability before creating game
+    await explainPermissionIfNeeded();
     const mediaCheck = await checkMediaAvailability(selectedMode);
 
     if (!mediaCheck.hasEnough) {
@@ -225,6 +259,7 @@ export function HomeScreen() {
           : `• ${mediaCheck.photoCount} photos\n• ${mediaCheck.videoCount} videos`;
 
       setMediaErrorText(t("common.notEnoughMediaForMode", { required, available }));
+      setMediaAccessLimited(mediaCheck.limitedAccess);
       setShowMediaError(true);
       return;
     }
@@ -270,6 +305,7 @@ export function HomeScreen() {
         const modeToCheck = blindMode ? "Blind" : (roomMode === "Photo" ? "Photo" : roomMode === "Video" ? "Video" : "Mix");
 
         // Check media availability
+        await explainPermissionIfNeeded();
         const mediaCheck = await checkMediaAvailability(modeToCheck);
 
         if (!mediaCheck.hasEnough) {
@@ -289,6 +325,7 @@ export function HomeScreen() {
           // block the lobby as a player who can never become ready.
           await leaveGame(pinToUse.trim());
           setMediaErrorText(t("common.notEnoughMediaForMode", { required, available }));
+          setMediaAccessLimited(mediaCheck.limitedAccess);
           setShowMediaError(true);
           setIsJoining(false);
           hasAutoJoinedRef.current = false;
@@ -395,9 +432,11 @@ export function HomeScreen() {
             >
               {/* Settings button */}
               {screenState === "home" && (
-                <View className="absolute top-12 right-6 z-20">
+                <View className="absolute right-6 z-20" style={{ top: insets.top + 8 }}>
                   <TouchableOpacity
                     onPress={() => router.push("/settings")}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("settings.title")}
                     className="w-10 h-10 rounded-full bg-black/60 border border-gray-800 items-center justify-center"
                   >
                     {SettingsIcon ? (
@@ -623,6 +662,8 @@ export function HomeScreen() {
                         />
                         <TouchableOpacity
                           onPress={() => setShowScanner(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel={t("join.scanQr", { defaultValue: "Scan QR code" })}
                           disabled={!isConnected}
                           className="absolute right-3 top-3 p-2 items-center justify-center"
                           activeOpacity={0.7}
@@ -669,11 +710,40 @@ export function HomeScreen() {
         <Text className="text-white text-base mb-4 whitespace-pre-line">
           {mediaErrorText}
         </Text>
+        {mediaAccessLimited && (
+          <View className="mb-3">
+            <Text className="text-gray-300 text-sm mb-3">{t("permissionInfo.limitedAccess")}</Text>
+            <Button
+              title={t("permissionInfo.chooseMore")}
+              onPress={() => {
+                setShowMediaError(false);
+                presentPermissionsPicker().catch(() => {});
+              }}
+              variant="secondary"
+            />
+          </View>
+        )}
         <Button
           title={t("common.close")}
           onPress={() => setShowMediaError(false)}
           variant="primary"
         />
+      </CustomModal>
+
+      {/* Shown once, before the system photo permission prompt */}
+      <CustomModal
+        visible={showPermissionInfo}
+        onClose={closePermissionInfo}
+        title={t("permissionInfo.title")}
+        showCloseButton={false}
+      >
+        <View className="gap-3 mb-5">
+          <Text className="text-white text-base">• {t("permissionInfo.point1")}</Text>
+          <Text className="text-white text-base">• {t("permissionInfo.point2")}</Text>
+          <Text className="text-white text-base">• {t("permissionInfo.point3")}</Text>
+          <Text className="text-white text-base">• {t("permissionInfo.point4")}</Text>
+        </View>
+        <Button title={t("common.continue")} onPress={closePermissionInfo} variant="primary" />
       </CustomModal>
 
       {/* Connection Error Dialog */}

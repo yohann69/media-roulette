@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GamePIN } from "../../components/molecules/GamePIN";
 import { PlayerList } from "../../components/molecules/PlayerList";
 import { GameSettingsDisplay } from "../../components/molecules/GameSettingsDisplay";
@@ -11,7 +12,6 @@ import { CustomModal } from "../../components/molecules/Modal";
 import { UploadProgress } from "../../components/molecules/UploadProgress";
 import { BackButton } from "../../components/atoms/BackButton";
 import { SelectionScreen } from "../selection/SelectionScreen";
-import { BlindModeAutoUploader } from "../../components/molecules/BlindModeAutoUploader";
 import { ExitConfirmModal } from "../../components/molecules/ExitConfirmModal";
 import { LobbyFooter } from "./LobbyFooter";
 import { useSocket } from "../../stores/useSocket";
@@ -28,6 +28,7 @@ interface Player {
 
 export function LobbyScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
   const { room, currentPlayerId, prepareGame, leaveGame, uploadStage, uploadProgress } = useSocket();
@@ -52,6 +53,7 @@ export function LobbyScreen() {
 
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showSelectionModal, setShowSelectionModal] = useState(false);
+  const [selectionCount, setSelectionCount] = useState(20);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const currentPlayer = room?.players.find((p) => p.id === currentPlayerId);
@@ -61,7 +63,8 @@ export function LobbyScreen() {
   // Open selection modal while the local player picks media (blind mode skips it; upload runs silently).
   useEffect(() => {
     if (!room) return;
-    if (currentPlayerState === "selecting" && !blindMode) {
+    // Blind mode shows the selection too, for a short "swap what you don't want" window.
+    if (currentPlayerState === "selecting") {
       setShowSelectionModal(true);
     } else {
       setShowSelectionModal(false);
@@ -128,7 +131,7 @@ export function LobbyScreen() {
     <View className="flex-1 bg-black">
       <BackgroundSlideshow />
       <View className="flex-1" style={{ zIndex: 1 }}>
-        <View className="pt-5 px-4">
+        <View className="px-4" style={{ paddingTop: insets.top }}>
           <BackButton onPress={() => setShowExitConfirm(true)} />
         </View>
         <ScrollView className="flex-1" contentContainerStyle={{ padding: 24, paddingTop: 8 }}>
@@ -197,20 +200,18 @@ export function LobbyScreen() {
           visible={showSelectionModal}
           onClose={handleCloseSelectionModal}
           title={t("selection.title")}
-          subtitle={t("selection.description", { count: 20 })}
+          subtitle={t("selection.description", { count: selectionCount })}
           showCloseButton={true}
         >
           <SelectionScreen
             isHost={isHost ? "true" : "false"}
             pin={pin}
             onClose={() => setShowSelectionModal(false)}
+            onMediaCountChange={setSelectionCount}
           />
         </CustomModal>
 
-        {/* Blind mode: run fetch+compress+upload invisibly so no selection UI ever appears. */}
-        {blindMode && currentPlayerState === "selecting" && pin && (
-          <BlindModeAutoUploader pin={pin} isHost={isHost} />
-        )}
+
       </View>
     </View>
   );

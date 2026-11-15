@@ -16,6 +16,8 @@ interface MediaGridProps {
   onItemLongPressStart?: (item: MediaItem) => void;
   onItemLongPressEnd?: () => void;
   expectedCount?: number;
+  /** Read by screen readers on each item (e.g. "Tap to swap, hold to preview"). */
+  itemAccessibilityHint?: string;
 }
 
 export function MediaGrid({
@@ -25,6 +27,7 @@ export function MediaGrid({
   onItemLongPressStart,
   onItemLongPressEnd,
   expectedCount,
+  itemAccessibilityHint,
 }: MediaGridProps) {
   const itemSize = `${100 / columns}%` as DimensionValue;
   const [displayItems, setDisplayItems] = useState<Array<MediaItem | null>>([]);
@@ -87,6 +90,9 @@ export function MediaGrid({
         return (
           <Pressable
             key={`grid-item-${index}`}
+            accessibilityRole="imagebutton"
+            accessibilityLabel={item ? `${item.mediaType === "video" ? "Video" : "Photo"} ${index + 1}` : undefined}
+            accessibilityHint={itemAccessibilityHint}
             onPress={() => item && onItemPress?.(item)}
             // A real long press: a plain touch (for example starting a scroll)
             // must not open the full-screen preview.

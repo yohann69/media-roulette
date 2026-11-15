@@ -45,10 +45,12 @@ export default function RootLayout() {
             headerShown: false,
           }}
         />
+        {/* No swipe-back out of a lobby or a running game: leaving goes through a confirmation. */}
         <Stack.Screen
           name="lobby"
           options={{
             headerShown: false,
+            gestureEnabled: false,
           }}
         />
         <Stack.Screen
@@ -61,6 +63,7 @@ export default function RootLayout() {
           name="game"
           options={{
             headerShown: false,
+            gestureEnabled: false,
           }}
         />
         <Stack.Screen

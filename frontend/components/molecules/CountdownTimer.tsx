@@ -112,7 +112,12 @@ export function CountdownTimer({
   });
 
   return (
-    <View className="w-full mb-4">
+    <View
+      className="w-full mb-4"
+      accessible
+      accessibilityRole="timer"
+      accessibilityLabel={`${t("game.timeRemaining")}: ${timeLeft}s`}
+    >
       <View className="h-2 bg-gray-800 rounded-full overflow-hidden">
         <Animated.View
           className="h-full bg-primary rounded-full"

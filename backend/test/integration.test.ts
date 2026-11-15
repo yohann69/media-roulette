@@ -185,11 +185,16 @@ describe("authorization and abuse", () => {
 
   it("rate-limits join attempts per address", async () => {
     const socket = await env.connect();
-    let errors = 0;
-    socket.on("join-error", (e: { message: string }) => e.message.includes("Too many") && errors++);
+    const messages: string[] = [];
+    const allAnswered = new Promise<void>((resolve) => {
+      socket.on("join-error", (e: { message: string }) => {
+        messages.push(e.message);
+        if (messages.length === 15) resolve();
+      });
+    });
     for (let i = 0; i < 15; i++) socket.emit("join-game", { pin: String(100000 + i), playerName: "x" });
-    await sleep(300);
-    expect(errors).toBeGreaterThanOrEqual(5);
+    await allAnswered;
+    expect(messages.filter((m) => m.includes("Too many")).length).toBeGreaterThanOrEqual(5);
   });
 
   it("makes duplicate names unique and trims long ones", async () => {
@@ -260,6 +265,25 @@ describe("game start", () => {
     const round = waitFor(host.socket, "new-round").then(() => Date.now());
     await env.startGame(host, [host, p2]);
     expect((await round) - (await started)).toBeGreaterThanOrEqual(900);
+  });
+});
+
+describe("owner can hide their own media", () => {
+  it("drops the round without scoring or revealing the owner", async () => {
+    const host = await env.create("Host", { rounds: 4, timer: 5 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 2);
+    await env.setPool(p2, 2);
+    const first = await env.startGame(host, [host, p2]);
+
+    // Only the owner can skip: try both, one of them is the owner.
+    const skipped = waitFor<any>(host.socket, "round-skipped");
+    const next = waitForMatch<any>(host.socket, "new-round", (r) => r.mediaData.index !== first.mediaData.index);
+    for (const s of [host, p2]) s.socket.emit("skip-media", { pin: s.pin });
+    expect(await skipped).toEqual({});
+    const round = await next;
+    expect(round.round).toBe(1);
+    expect(round.totalRounds).toBe(3);
   });
 });
 

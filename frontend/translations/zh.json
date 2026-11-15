@@ -37,11 +37,12 @@
     "joining": "加入中...",
     "join": "加入",
     "backToHome": "返回首頁",
-    "error": "加入失敗。請檢查PIN碼。"
+    "error": "加入失敗。請檢查PIN碼。",
+    "scanQr": "掃描 QR 碼"
   },
   "selection": {
     "title": "您的隨機媒體",
-    "description": "從您的圖庫中隨機選擇 {count} 個項目。點擊「重新選擇」以獲取新的隨機項目。",
+    "description": "從您的圖庫中隨機選擇 {count} 個項目。點擊某一項可替換它，長按可預覽，或點擊「重新選擇」全部更換。",
     "loadingMedia": "正在載入您的媒體...",
     "requestingPermission": "正在請求權限...",
     "loadingNewItems": "正在載入新項目...",
@@ -51,7 +52,9 @@
     "reroll": "重新選擇",
     "ready": "準備就緒",
     "uploading": "上傳中...",
-    "blindModeMessage": "盲選模式：您的媒體將是一個驚喜！🎲"
+    "blindModeMessage": "盲選模式：您的媒體將被隨機選擇 🎲",
+    "trustCountdown": "盲選模式：點擊不想分享的項目進行替換。{seconds} 秒後確認",
+    "itemHint": "點擊替換，長按預覽"
   },
   "lobby": {
     "title": "遊戲大廳",
@@ -102,7 +105,9 @@
     "waitingRound": "等待回合開始...",
     "timeRemaining": "剩餘時間",
     "playAgain": "再玩一次",
-    "owner": "所有者"
+    "owner": "所有者",
+    "whoTookVideo": "這個影片是誰拍的？",
+    "skipped": "它的主人隱藏了它。下一個！"
   },
   "result": {
     "greatGuess": "🎉 猜對了！",
@@ -173,5 +178,34 @@
     "rounds": "回合數：{count}",
     "timer": "計時器：{seconds}s",
     "mode": "模式：{emoji} {mode}"
+  },
+  "permissionInfo": {
+    "title": "您的照片如何被使用",
+    "point1": "遊戲會從您的圖庫中隨機挑選照片和影片。",
+    "point2": "您會先看到它們，並可以替換任何不想分享的內容。",
+    "point3": "只有被選入遊戲的內容才會被分享，並經過端對端加密。",
+    "point4": "在回合中長按您自己的照片即可隱藏它。遊戲結束後所有內容都會被刪除。",
+    "limitedAccess": "您只允許存取部分照片。請選擇更多照片來遊戲。",
+    "chooseMore": "選擇更多照片"
+  },
+  "settings": {
+    "title": "設定",
+    "mediaSourcesTitle": "排除的相簿",
+    "mediaSourcesSubtitle": "選擇永遠不在遊戲中使用的相簿",
+    "legalSectionTitle": "法律資訊",
+    "terms": "條款與條件",
+    "privacy": "隱私權政策",
+    "permissionExplanation": "我們需要存取您的相簿，以便您將私人資料夾排除在遊戲之外。",
+    "grantPermission": "授予權限",
+    "loadingAlbums": "正在載入相簿...",
+    "noAlbums": "此裝置上找不到相簿。",
+    "untitledAlbum": "未命名相簿",
+    "itemsLabel": "項"
+  },
+  "privacy": {
+    "title": "隱私權政策"
+  },
+  "terms": {
+    "title": "條款與條件"
   }
 }

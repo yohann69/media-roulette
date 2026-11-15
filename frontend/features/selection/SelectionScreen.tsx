@@ -1,6 +1,7 @@
 import { View, Text, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as Haptics from "expo-haptics";
 import { MediaGrid } from "../../components/molecules/MediaGrid";
 import { Button } from "../../components/atoms/Button";
 import { FullScreenMediaViewer } from "../../components/molecules/FullScreenMediaViewer";
@@ -12,9 +13,11 @@ interface SelectionScreenProps {
   pin?: string;
   playAgain?: string;
   onClose?: () => void;
+  /** Called with the number of items currently selected (changes when one is removed). */
+  onMediaCountChange?: (count: number) => void;
 }
 
-export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionScreenProps) {
+export function SelectionScreen({ isHost, pin, playAgain, onClose, onMediaCountChange }: SelectionScreenProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ isHost?: string; pin?: string; playAgain?: string }>();
@@ -34,10 +37,16 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
     isUploading,
     handleReady,
     handleReroll,
+    replaceItem,
     requestPermission,
     blindMode,
+    trustSecondsLeft,
     mediaCount,
   } = useSelectionScreenLogic(actualParams, onClose);
+
+  useEffect(() => {
+    if (media.length > 0) onMediaCountChange?.(media.length);
+  }, [media.length]);
 
   const [selectedMedia, setSelectedMedia] = useState<{ id: string; uri: string; mediaType: "photo" | "video" } | null>(null);
   const [showFullScreen, setShowFullScreen] = useState(false);
@@ -45,6 +54,15 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
   const handleLongPressStart = (item: { id: string; uri: string; mediaType: "photo" | "video" }) => {
     setSelectedMedia(item);
     setShowFullScreen(true);
+  };
+
+  // Tap an item to swap just that one (e.g. a photo you'd rather not share).
+  const handleSwap = async (item: { id: string }) => {
+    const index = media.findIndex((m) => m.id === item.id);
+    if (index === -1 || isUploading) return;
+    Haptics.selectionAsync().catch(() => {});
+    const swapped = await replaceItem(index);
+    if (!swapped) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
   };
 
   if (loading && media.length === 0) {
@@ -59,7 +77,7 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
   }
 
   // In blind mode, show loading screen while uploading
-  if (blindMode && (loading || isUploading || media.length === 0)) {
+  if (blindMode && (loading || media.length === 0)) {
     return (
       <View className="flex-1 bg-black items-center justify-center px-6">
         <ActivityIndicator size="large" color="#ffffff" />
@@ -134,6 +152,12 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
         </View>
       )}
 
+      {blindMode && trustSecondsLeft !== null && (
+        <Text className="text-amber-300 text-sm text-center mb-3" accessibilityLiveRegion="polite">
+          {t("selection.trustCountdown", { seconds: Math.max(0, trustSecondsLeft) })}
+        </Text>
+      )}
+
       {isModal ? (
         <View>
           {loading && media.length === 0 ? (
@@ -145,8 +169,10 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
             <MediaGrid
               items={media}
               columns={4}
-              expectedCount={mediaCount}
+              expectedCount={loading ? mediaCount : undefined}
+              onItemPress={handleSwap}
               onItemLongPressStart={handleLongPressStart}
+              itemAccessibilityHint={t("selection.itemHint")}
             />
           )}
         </View>
@@ -161,8 +187,10 @@ export function SelectionScreen({ isHost, pin, playAgain, onClose }: SelectionSc
             <MediaGrid
               items={media}
               columns={4}
-              expectedCount={mediaCount}
+              expectedCount={loading ? mediaCount : undefined}
+              onItemPress={handleSwap}
               onItemLongPressStart={handleLongPressStart}
+              itemAccessibilityHint={t("selection.itemHint")}
             />
           )}
         </ScrollView>

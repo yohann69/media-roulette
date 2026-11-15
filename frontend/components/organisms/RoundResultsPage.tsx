@@ -84,7 +84,8 @@ export function RoundResultsPage({
   // Check if nobody guessed correctly OR if nobody answered in time
   const hasCorrectGuess = roundResults.results.some((r) => r.isCorrect);
   const hasAnyGuess = roundResults.results.some((r) => !r.tooSlow && r.guessedPlayerId !== null);
-  const shouldShowCorrectAnswer = !hasCorrectGuess || !hasAnyGuess;
+  // The reveal is the best moment of a round: always show whose media it was.
+  const shouldShowCorrectAnswer = true;
   
   // Find the correct owner name
   const correctOwner = allPlayers.find((p) => p.id === roundResults.actualOwnerId);
@@ -176,6 +177,7 @@ export function RoundResultsPage({
                     <View className="flex-row items-center gap-2 mb-1">
                       {guessedPlayer ? (
                         <Text className="text-gray-300 text-sm">
+                          {isCorrect ? "✓ " : "✗ "}
                           {t("leaderboard.guessed")} <Text className="font-semibold">{guessedPlayer.name}</Text>
                         </Text>
                       ) : (

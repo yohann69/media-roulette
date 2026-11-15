@@ -5,6 +5,9 @@ import { useSocket } from "../../stores/useSocket";
 import { compressMediaBatch } from "../../utils/mediaCompression";
 import { storePrepared } from "../../utils/gameMedia";
 
+/** How long players can swap items in blind mode before their media is confirmed. */
+const TRUST_WINDOW_SECONDS = 10;
+
 export function useSelectionScreenLogic(
   params: { isHost?: string; pin?: string; playAgain?: string },
   onClose?: () => void
@@ -32,6 +35,7 @@ export function useSelectionScreenLogic(
     permissionGranted,
     requestPermission,
     fetchMedia,
+    replaceItem,
   } = useMediaFetcher(initialMediaCount, initialMediaType as any);
 
   const [phase, setPhase] = useState<"single" | "photos" | "videos">(
@@ -69,23 +73,25 @@ export function useSelectionScreenLogic(
     initializeMedia();
   }, [room, isHost, isMixMode, phase, initialMediaType]);
 
-  // Auto-upload in blind mode when media is loaded
+  // Blind ("trust") mode: the media is picked for you, but you get a short
+  // window to swap anything you'd rather not share before it's confirmed.
+  const [trustSecondsLeft, setTrustSecondsLeft] = useState<number | null>(null);
   useEffect(() => {
-    if (blindMode && media.length > 0 && !loading && !isUploading && permissionGranted && !blindModeUploadTriggered.current) {
-      console.log("Blind mode: Auto-uploading media without showing selection");
-      blindModeUploadTriggered.current = true;
-      // Use setTimeout to avoid calling handleReady during render
-      const timer = setTimeout(() => {
-        handleReady();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-    // Reset trigger if blind mode is disabled or media changes
-    if (!blindMode || media.length === 0) {
-      blindModeUploadTriggered.current = false;
-    }
+    if (!blindMode || media.length === 0 || loading || isUploading || blindModeUploadTriggered.current) return;
+    blindModeUploadTriggered.current = true;
+    let seconds = TRUST_WINDOW_SECONDS;
+    setTrustSecondsLeft(seconds);
+    const interval = setInterval(() => {
+      seconds -= 1;
+      setTrustSecondsLeft(seconds);
+      if (seconds <= 0) {
+        clearInterval(interval);
+        handleReadyRef.current();
+      }
+    }, 1000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blindMode, media.length, loading, isUploading, permissionGranted]);
+  }, [blindMode, media.length, loading, isUploading]);
 
   const handleReady = async () => {
     if (!pin) return;
@@ -190,6 +196,9 @@ export function useSelectionScreenLogic(
     })();
   };
 
+  const handleReadyRef = useRef(handleReady);
+  handleReadyRef.current = handleReady;
+
   const handleReroll = async () => {
     await fetchMedia(mediaCount, getCurrentMediaType());
   };
@@ -203,8 +212,10 @@ export function useSelectionScreenLogic(
     uploadProgress,
     handleReady,
     handleReroll,
+    replaceItem,
     requestPermission,
     blindMode,
+    trustSecondsLeft,
     mediaCount,
   };
 }

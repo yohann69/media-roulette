@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  streakMultiplier,
   answerTime,
   buildDeck,
   calculateGameStats,
@@ -27,10 +28,22 @@ function makeRoom(playerCount: number, mediaPerPlayer: number): Room {
 }
 
 describe("calculateScore", () => {
-  it("gives 1000 for an instant answer and decreases with time", () => {
-    expect(calculateScore(0)).toBe(1000);
-    expect(calculateScore(1000)).toBeLessThan(calculateScore(500));
-    expect(calculateScore(-5)).toBe(0);
+  it("gives 500 for knowing the answer plus up to 500 for speed", () => {
+    expect(calculateScore(0, 10_000)).toBe(1000);
+    expect(calculateScore(5000, 10_000)).toBe(750);
+    expect(calculateScore(10_000, 10_000)).toBe(500);
+    expect(calculateScore(12_000, 10_000)).toBe(500);
+    expect(calculateScore(-5, 10_000)).toBe(0);
+  });
+
+  it("keeps lag from mattering much: 200 ms costs 2% at most", () => {
+    expect(calculateScore(1000, 5000) - calculateScore(1200, 5000)).toBeLessThanOrEqual(20);
+  });
+});
+
+describe("streakMultiplier", () => {
+  it("adds 10% per consecutive correct answer, capped at 50%", () => {
+    expect([1, 2, 3, 6, 10].map(streakMultiplier)).toEqual([1, 1.1, 1.2, 1.5, 1.5]);
   });
 });
 
@@ -77,10 +90,10 @@ describe("scoreRound", () => {
     const ra = result.results.find((r) => r.playerId === a.id)!;
     const rb = result.results.find((r) => r.playerId === b.id)!;
     expect(ra.isCorrect).toBe(true);
-    expect(ra.roundScore).toBe(calculateScore(500));
+    expect(ra.roundScore).toBe(calculateScore(500, room.settings.timer * 1000));
     expect(rb.isCorrect).toBe(false);
     expect(rb.roundScore).toBe(0);
-    expect(a.score).toBe(calculateScore(500));
+    expect(a.score).toBe(calculateScore(500, room.settings.timer * 1000));
   });
 
   it("marks players who didn't answer as too slow", () => {

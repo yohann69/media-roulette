@@ -20,6 +20,8 @@ export interface GameServerOptions {
   firstRoundDelayMs?: number;
   /** How long owners have to upload the media chosen for the game. */
   collectTimeoutMs?: number;
+  /** Pause after a skipped round before the next media shows. */
+  skipPauseMs?: number;
   /** Media older than this is deleted from disk, whatever the game state (backstop). */
   mediaMaxAgeMs?: number;
 }
@@ -42,6 +44,7 @@ export class GameServer {
   private readonly graceMs: number;
   private readonly firstRoundDelayMs: number;
   private readonly collectTimeoutMs: number;
+  private readonly skipPauseMs: number;
 
   constructor(
     private io: Server,
@@ -50,6 +53,7 @@ export class GameServer {
     this.graceMs = options.reconnectGraceMs ?? 60_000;
     this.firstRoundDelayMs = options.firstRoundDelayMs ?? 2000;
     this.collectTimeoutMs = options.collectTimeoutMs ?? 60_000;
+    this.skipPauseMs = options.skipPauseMs ?? 1500;
     const mediaMaxAge = options.mediaMaxAgeMs ?? 3 * 60 * 60_000;
     const inactivity = options.inactivityTimeoutMs ?? 15 * 60_000;
 
@@ -205,6 +209,11 @@ export class GameServer {
         return;
       }
       this.nextRound(room);
+    });
+
+    onMember("skip-media", (_data, { room, player }) => {
+      if (room.gameState !== "playing" || room.phase !== "round" || room.currentMedia?.ownerId !== player.id) return;
+      this.skipRound(room);
     });
 
     onMember("show-media-again", (_data, { room, player }) => {
@@ -475,6 +484,24 @@ export class GameServer {
    * offline still count: they may come back within the round, and the round timer
    * guarantees nobody waits forever.
    */
+  /**
+   * Drops the current round without scoring it (the owner chose to hide their
+   * media). Nobody learns whose media it was; the next media is shown instead.
+   */
+  private skipRound(room: Room) {
+    this.clearRoundTimer(room.pin);
+    room.phase = null;
+    room.guesses.clear();
+    room.currentRound -= 1; // the skipped media doesn't count as a round
+    this.io.to(room.pin).emit("round-skipped", {});
+    this.roundTimers.set(
+      room.pin,
+      setTimeout(() => {
+        if (this.registry.rooms.has(room.pin) && room.gameState === "playing") this.nextRound(room);
+      }, this.skipPauseMs)
+    );
+  }
+
   private endRoundIfEveryoneGuessed(room: Room) {
     if (room.phase !== "round") return;
     const waitingFor = room.players.filter((p) => !room.guesses.has(p.id));

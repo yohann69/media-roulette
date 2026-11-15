@@ -37,11 +37,12 @@
     "joining": "Joining...",
     "join": "Join",
     "backToHome": "Back to Home",
-    "error": "Failed to join game. Please check the PIN."
+    "error": "Failed to join game. Please check the PIN.",
+    "scanQr": "Scan QR code"
   },
   "selection": {
     "title": "Your Random Media",
-    "description": "{count} random items from your gallery. Tap \"Reroll\" to get new random items.",
+    "description": "{count} random items from your gallery. Tap one to swap it, hold to preview, or tap \"Reroll\" for all new items.",
     "loadingMedia": "Loading your media...",
     "requestingPermission": "Requesting permission...",
     "loadingNewItems": "Loading new items...",
@@ -51,7 +52,9 @@
     "reroll": "Reroll",
     "ready": "Ready",
     "uploading": "Uploading...",
-    "blindModeMessage": "Blind mode: Your media will be a surprise! 🎲"
+    "blindModeMessage": "Blind mode: your media is picked for you 🎲",
+    "trustCountdown": "Blind mode: tap anything you'd rather not share. Confirmed in {seconds} s",
+    "itemHint": "Tap to swap it, hold to preview"
   },
   "lobby": {
     "title": "Game Lobby",
@@ -102,7 +105,9 @@
     "waitingRound": "Waiting for round to start...",
     "timeRemaining": "Time remaining",
     "playAgain": "Play Again",
-    "owner": "Owner"
+    "owner": "Owner",
+    "whoTookVideo": "Who took this video?",
+    "skipped": "Its owner hid this one. Next!"
   },
   "result": {
     "greatGuess": "🎉 Great guess!",
@@ -217,5 +222,14 @@
     "section5Title": "5. Security",
     "section5Body": "We use standard technical measures to protect data in transit between players and the server. However, no online service can be 100% secure, and you should avoid using the app on untrusted networks.",
     "disclaimer": "This policy is a simplified explanation of how the app handles data and may not cover all legal requirements in your country. For full legal compliance, please have it reviewed by a qualified lawyer."
+  },
+  "permissionInfo": {
+    "title": "How your photos are used",
+    "point1": "The game picks random photos and videos from your library.",
+    "point2": "You see them first and can swap any you'd rather not share.",
+    "point3": "Only the ones chosen for the game are shared, end-to-end encrypted.",
+    "point4": "Hold your own photo during a round to hide it. Everything is deleted after the game.",
+    "limitedAccess": "You only gave access to some photos. Choose more to play.",
+    "chooseMore": "Choose more photos"
   }
 }

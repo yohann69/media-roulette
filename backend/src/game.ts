@@ -10,10 +10,20 @@ import type {
 
 /** Pure game rules. No I/O, no timers: easy to unit-test. */
 
-/** Score for a correct answer given after `timeTakenMs`: 1000 · e^(−0.0008·t). */
-export function calculateScore(timeTakenMs: number): number {
-  if (!Number.isFinite(timeTakenMs) || timeTakenMs < 0) return 0;
-  return Math.round(1000 * Math.exp(-0.0008 * timeTakenMs));
+/**
+ * Score for a correct answer: 500 for knowing the answer, plus up to 500 more
+ * for speed, decreasing linearly over the round. Speed still matters, but a
+ * correct answer is always worth at least half, so network lag barely matters.
+ */
+export function calculateScore(timeTakenMs: number, roundDurationMs: number): number {
+  if (!Number.isFinite(timeTakenMs) || timeTakenMs < 0 || roundDurationMs <= 0) return 0;
+  const remaining = Math.max(0, 1 - timeTakenMs / roundDurationMs);
+  return Math.round(500 + 500 * remaining);
+}
+
+/** +10% per consecutive correct answer after the first, capped at +50%. */
+export function streakMultiplier(streak: number): number {
+  return 1 + Math.min(0.5, Math.max(0, streak - 1) * 0.1);
 }
 
 /** Upper bounds on what a client may subtract from its answer time. */
@@ -108,8 +118,10 @@ export function scoreRound(room: Room): RoundResultPayload {
     }
 
     const isCorrect = guess.guessedPlayerId === actualOwnerId;
-    const roundScore = isCorrect ? calculateScore(guess.timeTaken) : 0;
     streak = isCorrect ? streak + 1 : 0;
+    const roundScore = isCorrect
+      ? Math.round(calculateScore(guess.timeTaken, room.settings.timer * 1000) * streakMultiplier(streak))
+      : 0;
     room.streaks.set(player.id, streak);
     player.score += roundScore;
     room.roundScores.set(player.id, { roundScore, timeTaken: guess.timeTaken });

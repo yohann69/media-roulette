@@ -37,11 +37,12 @@
     "joining": "Connexion...",
     "join": "Rejoindre",
     "backToHome": "Retour à l'accueil",
-    "error": "Échec de la connexion. Veuillez vérifier le code PIN."
+    "error": "Échec de la connexion. Veuillez vérifier le code PIN.",
+    "scanQr": "Scanner le QR code"
   },
   "selection": {
     "title": "Vos médias aléatoires",
-    "description": "{count} éléments aléatoires de votre galerie. Appuyez sur \"Relancer\" pour obtenir de nouveaux éléments aléatoires.",
+    "description": "{count} éléments aléatoires de votre galerie. Touchez-en un pour le remplacer, maintenez pour l'aperçu, ou appuyez sur \"Relancer\" pour tout changer.",
     "loadingMedia": "Chargement de vos médias...",
     "requestingPermission": "Demande d'autorisation...",
     "loadingNewItems": "Chargement de nouveaux éléments...",
@@ -51,7 +52,9 @@
     "reroll": "Relancer",
     "ready": "Prêt",
     "uploading": "Téléchargement...",
-    "blindModeMessage": "Mode aveugle : Vos médias seront une surprise ! 🎲"
+    "blindModeMessage": "Mode aveugle : vos médias sont choisis pour vous 🎲",
+    "trustCountdown": "Mode aveugle : touchez ce que vous préférez ne pas partager. Confirmé dans {seconds} s",
+    "itemHint": "Touchez pour remplacer, maintenez pour l'aperçu"
   },
   "lobby": {
     "title": "Salle d'attente",
@@ -102,7 +105,9 @@
     "waitingRound": "En attente du début de la manche...",
     "timeRemaining": "Temps restant",
     "playAgain": "Rejouer",
-    "owner": "Propriétaire"
+    "owner": "Propriétaire",
+    "whoTookVideo": "Qui a pris cette vidéo ?",
+    "skipped": "Son propriétaire l'a masquée. Suivante !"
   },
   "result": {
     "greatGuess": "🎉 Bonne réponse !",
@@ -173,5 +178,34 @@
     "rounds": "Manches : {count}",
     "timer": "Minuteur : {seconds}s",
     "mode": "Mode : {emoji} {mode}"
+  },
+  "permissionInfo": {
+    "title": "Comment vos photos sont utilisées",
+    "point1": "Le jeu choisit des photos et vidéos au hasard dans votre galerie.",
+    "point2": "Vous les voyez d'abord et pouvez remplacer celles que vous ne voulez pas partager.",
+    "point3": "Seules celles choisies pour la partie sont partagées, chiffrées de bout en bout.",
+    "point4": "Maintenez votre propre photo pendant une manche pour la masquer. Tout est supprimé après la partie.",
+    "limitedAccess": "Vous n'avez autorisé l'accès qu'à certaines photos. Choisissez-en plus pour jouer.",
+    "chooseMore": "Choisir plus de photos"
+  },
+  "settings": {
+    "title": "Réglages",
+    "mediaSourcesTitle": "Albums exclus",
+    "mediaSourcesSubtitle": "Choisissez les albums à ne jamais utiliser dans le jeu",
+    "legalSectionTitle": "Mentions légales",
+    "terms": "Conditions d'utilisation",
+    "privacy": "Politique de confidentialité",
+    "permissionExplanation": "Nous avons besoin d'accéder à vos albums pour que vous puissiez exclure vos dossiers privés du jeu.",
+    "grantPermission": "Autoriser l'accès",
+    "loadingAlbums": "Chargement des albums...",
+    "noAlbums": "Aucun album trouvé sur cet appareil.",
+    "untitledAlbum": "Album sans titre",
+    "itemsLabel": "éléments"
+  },
+  "privacy": {
+    "title": "Politique de confidentialité"
+  },
+  "terms": {
+    "title": "Conditions d'utilisation"
   }
 }

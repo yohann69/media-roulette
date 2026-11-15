@@ -90,8 +90,32 @@ function toMediaAsset(item: AssetMetadata, kind: "photo" | "video"): MediaAsset 
   };
 }
 
+// Swapping one item at a time shouldn't re-query the library on every tap.
+const CANDIDATE_CACHE_MS = 60_000;
+const candidateCache = new Map<string, { at: number; items: Promise<AssetMetadata[]> }>();
+
+function cachedCandidates(kind: "photo" | "video"): Promise<AssetMetadata[]> {
+  const cached = candidateCache.get(kind);
+  if (cached && Date.now() - cached.at < CANDIDATE_CACHE_MS) return cached.items;
+  const items = queryCandidates(kind);
+  candidateCache.set(kind, { at: Date.now(), items });
+  items.catch(() => candidateCache.delete(kind));
+  return items;
+}
+
+/**
+ * One new random item of the given type, different from everything in `avoidIds`.
+ * Used to swap a single item in the selection grid.
+ */
+export async function pickReplacement(kind: "photo" | "video", avoidIds: Set<string>): Promise<MediaAsset | null> {
+  const excluded = await loadExcludedAssetIds();
+  const candidates = (await cachedCandidates(kind)).filter((item) => !excluded.has(item.id) && !avoidIds.has(item.id));
+  if (candidates.length === 0) return null;
+  return toMediaAsset(candidates[Math.floor(Math.random() * candidates.length)], kind);
+}
+
 async function pickRandom(kind: "photo" | "video", count: number, excluded: Set<string>) {
-  const candidates = (await queryCandidates(kind)).filter((item) => !excluded.has(item.id));
+  const candidates = (await cachedCandidates(kind)).filter((item) => !excluded.has(item.id));
   return shuffle(candidates)
     .slice(0, count)
     .map((item) => toMediaAsset(item, kind));

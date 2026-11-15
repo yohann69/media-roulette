@@ -37,11 +37,12 @@
     "joining": "Wird beigetreten...",
     "join": "Beitreten",
     "backToHome": "Zurück zur Startseite",
-    "error": "Beitritt fehlgeschlagen. Bitte überprüfen Sie die PIN."
+    "error": "Beitritt fehlgeschlagen. Bitte überprüfen Sie die PIN.",
+    "scanQr": "QR-Code scannen"
   },
   "selection": {
     "title": "Ihre zufälligen Medien",
-    "description": "{count} zufällige Elemente aus Ihrer Galerie. Tippen Sie auf \"Neu würfeln\", um neue zufällige Elemente zu erhalten.",
+    "description": "{count} zufällige Elemente aus Ihrer Galerie. Tippen Sie auf eines, um es zu ersetzen, halten Sie es für eine Vorschau, oder tippen Sie auf \"Neu würfeln\" für komplett neue.",
     "loadingMedia": "Ihre Medien werden geladen...",
     "requestingPermission": "Berechtigung wird angefordert...",
     "loadingNewItems": "Neue Elemente werden geladen...",
@@ -51,7 +52,9 @@
     "reroll": "Neu würfeln",
     "ready": "Bereit",
     "uploading": "Wird hochgeladen...",
-    "blindModeMessage": "Blindmodus: Ihre Medien werden eine Überraschung sein! 🎲"
+    "blindModeMessage": "Blindmodus: Deine Medien werden für dich ausgewählt 🎲",
+    "trustCountdown": "Blindmodus: Tippe auf alles, was du nicht teilen möchtest. Bestätigung in {seconds} s",
+    "itemHint": "Tippen zum Ersetzen, halten für eine Vorschau"
   },
   "lobby": {
     "title": "Spiel-Lobby",
@@ -102,7 +105,9 @@
     "waitingRound": "Warten auf Rundenstart...",
     "timeRemaining": "Verbleibende Zeit",
     "playAgain": "Erneut spielen",
-    "owner": "Besitzer"
+    "owner": "Besitzer",
+    "whoTookVideo": "Wer hat dieses Video aufgenommen?",
+    "skipped": "Der Besitzer hat es ausgeblendet. Weiter!"
   },
   "result": {
     "greatGuess": "🎉 Gute Antwort!",
@@ -173,5 +178,34 @@
     "rounds": "Runden: {count}",
     "timer": "Timer: {seconds}s",
     "mode": "Modus: {emoji} {mode}"
+  },
+  "permissionInfo": {
+    "title": "So werden deine Fotos verwendet",
+    "point1": "Das Spiel wählt zufällige Fotos und Videos aus deiner Mediathek.",
+    "point2": "Du siehst sie zuerst und kannst alles ersetzen, was du nicht teilen möchtest.",
+    "point3": "Nur die für das Spiel ausgewählten werden geteilt, Ende-zu-Ende-verschlüsselt.",
+    "point4": "Halte dein eigenes Foto während einer Runde gedrückt, um es auszublenden. Nach dem Spiel wird alles gelöscht.",
+    "limitedAccess": "Du hast nur Zugriff auf einige Fotos erlaubt. Wähle mehr aus, um zu spielen.",
+    "chooseMore": "Mehr Fotos auswählen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "mediaSourcesTitle": "Ausgeschlossene Alben",
+    "mediaSourcesSubtitle": "Wähle Alben, die nie im Spiel verwendet werden sollen",
+    "legalSectionTitle": "Rechtliches",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutzerklärung",
+    "permissionExplanation": "Wir brauchen Zugriff auf deine Alben, damit du private Ordner vom Spiel ausschließen kannst.",
+    "grantPermission": "Zugriff erlauben",
+    "loadingAlbums": "Alben werden geladen...",
+    "noAlbums": "Keine Alben auf diesem Gerät gefunden.",
+    "untitledAlbum": "Album ohne Titel",
+    "itemsLabel": "Elemente"
+  },
+  "privacy": {
+    "title": "Datenschutzerklärung"
+  },
+  "terms": {
+    "title": "Nutzungsbedingungen"
   }
 }

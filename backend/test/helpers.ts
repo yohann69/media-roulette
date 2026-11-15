@@ -20,7 +20,7 @@ export class TestEnv {
   private sockets: Socket[] = [];
 
   async start(options: GameServerOptions = {}) {
-    this.app = createAppServer({ latencyIntervalMs: 60_000, firstRoundDelayMs: 50, ...options });
+    this.app = createAppServer({ latencyIntervalMs: 60_000, firstRoundDelayMs: 50, skipPauseMs: 50, ...options });
     await new Promise<void>((resolve) => this.app.httpServer.listen(0, resolve));
     this.url = `http://localhost:${(this.app.httpServer.address() as AddressInfo).port}`;
   }

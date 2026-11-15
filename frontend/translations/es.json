@@ -37,11 +37,12 @@
     "joining": "Uniéndose...",
     "join": "Unirse",
     "backToHome": "Volver al inicio",
-    "error": "Error al unirse. Por favor verifica el PIN."
+    "error": "Error al unirse. Por favor verifica el PIN.",
+    "scanQr": "Escanear código QR"
   },
   "selection": {
     "title": "Tus medios aleatorios",
-    "description": "{count} elementos aleatorios de tu galería. Toca \"Volver a lanzar\" para obtener nuevos elementos aleatorios.",
+    "description": "{count} elementos aleatorios de tu galería. Toca uno para cambiarlo, mantén pulsado para verlo, o toca \"Volver a lanzar\" para cambiarlos todos.",
     "loadingMedia": "Cargando tus medios...",
     "requestingPermission": "Solicitando permiso...",
     "loadingNewItems": "Cargando nuevos elementos...",
@@ -51,7 +52,9 @@
     "reroll": "Volver a lanzar",
     "ready": "Listo",
     "uploading": "Subiendo...",
-    "blindModeMessage": "Modo ciego: ¡Tus medios serán una sorpresa! 🎲"
+    "blindModeMessage": "Modo a ciegas: tus archivos se eligen por ti 🎲",
+    "trustCountdown": "Modo a ciegas: toca lo que prefieras no compartir. Se confirma en {seconds} s",
+    "itemHint": "Toca para cambiarlo, mantén pulsado para verlo"
   },
   "lobby": {
     "title": "Sala de espera",
@@ -102,7 +105,9 @@
     "waitingRound": "Esperando que comience la ronda...",
     "timeRemaining": "Tiempo restante",
     "playAgain": "Jugar de nuevo",
-    "owner": "Propietario"
+    "owner": "Propietario",
+    "whoTookVideo": "¿Quién grabó este video?",
+    "skipped": "Su dueño lo ocultó. ¡Siguiente!"
   },
   "result": {
     "greatGuess": "🎉 ¡Buen intento!",
@@ -173,5 +178,34 @@
     "rounds": "Rondas: {count}",
     "timer": "Temporizador: {seconds}s",
     "mode": "Modo: {emoji} {mode}"
+  },
+  "permissionInfo": {
+    "title": "Cómo se usan tus fotos",
+    "point1": "El juego elige fotos y videos al azar de tu galería.",
+    "point2": "Los ves primero y puedes cambiar los que prefieras no compartir.",
+    "point3": "Solo se comparten los elegidos para la partida, cifrados de extremo a extremo.",
+    "point4": "Mantén pulsada tu propia foto durante una ronda para ocultarla. Todo se borra después de la partida.",
+    "limitedAccess": "Solo diste acceso a algunas fotos. Elige más para jugar.",
+    "chooseMore": "Elegir más fotos"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "mediaSourcesTitle": "Álbumes excluidos",
+    "mediaSourcesSubtitle": "Elige los álbumes que nunca quieres usar en el juego",
+    "legalSectionTitle": "Legal",
+    "terms": "Términos y condiciones",
+    "privacy": "Política de privacidad",
+    "permissionExplanation": "Necesitamos acceder a tus álbumes para que puedas excluir carpetas privadas del juego.",
+    "grantPermission": "Dar permiso",
+    "loadingAlbums": "Cargando álbumes...",
+    "noAlbums": "No se encontraron álbumes en este dispositivo.",
+    "untitledAlbum": "Álbum sin título",
+    "itemsLabel": "elementos"
+  },
+  "privacy": {
+    "title": "Política de privacidad"
+  },
+  "terms": {
+    "title": "Términos y condiciones"
   }
 }

@@ -37,11 +37,12 @@
     "joining": "Unione in corso...",
     "join": "Unisciti",
     "backToHome": "Torna alla home",
-    "error": "Impossibile unirsi. Controlla il PIN."
+    "error": "Impossibile unirsi. Controlla il PIN.",
+    "scanQr": "Scansiona codice QR"
   },
   "selection": {
     "title": "I tuoi media casuali",
-    "description": "{count} elementi casuali dalla tua galleria. Tocca \"Rilancia\" per ottenere nuovi elementi casuali.",
+    "description": "{count} elementi casuali dalla tua galleria. Tocca un elemento per sostituirlo, tieni premuto per l'anteprima, o tocca \"Rilancia\" per cambiarli tutti.",
     "loadingMedia": "Caricamento dei tuoi media...",
     "requestingPermission": "Richiesta autorizzazione...",
     "loadingNewItems": "Caricamento nuovi elementi...",
@@ -51,7 +52,9 @@
     "reroll": "Rilancia",
     "ready": "Pronto",
     "uploading": "Caricamento...",
-    "blindModeMessage": "Modalità cieca: I tuoi media saranno una sorpresa! 🎲"
+    "blindModeMessage": "Modalità alla cieca: i tuoi media vengono scelti per te 🎲",
+    "trustCountdown": "Modalità alla cieca: tocca ciò che preferisci non condividere. Conferma tra {seconds} s",
+    "itemHint": "Tocca per sostituirlo, tieni premuto per l'anteprima"
   },
   "lobby": {
     "title": "Sala d'attesa",
@@ -102,7 +105,9 @@
     "waitingRound": "In attesa dell'inizio del round...",
     "timeRemaining": "Tempo rimanente",
     "playAgain": "Gioca di nuovo",
-    "owner": "Proprietario"
+    "owner": "Proprietario",
+    "whoTookVideo": "Chi ha girato questo video?",
+    "skipped": "Il proprietario l'ha nascosto. Prossimo!"
   },
   "result": {
     "greatGuess": "🎉 Ottima risposta!",
@@ -173,5 +178,34 @@
     "rounds": "Round: {count}",
     "timer": "Timer: {seconds}s",
     "mode": "Modalità: {emoji} {mode}"
+  },
+  "permissionInfo": {
+    "title": "Come vengono usate le tue foto",
+    "point1": "Il gioco sceglie foto e video a caso dalla tua galleria.",
+    "point2": "Li vedi prima e puoi sostituire quelli che preferisci non condividere.",
+    "point3": "Vengono condivisi solo quelli scelti per la partita, crittografati end-to-end.",
+    "point4": "Tieni premuta una tua foto durante un round per nasconderla. Tutto viene eliminato dopo la partita.",
+    "limitedAccess": "Hai dato accesso solo ad alcune foto. Scegline altre per giocare.",
+    "chooseMore": "Scegli altre foto"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "mediaSourcesTitle": "Album esclusi",
+    "mediaSourcesSubtitle": "Scegli gli album da non usare mai nel gioco",
+    "legalSectionTitle": "Note legali",
+    "terms": "Termini e condizioni",
+    "privacy": "Informativa sulla privacy",
+    "permissionExplanation": "Abbiamo bisogno di accedere ai tuoi album per permetterti di escludere le cartelle private dal gioco.",
+    "grantPermission": "Concedi l'accesso",
+    "loadingAlbums": "Caricamento album...",
+    "noAlbums": "Nessun album trovato su questo dispositivo.",
+    "untitledAlbum": "Album senza titolo",
+    "itemsLabel": "elementi"
+  },
+  "privacy": {
+    "title": "Informativa sulla privacy"
+  },
+  "terms": {
+    "title": "Termini e condizioni"
   }
 }

@@ -37,11 +37,12 @@
     "joining": "Entrando...",
     "join": "Entrar",
     "backToHome": "Voltar ao início",
-    "error": "Falha ao entrar. Verifique o PIN."
+    "error": "Falha ao entrar. Verifique o PIN.",
+    "scanQr": "Ler código QR"
   },
   "selection": {
     "title": "Seus mídias aleatórias",
-    "description": "{count} itens aleatórios da sua galeria. Toque em \"Rolar novamente\" para obter novos itens aleatórios.",
+    "description": "{count} itens aleatórios da sua galeria. Toque num item para trocá-lo, mantenha pressionado para ver, ou toque em \"Rolar novamente\" para trocar todos.",
     "loadingMedia": "Carregando suas mídias...",
     "requestingPermission": "Solicitando permissão...",
     "loadingNewItems": "Carregando novos itens...",
@@ -51,7 +52,9 @@
     "reroll": "Rolar novamente",
     "ready": "Pronto",
     "uploading": "Enviando...",
-    "blindModeMessage": "Modo cego: Suas mídias serão uma surpresa! 🎲"
+    "blindModeMessage": "Modo às cegas: os seus ficheiros são escolhidos por si 🎲",
+    "trustCountdown": "Modo às cegas: toque no que preferir não partilhar. Confirmado em {seconds} s",
+    "itemHint": "Toque para trocar, mantenha pressionado para ver"
   },
   "lobby": {
     "title": "Sala de espera",
@@ -102,7 +105,9 @@
     "waitingRound": "Aguardando início da rodada...",
     "timeRemaining": "Tempo restante",
     "playAgain": "Jogar novamente",
-    "owner": "Proprietário"
+    "owner": "Proprietário",
+    "whoTookVideo": "Quem gravou este vídeo?",
+    "skipped": "O dono escondeu este. Próximo!"
   },
   "result": {
     "greatGuess": "🎉 Ótimo palpite!",
@@ -173,5 +178,34 @@
     "rounds": "Rodadas: {count}",
     "timer": "Timer: {seconds}s",
     "mode": "Modo: {emoji} {mode}"
+  },
+  "permissionInfo": {
+    "title": "Como as suas fotos são usadas",
+    "point1": "O jogo escolhe fotos e vídeos ao acaso da sua galeria.",
+    "point2": "Vê-os primeiro e pode trocar os que preferir não partilhar.",
+    "point3": "Só os escolhidos para o jogo são partilhados, encriptados de ponta a ponta.",
+    "point4": "Mantenha pressionada a sua própria foto durante uma ronda para a esconder. Tudo é apagado depois do jogo.",
+    "limitedAccess": "Só deu acesso a algumas fotos. Escolha mais para jogar.",
+    "chooseMore": "Escolher mais fotos"
+  },
+  "settings": {
+    "title": "Definições",
+    "mediaSourcesTitle": "Álbuns excluídos",
+    "mediaSourcesSubtitle": "Escolha os álbuns que nunca quer usar no jogo",
+    "legalSectionTitle": "Legal",
+    "terms": "Termos e condições",
+    "privacy": "Política de privacidade",
+    "permissionExplanation": "Precisamos de acesso aos seus álbuns para que possa excluir pastas privadas do jogo.",
+    "grantPermission": "Dar permissão",
+    "loadingAlbums": "A carregar álbuns...",
+    "noAlbums": "Nenhum álbum encontrado neste dispositivo.",
+    "untitledAlbum": "Álbum sem título",
+    "itemsLabel": "itens"
+  },
+  "privacy": {
+    "title": "Política de privacidade"
+  },
+  "terms": {
+    "title": "Termos e condições"
   }
 }
