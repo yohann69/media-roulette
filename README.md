@@ -9,14 +9,10 @@ Everyone joins with the 6-digit PIN, the QR code, or an invite link shared from 
 - **Photos, Videos, Mix:** what gets picked from each library.
 - **Blind Mode:** the media is picked for you, with a 10-second window to remove anything.
 - **Time Machine:** also guess the year the photo was taken (up to 300 bonus points).
-- **Slow Reveal:** every photo starts pixelated and sharpens as time runs out (in the other modes, every fourth photo does).
+- **Slow Reveal:** every photo starts pixelated and sharpens as time runs out.
+- **Caption:** no guessing. Everyone writes a caption for each photo, then votes for the best one without seeing who wrote it (100 points per vote).
 
-Party extras, switched on by the host in the lobby, come up every third round (alternating when both are on):
-
-- **Caption This:** everyone writes a caption for the photo just revealed, then votes for the funniest (100 points per vote).
-- **Story Time:** the photo's owner tells the story behind it; each player who applauds gives them 50 points.
-
-Rematch in the same room to play a series, and share a recap image of the podium at the end.
+After a game, each player chooses whether to play again: the first one to tap "Play again" starts the rematch and hosts it, the others can join it from the podium. Points and wins add up over rematches, and the podium can be shared as an image.
 
 ## Project layout
 

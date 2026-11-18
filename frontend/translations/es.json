@@ -19,7 +19,9 @@
     "pts": "pts",
     "nobody": "Nadie",
     "insufficientMedia": "Medios insuficientes",
-    "notEnoughMediaForMode": "¡Necesitas capturar más medios antes de jugar!\n\nRequerido:\n{required}\n\nDisponible:\n{available}"
+    "notEnoughMediaForMode": "¡Necesitas capturar más medios antes de jugar!\n\nRequerido:\n{required}\n\nDisponible:\n{available}",
+    "connectionError": "Error de conexión",
+    "connectionFailed": "No se puede conectar con el servidor del juego. Revisa tu conexión a internet e inténtalo de nuevo."
   },
   "home": {
     "username": "Nombre de usuario",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "¿Seguro que quieres salir? Un jugador aleatorio se convertirá en el nuevo anfitrión.",
     "confirmLeave": "Sí, salir",
     "stayInGame": "Quedarse",
-    "shareInvite": "Compartir invitación",
-    "inviteMessage": "¡Únete a mi partida de Media Roulette! PIN: {pin}\n{link}",
     "you": "Tú",
     "seriesWins": {
       "one": "{count} partida ganada",
@@ -111,7 +111,8 @@
     "blindMode": "Modo ciego",
     "blindModeDescription": "Omitir selección de medios - ¡los medios aleatorios serán una sorpresa para todos! 🎲",
     "timeMachine": "⏳ Máquina del tiempo",
-    "slowReveal": "🔍 Revelación lenta"
+    "slowReveal": "🔍 Revelación lenta",
+    "captionMode": "✍️ Pie de foto"
   },
   "game": {
     "round": "Ronda {current} de {total}",
@@ -125,7 +126,8 @@
     "skipped": "Su dueño lo ocultó. ¡Siguiente!",
     "shareRecap": "Compartir",
     "whenWasItTaken": "¿Cuándo se tomó?",
-    "slowReveal": "🔍 Revelación lenta: se va aclarando…"
+    "slowReveal": "🔍 Revelación lenta: se va aclarando…",
+    "joinRematch": "Unirse a la revancha de {name}"
   },
   "result": {
     "greatGuess": "🎉 ¡Buen intento!",
@@ -169,7 +171,8 @@
     "fooled": "engañó {count}×",
     "roundNumber": "Ronda {round}",
     "seriesTitle": "Serie",
-    "seriesSubtitle": "Tras {count} partidas en esta sala"
+    "seriesSubtitle": "Tras {count} partidas en esta sala",
+    "bestCaption": "Mejor pie de foto"
   },
   "warning": {
     "waitForPlayers": "Esperar jugadores",
@@ -215,8 +218,8 @@
   },
   "settings": {
     "title": "Ajustes",
-    "mediaSourcesTitle": "Álbumes excluidos",
-    "mediaSourcesSubtitle": "Elige los álbumes que nunca quieres usar en el juego",
+    "mediaSourcesTitle": "Álbumes en el juego",
+    "mediaSourcesSubtitle": "Elige de qué álbumes puede elegir el juego",
     "legalSectionTitle": "Legal",
     "terms": "Términos y condiciones",
     "privacy": "Política de privacidad",
@@ -234,13 +237,9 @@
     "title": "Términos y condiciones"
   },
   "extras": {
-    "title": "Extras de fiesta",
-    "captionThis": "✍️ Pon un pie de foto",
-    "storyTime": "🎤 La historia",
-    "hint": "Cada 3 rondas. Toca para activar o desactivar.",
     "secondsLeft": "Quedan {seconds} s",
     "captionTitle": "✍️ Pon un pie de foto",
-    "captionPrompt": "Escribe el pie de foto más gracioso",
+    "captionPrompt": "Ponle un pie a esta foto: gana el más gracioso",
     "captionPlaceholder": "Tu pie de foto…",
     "sendCaption": "Enviar",
     "updateCaption": "Cambiar mi pie de foto",
@@ -253,13 +252,17 @@
     "votes": {
       "one": "{count} voto",
       "other": "{count} votos"
-    },
-    "storyTitle": "🎤 La historia",
-    "storyYourTurn": "Te toca: ¡cuenta la historia detrás de esta!",
-    "storyPrompt": "{name} cuenta la historia detrás de esta",
-    "storyDone": "Ya está",
-    "applaud": "👏 Aplaudir",
-    "applauded": "👏 ¡Aplaudido!",
-    "storyResult": "{name} recibió 👏 ×{count} (+{points} pts)"
+    }
+  },
+  "albums": {
+    "title": "Álbumes en el juego",
+    "explanation": "Desactiva los álbumes que el juego no debe usar nunca (fotos privadas, trabajo, documentos…). Solo afecta a este teléfono.",
+    "allUsed": "Se usan todos los álbumes",
+    "summary": "{excluded} de {total} álbumes excluidos",
+    "search": "Buscar un álbum",
+    "useAll": "Usar todos",
+    "excludeAll": "Excluir todos",
+    "noResults": "Ningún álbum coincide con tu búsqueda.",
+    "systemAlbums": "Álbumes del sistema"
   }
 }

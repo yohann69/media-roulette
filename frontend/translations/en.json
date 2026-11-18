@@ -19,7 +19,9 @@
     "pts": "pts",
     "nobody": "Nobody",
     "insufficientMedia": "Insufficient Media",
-    "notEnoughMediaForMode": "You need to capture more media before playing!\n\nRequired:\n{required}\n\nAvailable:\n{available}"
+    "notEnoughMediaForMode": "You need to capture more media before playing!\n\nRequired:\n{required}\n\nAvailable:\n{available}",
+    "connectionError": "Connection error",
+    "connectionFailed": "Can't reach the game server. Check your internet connection and try again."
   },
   "home": {
     "username": "Username",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "Are you sure you want to leave? A random player will become the new host.",
     "confirmLeave": "Yes, leave",
     "stayInGame": "Stay",
-    "shareInvite": "Share invite",
-    "inviteMessage": "Join my Media Roulette game! PIN: {pin}\n{link}",
     "you": "You",
     "seriesWins": {
       "one": "{count} game won",
@@ -111,7 +111,8 @@
     "blindMode": "Blind Mode",
     "blindModeDescription": "Skip media selection - random medias will be a surprise for everyone! 🎲",
     "timeMachine": "⏳ Time Machine",
-    "slowReveal": "🔍 Slow Reveal"
+    "slowReveal": "🔍 Slow Reveal",
+    "captionMode": "✍️ Caption"
   },
   "game": {
     "round": "Round {current} of {total}",
@@ -125,7 +126,8 @@
     "skipped": "Its owner hid this one. Next!",
     "shareRecap": "Share",
     "whenWasItTaken": "When was it taken?",
-    "slowReveal": "🔍 Slow reveal: it gets sharper…"
+    "slowReveal": "🔍 Slow reveal: it gets sharper…",
+    "joinRematch": "Join {name}'s rematch"
   },
   "result": {
     "greatGuess": "🎉 Great guess!",
@@ -169,7 +171,8 @@
     "fooled": "fooled {count}×",
     "roundNumber": "Round {round}",
     "seriesTitle": "Series",
-    "seriesSubtitle": "After {count} games in this room"
+    "seriesSubtitle": "After {count} games in this room",
+    "bestCaption": "Best caption"
   },
   "warning": {
     "waitForPlayers": "Wait for players",
@@ -206,8 +209,8 @@
   },
   "settings": {
     "title": "Settings",
-    "mediaSourcesTitle": "Excluded albums",
-    "mediaSourcesSubtitle": "Pick albums you never want to use in the game",
+    "mediaSourcesTitle": "Albums in the game",
+    "mediaSourcesSubtitle": "Choose which albums the game can pick from",
     "legalSectionTitle": "Legal",
     "terms": "Terms & Conditions",
     "privacy": "Privacy Policy",
@@ -258,13 +261,9 @@
     "chooseMore": "Choose more photos"
   },
   "extras": {
-    "title": "Party extras",
-    "captionThis": "✍️ Caption This",
-    "storyTime": "🎤 Story Time",
-    "hint": "Every 3rd round. Tap to switch on or off.",
     "secondsLeft": "{seconds}s left",
     "captionTitle": "✍️ Caption This",
-    "captionPrompt": "Write the funniest caption for this one",
+    "captionPrompt": "Caption this photo: the funniest one wins",
     "captionPlaceholder": "Your caption…",
     "sendCaption": "Send",
     "updateCaption": "Update my caption",
@@ -277,13 +276,17 @@
     "votes": {
       "one": "{count} vote",
       "other": "{count} votes"
-    },
-    "storyTitle": "🎤 Story Time",
-    "storyYourTurn": "Your turn: tell everyone the story behind this one!",
-    "storyPrompt": "{name} tells the story behind this one",
-    "storyDone": "I'm done",
-    "applaud": "👏 Applaud",
-    "applauded": "👏 Applauded!",
-    "storyResult": "{name} got 👏 ×{count} (+{points} pts)"
+    }
+  },
+  "albums": {
+    "title": "Albums in the game",
+    "explanation": "Switch off the albums the game should never pick from (private photos, work, documents…). This only applies to this phone.",
+    "allUsed": "All albums are used",
+    "summary": "{excluded} of {total} albums excluded",
+    "search": "Search an album",
+    "useAll": "Use all",
+    "excludeAll": "Exclude all",
+    "noResults": "No album matches your search.",
+    "systemAlbums": "System albums"
   }
 }

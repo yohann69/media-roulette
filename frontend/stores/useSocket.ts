@@ -37,9 +37,8 @@ export interface Room {
     blindMode?: boolean;
     timeMachine?: boolean;
     slowReveal?: boolean;
-    /** Party extras, every few rounds. */
-    captionThis?: boolean;
-    storyTime?: boolean;
+    /** Caption mode: players caption each photo and vote for the best caption. */
+    captionMode?: boolean;
   };
   gameState: "lobby" | "syncing" | "playing" | "finished";
   /** Games finished in this room (rematches keep the room). */
@@ -104,7 +103,7 @@ interface SocketState {
   joinGame: (pin: string, playerName: string) => Promise<boolean>;
   leaveGame: (pin: string) => Promise<void>;
   setPlayerState: (pin: string, state: PlayerState) => Promise<void>;
-  setMediaPool: (pin: string, mediaPool: any[], playAgain?: boolean) => Promise<boolean>;
+  setMediaPool: (pin: string, mediaPool: any[]) => Promise<boolean>;
   prepareGame: (pin: string, updatedSettings?: any) => Promise<void>;
   notifySyncComplete: (pin: string) => Promise<void>;
   submitGuess: (pin: string, targetUser: string, displayDelayMs?: number) => Promise<boolean>;
@@ -113,17 +112,18 @@ interface SocketState {
   /** Host only: removes a player from the lobby. */
   kickPlayer: (pin: string, playerId: string) => void;
   /** Host, in the lobby: turns the party extras on or off. */
-  updateExtras: (pin: string, extras: { captionThis?: boolean; storyTime?: boolean }) => void;
   submitCaption: (pin: string, text: string) => Promise<boolean>;
   voteCaption: (pin: string, captionId: string) => void;
-  applaud: (pin: string) => void;
-  endStory: (pin: string) => void;
   continueGame: (pin: string) => Promise<boolean>;
   showMediaAgain: (pin: string) => void;
   /** Hides our own media during its round (the round is dropped). */
   skipMedia: (pin: string) => void;
   hideMediaAgain: (pin: string) => void;
-  playAgain: (pin: string) => Promise<boolean>;
+  /**
+   * After a game: starts the rematch (we become host of a new room) or joins the
+   * one another player started. Returns the new room's PIN, or null.
+   */
+  rematch: (pin: string) => Promise<{ pin: string; isHost: boolean } | null>;
 }
 
 // Override with EXPO_PUBLIC_SERVER_URL (e.g. in .env.local) to use a self-hosted or local server.
@@ -360,13 +360,13 @@ export const useSocket = create<SocketState>((set, get) => {
       get().socket?.emit("set-player-state", { pin, state });
     },
 
-    setMediaPool: async (pin, mediaPool, playAgain) => {
+    setMediaPool: async (pin, mediaPool) => {
       const { socket } = get();
       if (!socket?.connected) return false;
       const res = await request<{ success: boolean }>(
         socket,
         "set-media-pool",
-        { pin, mediaPool, playAgain: !!playAgain },
+        { pin, mediaPool },
         "media-pool-set",
         ["error"],
         15000
@@ -402,10 +402,6 @@ export const useSocket = create<SocketState>((set, get) => {
       get().socket?.emit("kick-player", { pin, playerId });
     },
 
-    updateExtras: (pin, extras) => {
-      get().socket?.emit("update-extras", { pin, ...extras });
-    },
-
     submitCaption: async (pin, text) => {
       const { socket } = get();
       if (!socket?.connected) return false;
@@ -415,14 +411,6 @@ export const useSocket = create<SocketState>((set, get) => {
 
     voteCaption: (pin, captionId) => {
       get().socket?.emit("vote-caption", { pin, captionId });
-    },
-
-    applaud: (pin) => {
-      get().socket?.emit("applaud", { pin });
-    },
-
-    endStory: (pin) => {
-      get().socket?.emit("end-story", { pin });
     },
 
     continueGame: async (pin) => {
@@ -444,11 +432,18 @@ export const useSocket = create<SocketState>((set, get) => {
       get().socket?.emit("hide-media-again", { pin });
     },
 
-    playAgain: async (pin) => {
+    rematch: async (pin) => {
       const { socket } = get();
-      if (!socket?.connected) return false;
-      const res = await request(socket, "play-again", { pin }, "play-again-initiated");
-      return res.ok;
+      if (!socket?.connected) return null;
+      const publicKey = toBase64(myKeyPair().publicKey);
+      const res = await request<JoinPayload & { created: boolean }>(socket, "rematch", { pin, publicKey }, "rematch-entered");
+      if (!res.ok) return null;
+      // Leave the finished game behind (its media is already gone), then enter the new room.
+      resetGame();
+      enterRoom(res.data);
+      // The player who starts the rematch hosts it and creates its encryption key.
+      if (res.data.created) set({ roomKey: generateRoomKey() });
+      return { pin: res.data.pin, isHost: res.data.created };
     },
   };
 });

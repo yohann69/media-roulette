@@ -19,7 +19,9 @@
     "pts": "分",
     "nobody": "沒有人",
     "insufficientMedia": "媒體不足",
-    "notEnoughMediaForMode": "在遊戲前您需要捕獲更多媒體！\n\n需要：\n{required}\n\n可用：\n{available}"
+    "notEnoughMediaForMode": "在遊戲前您需要捕獲更多媒體！\n\n需要：\n{required}\n\n可用：\n{available}",
+    "connectionError": "連線錯誤",
+    "connectionFailed": "無法連線到遊戲伺服器。請檢查網路連線後再試一次。"
   },
   "home": {
     "username": "用戶名",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "確定要離開嗎？將隨機選擇一名玩家成為新房主。",
     "confirmLeave": "是的，離開",
     "stayInGame": "留下",
-    "shareInvite": "分享邀請",
-    "inviteMessage": "來玩我的 Media Roulette 遊戲！PIN：{pin}\n{link}",
     "you": "你",
     "seriesWins": "贏了 {count} 局",
     "removePlayer": "移除 {name}",
@@ -108,7 +108,8 @@
     "blindMode": "盲選模式",
     "blindModeDescription": "跳過媒體選擇 - 隨機媒體對所有人來說都是驚喜！🎲",
     "timeMachine": "⏳ 時光機",
-    "slowReveal": "🔍 慢慢揭曉"
+    "slowReveal": "🔍 慢慢揭曉",
+    "captionMode": "✍️ 配文"
   },
   "game": {
     "round": "第 {current} 回合，共 {total} 回合",
@@ -122,7 +123,8 @@
     "skipped": "它的主人隱藏了它。下一個！",
     "shareRecap": "分享",
     "whenWasItTaken": "這是哪一年拍的？",
-    "slowReveal": "🔍 慢慢揭曉：畫面會越來越清晰…"
+    "slowReveal": "🔍 慢慢揭曉：畫面會越來越清晰…",
+    "joinRematch": "加入 {name} 的再來一局"
   },
   "result": {
     "greatGuess": "🎉 猜對了！",
@@ -166,7 +168,8 @@
     "fooled": "騙過 {count} 次",
     "roundNumber": "第 {round} 輪",
     "seriesTitle": "系列賽",
-    "seriesSubtitle": "本房間已進行 {count} 局"
+    "seriesSubtitle": "本房間已進行 {count} 局",
+    "bestCaption": "最佳配文"
   },
   "warning": {
     "waitForPlayers": "等待玩家",
@@ -212,8 +215,8 @@
   },
   "settings": {
     "title": "設定",
-    "mediaSourcesTitle": "排除的相簿",
-    "mediaSourcesSubtitle": "選擇永遠不在遊戲中使用的相簿",
+    "mediaSourcesTitle": "遊戲中使用的相簿",
+    "mediaSourcesSubtitle": "選擇遊戲可以從哪些相簿挑選",
     "legalSectionTitle": "法律資訊",
     "terms": "條款與條件",
     "privacy": "隱私權政策",
@@ -231,13 +234,9 @@
     "title": "條款與條件"
   },
   "extras": {
-    "title": "派對附加玩法",
-    "captionThis": "✍️ 配文",
-    "storyTime": "🎤 講故事",
-    "hint": "每 3 輪一次。點按開啟或關閉。",
     "secondsLeft": "剩餘 {seconds} 秒",
     "captionTitle": "✍️ 配文",
-    "captionPrompt": "為這張寫一句最搞笑的配文",
+    "captionPrompt": "為這張照片配文：最搞笑的獲勝",
     "captionPlaceholder": "你的配文…",
     "sendCaption": "傳送",
     "updateCaption": "修改我的配文",
@@ -247,13 +246,17 @@
     "yourCaption": "你的配文（不能投給自己）",
     "captionResultsTitle": "😂 最搞笑的配文",
     "noCaptions": "這次沒有人寫配文。",
-    "votes": "{count} 票",
-    "storyTitle": "🎤 講故事",
-    "storyYourTurn": "輪到你了：講講這張背後的故事！",
-    "storyPrompt": "{name} 正在講這張背後的故事",
-    "storyDone": "講完了",
-    "applaud": "👏 鼓掌",
-    "applauded": "👏 已鼓掌！",
-    "storyResult": "{name} 獲得 👏 ×{count}（+{points} 分）"
+    "votes": "{count} 票"
+  },
+  "albums": {
+    "title": "遊戲中使用的相簿",
+    "explanation": "關閉遊戲絕不應使用的相簿（私人照片、工作、文件…）。此設定僅適用於本手機。",
+    "allUsed": "所有相簿皆已使用",
+    "summary": "已排除 {excluded}/{total} 個相簿",
+    "search": "搜尋相簿",
+    "useAll": "全部使用",
+    "excludeAll": "全部排除",
+    "noResults": "沒有符合的相簿。",
+    "systemAlbums": "系統相簿"
   }
 }

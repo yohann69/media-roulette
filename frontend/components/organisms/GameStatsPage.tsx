@@ -16,6 +16,8 @@ interface GameStats {
   worstPlayer: { playerName: string | null; score: number; correctAnswers?: number; totalRounds?: number };
   hardestRound: { round: number | null; correctCount: number };
   masterOfDisguise?: { playerName: string | null; fooled: number };
+  /** Caption mode: the most voted caption. */
+  bestCaption?: { playerName: string; text: string; votes: number } | null;
 }
 
 export interface SeriesEntry {
@@ -176,6 +178,20 @@ export function GameStatsPage({ leaderboard, stats, series, gamesPlayed = 0, rec
           </View>
         )}
 
+        {/* Caption mode: the most voted caption */}
+        {!!stats.bestCaption && (
+          <View className="bg-pink-900/30 border-2 border-pink-500 rounded-2xl py-4 px-5">
+            <View className="flex-row items-center mb-2">
+              <Text className="text-3xl mr-3">✍️</Text>
+              <Text className="text-gray-300 text-xl">{t("stats.bestCaption")}</Text>
+            </View>
+            <Text className="text-white text-lg">“{stats.bestCaption.text}”</Text>
+            <Text className="text-pink-300 text-sm mt-1">
+              {stats.bestCaption.playerName} · {t("extras.votes", { count: stats.bestCaption.votes })}
+            </Text>
+          </View>
+        )}
+
         {/* Master of disguise: whose media fooled the most guesses */}
         {!!stats.masterOfDisguise?.playerName && stats.masterOfDisguise.fooled > 0 && (
           <View className="bg-purple-900/30 border-2 border-purple-500 rounded-2xl py-4 px-5">
@@ -195,7 +211,7 @@ export function GameStatsPage({ leaderboard, stats, series, gamesPlayed = 0, rec
         )}
 
         {/* Worst Player */}
-        {stats.worstPlayer.playerName && (
+        {stats.worstPlayer.playerName && !!stats.worstPlayer.totalRounds && (
           <View className="bg-gray-800 border-2 border-gray-700 rounded-2xl py-4 px-5">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">

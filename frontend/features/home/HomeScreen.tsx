@@ -39,6 +39,7 @@ const MODE_COLORS = {
   Blind: "#ef4444", // Red
   TimeMachine: "#14b8a6", // Teal
   SlowReveal: "#6366f1", // Indigo
+  Caption: "#ec4899", // Pink
 };
 
 type CreateMode = keyof typeof MODE_COLORS;
@@ -212,6 +213,11 @@ export function HomeScreen() {
 
   const handleRoundsSelect = (roundsValue: number) => {
     setRounds(roundsValue);
+    // Caption mode has no answer timer (writing and voting are timed by the server).
+    if (selectedMode === "Caption") {
+      handleSettingsConfirm(5, roundsValue);
+      return;
+    }
     setScreenState("create-settings");
   };
 
@@ -236,19 +242,21 @@ export function HomeScreen() {
     permissionInfoResolve.current = null;
   };
 
-  const handleSettingsConfirm = async (selectedTimer: number) => {
-    // Blind, Time Machine and Slow Reveal are photo games with an extra rule.
-    const isPhotoVariant = selectedMode === "Blind" || selectedMode === "TimeMachine" || selectedMode === "SlowReveal";
+  const handleSettingsConfirm = async (selectedTimer: number, roundsOverride?: number) => {
+    // Blind, Time Machine, Slow Reveal and Caption are photo games with an extra rule.
+    const isPhotoVariant =
+      selectedMode === "Blind" || selectedMode === "TimeMachine" || selectedMode === "SlowReveal" || selectedMode === "Caption";
     const settings: any = {
-      rounds,
+      rounds: roundsOverride ?? rounds,
       timer: selectedTimer,
       mode: isPhotoVariant ? "Photo" : selectedMode,
       playVideoWithSound: (selectedMode === "Video" || selectedMode === "Mix") ? playVideoWithSound : undefined,
       blindMode: selectedMode === "Blind",
       timeMachine: selectedMode === "TimeMachine",
       slowReveal: selectedMode === "SlowReveal",
+      captionMode: selectedMode === "Caption",
     };
-    const mediaMode = selectedMode === "TimeMachine" || selectedMode === "SlowReveal" ? "Photo" : selectedMode;
+    const mediaMode = isPhotoVariant && selectedMode !== "Blind" ? "Photo" : selectedMode;
 
     // Check media availability before creating game
     await explainPermissionIfNeeded();
@@ -562,6 +570,12 @@ export function HomeScreen() {
                       title={t("gameSettings.slowReveal")}
                       onPress={() => handleModeSelect("SlowReveal")}
                       color={MODE_COLORS.SlowReveal}
+                      visible={true}
+                    />
+                    <WiggleButton
+                      title={t("gameSettings.captionMode")}
+                      onPress={() => handleModeSelect("Caption")}
+                      color={MODE_COLORS.Caption}
                       visible={true}
                     />
                   </View>

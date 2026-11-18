@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { AppState } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { clearGameMedia, isPreparedUri } from "../../utils/gameMedia";
@@ -23,12 +24,11 @@ type GameState =
   | "leaderboard"
   | "podium"
   | "skipped"
-  // Party extras after some rounds
+  // Caption mode
   | "caption"
   | "captionVote"
   | "captionResults"
-  | "story"
-  | "storyEnded";
+;
 
 export interface CaptionChoice {
   id: string;
@@ -59,9 +59,7 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     skipMedia,
     submitCaption,
     voteCaption,
-    applaud,
-    endStory,
-    playAgain,
+    rematch,
     leaveGame,
     setLocalMediaMap,
   } = useSocket();
@@ -87,17 +85,16 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
   const [yearRange, setYearRange] = useState<{ min: number; max: number } | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
-  // Party extras
-  /** When the running extra phase ends, on this phone's clock. */
+  // Caption mode
+  /** When the current caption phase (writing or voting) ends, on this phone's clock. */
   const [extraEndsAt, setExtraEndsAt] = useState(0);
   const [myCaption, setMyCaption] = useState<string | null>(null);
   const [captionChoices, setCaptionChoices] = useState<CaptionChoice[]>([]);
   const [myCaptionVote, setMyCaptionVote] = useState<string | null>(null);
   const [captionResults, setCaptionResults] = useState<CaptionResult[]>([]);
-  const [storyOwner, setStoryOwner] = useState<{ id: string; name: string } | null>(null);
-  const [hasApplauded, setHasApplauded] = useState(false);
-  const [applauseCount, setApplauseCount] = useState(0);
-  const [storyResult, setStoryResult] = useState<{ applause: number; points: number } | null>(null);
+  /** Another player started a rematch: its host's name (we can join it). */
+  const [rematchHost, setRematchHost] = useState<string | null>(null);
+  const [isJoiningRematch, setIsJoiningRematch] = useState(false);
 
   // When the round arrived and when its media became visible on this phone.
   // The difference is sent with the guess so slow loading isn't penalized.
@@ -127,6 +124,19 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     setSelectedYear(null);
     setTimeExpired(data.duration <= 0);
     setTimerActive(false); // starts once the media is on screen (see handleMediaShown)
+    setRoundResults(null);
+    setIsShowingMediaAgain(false);
+    setActualOwnerId(null);
+
+    // Caption mode: no guessing, everyone writes a caption for the photo.
+    if (data.captionEndsInMs != null) {
+      setExtraEndsAt(Date.now() + data.captionEndsInMs);
+      setMyCaption(null);
+      setMyCaptionVote(null);
+      setCaptionChoices([]);
+      setGameState("caption");
+      return;
+    }
     setGameState("reveal");
     setRoundResults(null);
     setIsShowingMediaAgain(false);
@@ -180,16 +190,7 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     setGameState("skipped");
   });
 
-  // ── Party extras ──
-  useSocketEvent("caption-start", ({ endsInMs }: { endsInMs: number }) => {
-    setExtraEndsAt(Date.now() + endsInMs);
-    setMyCaption(null);
-    setMyCaptionVote(null);
-    setCaptionChoices([]);
-    setIsShowingMediaAgain(false);
-    setGameState("caption");
-  });
-
+  // ── Caption mode ──
   useSocketEvent("caption-vote-start", ({ captions, endsInMs }: { captions: CaptionChoice[]; endsInMs: number }) => {
     setExtraEndsAt(Date.now() + endsInMs);
     setCaptionChoices(captions);
@@ -204,28 +205,6 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
     setGameState("captionResults");
-  });
-
-  useSocketEvent("story-start", (data: { ownerId: string; ownerName: string; endsInMs: number }) => {
-    setExtraEndsAt(Date.now() + data.endsInMs);
-    setStoryOwner({ id: data.ownerId, name: data.ownerName });
-    setHasApplauded(false);
-    setApplauseCount(0);
-    setStoryResult(null);
-    setIsShowingMediaAgain(false);
-    setGameState("story");
-  });
-
-  useSocketEvent("applause", ({ count }: { count: number }) => {
-    setApplauseCount(count);
-    if (storyOwner?.id === useSocket.getState().currentPlayerId) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    }
-  });
-
-  useSocketEvent("story-ended", (data: { applause: number; points: number }) => {
-    setStoryResult({ applause: data.applause, points: data.points });
-    setGameState("storyEnded");
   });
 
   const handleSubmitCaption = async (text: string) => {
@@ -244,24 +223,11 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     voteCaption(pin, captionId);
   };
 
-  const handleApplaud = () => {
-    if (!pin || hasApplauded) return;
-    setHasApplauded(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    applaud(pin);
-  };
-
-  const handleEndStory = () => {
-    if (pin) endStory(pin);
-  };
-
   useSocketEvent("show-media-again", () => setIsShowingMediaAgain(true));
   useSocketEvent("hide-media-again", () => setIsShowingMediaAgain(false));
 
-  // Whoever taps "Play again" first sends everyone back to the lobby.
-  useSocketEvent("play-again-initiated", () => {
-    router.replace({ pathname: "/lobby", params: { pin } });
-  });
+  // Another player started a rematch: we can join it from the podium (or not).
+  useSocketEvent("rematch-available", ({ hostName }: { hostName: string }) => setRematchHost(hostName));
 
   /** Called by the media view once the photo or video is actually visible. */
   const handleMediaShown = () => {
@@ -313,7 +279,8 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
 
   /** Long-press on the media: if it's ours, hide it. Does nothing on others' media. */
   const handleMediaLongPress = () => {
-    if (!pin || gameState !== "reveal" || !isPreparedUri(currentMedia?.uri)) return;
+    const hideable = gameState === "reveal" || gameState === "caption";
+    if (!pin || !hideable || !isPreparedUri(currentMedia?.uri)) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     skipMedia(pin);
   };
@@ -323,18 +290,39 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     await continueGame(pin);
   };
 
+  // Whether we're holding "Show again" (we own the photo).
+  const holdingShowAgain = useRef(false);
+
   const handleShowAgainStart = () => {
-    if (pin) showMediaAgain(pin);
+    if (!pin) return;
+    holdingShowAgain.current = true;
+    showMediaAgain(pin);
   };
 
   const handleShowAgainEnd = () => {
-    if (pin) hideMediaAgain(pin);
+    if (!pin || !holdingShowAgain.current) return;
+    holdingShowAgain.current = false;
+    hideMediaAgain(pin);
   };
 
+  // Leaving the app while holding the button: the release may never come.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state !== "active") handleShowAgainEnd();
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin]);
+
+  /** Only we go to the rematch: start it (and host it) or join the one already started. */
   const handlePlayAgain = async () => {
-    if (!pin) return;
-    // Navigation for everyone (including us) happens on "play-again-initiated".
-    await playAgain(pin);
+    if (!pin || isJoiningRematch) return;
+    setIsJoiningRematch(true);
+    const entered = await rematch(pin);
+    setIsJoiningRematch(false);
+    if (entered) {
+      router.replace({ pathname: "/lobby", params: { pin: entered.pin, isHost: entered.isHost ? "true" : "false" } });
+    }
   };
 
   const handleExit = async () => {
@@ -368,14 +356,11 @@ export function useGameScreenLogic(pin: string, _isHost: boolean) {
     captionChoices,
     myCaptionVote,
     captionResults,
-    storyOwner,
-    hasApplauded,
-    applauseCount,
-    storyResult,
+    rematchHost,
+    isJoiningRematch,
     handleSubmitCaption,
     handleVoteCaption,
-    handleApplaud,
-    handleEndStory,
+
     handlePlayerSelect,
     handleTimeExpired,
     handleMediaShown,

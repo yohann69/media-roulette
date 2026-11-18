@@ -57,9 +57,10 @@ describe("yearBonus", () => {
 });
 
 describe("twistFor", () => {
-  it("slow-reveals every fourth round, photos only", () => {
-    expect([1, 2, 3, 4, 8].map((r) => twistFor(r, "photo"))).toEqual([null, null, null, "slowReveal", "slowReveal"]);
-    expect(twistFor(4, "video")).toBeNull();
+  it("pixelates photos only in Slow Reveal mode", () => {
+    expect([1, 2, 3, 4, 8].map((r) => twistFor(r, "photo"))).toEqual([null, null, null, null, null]);
+    expect([1, 4].map((r) => twistFor(r, "photo", true))).toEqual(["slowReveal", "slowReveal"]);
+    expect(twistFor(4, "video", true)).toBeNull();
   });
 });
 

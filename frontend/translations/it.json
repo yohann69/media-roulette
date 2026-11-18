@@ -19,7 +19,9 @@
     "pts": "pts",
     "nobody": "Nessuno",
     "insufficientMedia": "Media insufficienti",
-    "notEnoughMediaForMode": "Devi acquisire più media prima di giocare!\n\nRichiesto:\n{required}\n\nDisponibile:\n{available}"
+    "notEnoughMediaForMode": "Devi acquisire più media prima di giocare!\n\nRichiesto:\n{required}\n\nDisponibile:\n{available}",
+    "connectionError": "Errore di connessione",
+    "connectionFailed": "Impossibile raggiungere il server di gioco. Controlla la connessione a internet e riprova."
   },
   "home": {
     "username": "Nome utente",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "Sei sicuro di voler uscire? Un giocatore casuale diventerà il nuovo host.",
     "confirmLeave": "Sì, esci",
     "stayInGame": "Resta",
-    "shareInvite": "Condividi invito",
-    "inviteMessage": "Gioca con me a Media Roulette! PIN: {pin}\n{link}",
     "you": "Tu",
     "seriesWins": {
       "one": "{count} partita vinta",
@@ -111,7 +111,8 @@
     "blindMode": "Modalità cieca",
     "blindModeDescription": "Salta la selezione media - i media casuali saranno una sorpresa per tutti! 🎲",
     "timeMachine": "⏳ Macchina del tempo",
-    "slowReveal": "🔍 Rivelazione lenta"
+    "slowReveal": "🔍 Rivelazione lenta",
+    "captionMode": "✍️ Didascalia"
   },
   "game": {
     "round": "Round {current} di {total}",
@@ -125,7 +126,8 @@
     "skipped": "Il proprietario l'ha nascosto. Prossimo!",
     "shareRecap": "Condividi",
     "whenWasItTaken": "Quando è stata scattata?",
-    "slowReveal": "🔍 Rivelazione lenta: diventa più nitida…"
+    "slowReveal": "🔍 Rivelazione lenta: diventa più nitida…",
+    "joinRematch": "Unisciti alla rivincita di {name}"
   },
   "result": {
     "greatGuess": "🎉 Ottima risposta!",
@@ -169,7 +171,8 @@
     "fooled": "ha ingannato {count}×",
     "roundNumber": "Round {round}",
     "seriesTitle": "Serie",
-    "seriesSubtitle": "Dopo {count} partite in questa stanza"
+    "seriesSubtitle": "Dopo {count} partite in questa stanza",
+    "bestCaption": "Miglior didascalia"
   },
   "warning": {
     "waitForPlayers": "Aspetta i giocatori",
@@ -215,8 +218,8 @@
   },
   "settings": {
     "title": "Impostazioni",
-    "mediaSourcesTitle": "Album esclusi",
-    "mediaSourcesSubtitle": "Scegli gli album da non usare mai nel gioco",
+    "mediaSourcesTitle": "Album nel gioco",
+    "mediaSourcesSubtitle": "Scegli da quali album il gioco può pescare",
     "legalSectionTitle": "Note legali",
     "terms": "Termini e condizioni",
     "privacy": "Informativa sulla privacy",
@@ -234,13 +237,9 @@
     "title": "Termini e condizioni"
   },
   "extras": {
-    "title": "Extra per la festa",
-    "captionThis": "✍️ Didascalia",
-    "storyTime": "🎤 La storia",
-    "hint": "Ogni 3 round. Tocca per attivare o disattivare.",
     "secondsLeft": "{seconds} s rimasti",
     "captionTitle": "✍️ Didascalia",
-    "captionPrompt": "Scrivi la didascalia più divertente",
+    "captionPrompt": "Scrivi una didascalia: vince la più divertente",
     "captionPlaceholder": "La tua didascalia…",
     "sendCaption": "Invia",
     "updateCaption": "Modifica la mia didascalia",
@@ -253,13 +252,17 @@
     "votes": {
       "one": "{count} voto",
       "other": "{count} voti"
-    },
-    "storyTitle": "🎤 La storia",
-    "storyYourTurn": "Tocca a te: racconta la storia dietro questa!",
-    "storyPrompt": "{name} racconta la storia dietro questa",
-    "storyDone": "Ho finito",
-    "applaud": "👏 Applaudi",
-    "applauded": "👏 Applaudito!",
-    "storyResult": "{name} riceve 👏 ×{count} (+{points} pt)"
+    }
+  },
+  "albums": {
+    "title": "Album nel gioco",
+    "explanation": "Disattiva gli album che il gioco non deve mai usare (foto private, lavoro, documenti…). Vale solo per questo telefono.",
+    "allUsed": "Tutti gli album sono usati",
+    "summary": "{excluded} album esclusi su {total}",
+    "search": "Cerca un album",
+    "useAll": "Usa tutti",
+    "excludeAll": "Escludi tutti",
+    "noResults": "Nessun album corrisponde alla ricerca.",
+    "systemAlbums": "Album di sistema"
   }
 }

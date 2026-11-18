@@ -9,7 +9,7 @@ import { storePrepared } from "../../utils/gameMedia";
 const TRUST_WINDOW_SECONDS = 10;
 
 export function useSelectionScreenLogic(
-  params: { isHost?: string; pin?: string; playAgain?: string },
+  params: { isHost?: string; pin?: string },
   onClose?: () => void
 ) {
   const router = useRouter();
@@ -53,7 +53,6 @@ export function useSelectionScreenLogic(
   
   const isHost = params.isHost === "true";
   const pin = params.pin || "";
-  const playAgain = params.playAgain === "true";
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const blindModeUploadTriggered = useRef(false);
@@ -113,7 +112,7 @@ export function useSelectionScreenLogic(
     await setPlayerState(pin, "compressing");
     setIsUploading(true);
     
-    const updatedIsHost = playAgain ? true : isHost;
+    const updatedIsHost = isHost;
     
     // Navigate immediately.
     // When `onClose` is provided the SelectionScreen is mounted as a modal from
@@ -186,7 +185,7 @@ export function useSelectionScreenLogic(
           mediaType,
           ...(yearById.has(id) ? { year: yearById.get(id) } : {}),
         }));
-        const success = await setMediaPool(pin, uploadedMedia, playAgain);
+        const success = await setMediaPool(pin, uploadedMedia);
         if (!success) {
           console.error("Failed to set media pool");
           setIsUploading(false);

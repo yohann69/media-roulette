@@ -72,11 +72,14 @@ export function CaptionWriteView({
   endsAt,
   submitted,
   onSubmit,
+  onMediaLongPress,
 }: {
   media: MediaItem | null;
   endsAt: number;
   submitted: string | null;
   onSubmit: (text: string) => void;
+  /** Long-press on the photo: its owner can hide it. */
+  onMediaLongPress?: () => void;
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState("");
@@ -96,9 +99,9 @@ export function CaptionWriteView({
     >
       <Header title={t("extras.captionTitle")} subtitle={t("extras.captionPrompt")} endsAt={endsAt} />
       {media && (
-        <View className="items-center">
+        <Pressable className="items-center" onLongPress={onMediaLongPress} delayLongPress={700} accessible={false}>
           <MediaDisplay media={media} />
-        </View>
+        </Pressable>
       )}
       <TextInput
         value={text}
@@ -107,7 +110,11 @@ export function CaptionWriteView({
         placeholderTextColor="#6b7280"
         maxLength={MAX_CAPTION_LENGTH}
         returnKeyType="send"
-        onSubmitEditing={() => canSend && onSubmit(text)}
+        // The event carries the field's exact text (state may lag one keystroke behind).
+        onSubmitEditing={({ nativeEvent }) => {
+          const value = nativeEvent.text.trim();
+          if (value && value !== submitted) onSubmit(nativeEvent.text);
+        }}
         accessibilityLabel={t("extras.captionPrompt")}
         className="bg-gray-800 text-white text-lg rounded-xl px-4 py-4 border-2 border-gray-700"
       />
@@ -206,71 +213,6 @@ export function CaptionResultsView({
           );
         })}
       </View>
-    </Screen>
-  );
-}
-
-// ── Story Time ────────────────────────────────────────────────────────────
-
-export function StoryView({
-  media,
-  endsAt,
-  ownerName,
-  isOwner,
-  hasApplauded,
-  applauseCount,
-  result,
-  onApplaud,
-  onEnd,
-}: {
-  media: MediaItem | null;
-  endsAt: number;
-  ownerName: string;
-  isOwner: boolean;
-  hasApplauded: boolean;
-  /** Applause so far (live). */
-  applauseCount: number;
-  /** Set once the story is over. */
-  result: { applause: number; points: number } | null;
-  onApplaud: () => void;
-  onEnd: () => void;
-}) {
-  const { t } = useTranslation();
-  const footer = result ? null : isOwner ? (
-    <Button title={t("extras.storyDone")} onPress={onEnd} variant="primary" />
-  ) : (
-    <Button
-      title={hasApplauded ? t("extras.applauded") : t("extras.applaud")}
-      onPress={onApplaud}
-      variant="primary"
-      disabled={hasApplauded}
-    />
-  );
-
-  return (
-    <Screen media={media} footer={footer}>
-      <Header
-        title={t("extras.storyTitle")}
-        subtitle={isOwner ? t("extras.storyYourTurn") : t("extras.storyPrompt", { name: ownerName })}
-        endsAt={result ? undefined : endsAt}
-      />
-      {media && (
-        <View className="items-center">
-          <MediaDisplay media={media} />
-        </View>
-      )}
-      {!result && applauseCount > 0 && (
-        <Text className="text-white text-3xl font-bold text-center" accessibilityLiveRegion="polite">
-          👏 ×{applauseCount}
-        </Text>
-      )}
-      {result && (
-        <View className="bg-gray-800 border-2 border-primary rounded-xl p-4">
-          <Text className="text-white text-lg font-semibold text-center">
-            {t("extras.storyResult", { name: ownerName, count: result.applause, points: result.points })}
-          </Text>
-        </View>
-      )}
     </Screen>
   );
 }

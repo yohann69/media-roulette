@@ -41,9 +41,10 @@ async function loadExcludedAssetIds(): Promise<Set<string>> {
   const ids = new Set<string>();
   if (excludedAlbumIds.size === 0) return ids;
 
+  // Metadata only (ids): much lighter than loading full Asset objects.
   const results = await Promise.all(
     Array.from(excludedAlbumIds).map((albumId) =>
-      new Album(albumId).getAssets().catch(() => []) // album may have been deleted
+      new Query().album(new Album(albumId)).exeForMetadata().catch(() => []) // album may have been deleted
     )
   );
   results.forEach((assets) => assets.forEach((asset) => ids.add(asset.id)));

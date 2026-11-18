@@ -11,22 +11,20 @@ import { useSelectionScreenLogic } from "./useSelectionScreenLogic";
 interface SelectionScreenProps {
   isHost?: string;
   pin?: string;
-  playAgain?: string;
   onClose?: () => void;
   /** Called with the number of items currently selected (changes when one is removed). */
   onMediaCountChange?: (count: number) => void;
 }
 
-export function SelectionScreen({ isHost, pin, playAgain, onClose, onMediaCountChange }: SelectionScreenProps) {
+export function SelectionScreen({ isHost, pin, onClose, onMediaCountChange }: SelectionScreenProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ isHost?: string; pin?: string; playAgain?: string }>();
+  const params = useLocalSearchParams<{ isHost?: string; pin?: string }>();
 
   // Use props if provided, otherwise fall back to route params
   const actualParams = {
     isHost: isHost || params.isHost,
     pin: pin || params.pin,
-    playAgain: playAgain || params.playAgain,
   };
 
   const {

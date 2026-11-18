@@ -19,7 +19,9 @@
     "pts": "pts",
     "nobody": "Personne",
     "insufficientMedia": "Médias insuffisants",
-    "notEnoughMediaForMode": "Vous devez capturer plus de médias avant de jouer !\n\nRequis :\n{required}\n\nDisponible :\n{available}"
+    "notEnoughMediaForMode": "Vous devez capturer plus de médias avant de jouer !\n\nRequis :\n{required}\n\nDisponible :\n{available}",
+    "connectionError": "Erreur de connexion",
+    "connectionFailed": "Impossible de joindre le serveur de jeu. Vérifie ta connexion internet et réessaie."
   },
   "home": {
     "username": "Nom d'utilisateur",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "Êtes-vous sûr de vouloir quitter ? Un joueur aléatoire deviendra le nouvel hôte.",
     "confirmLeave": "Oui, quitter",
     "stayInGame": "Rester",
-    "shareInvite": "Partager l'invitation",
-    "inviteMessage": "Rejoins ma partie de Media Roulette ! PIN : {pin}\n{link}",
     "you": "Toi",
     "seriesWins": {
       "one": "{count} partie gagnée",
@@ -111,7 +111,8 @@
     "blindMode": "Mode aveugle",
     "blindModeDescription": "Ignorer la sélection de médias - les médias aléatoires seront une surprise pour tout le monde ! 🎲",
     "timeMachine": "⏳ Machine à remonter le temps",
-    "slowReveal": "🔍 Révélation lente"
+    "slowReveal": "🔍 Révélation lente",
+    "captionMode": "✍️ Légende"
   },
   "game": {
     "round": "Manche {current} sur {total}",
@@ -125,7 +126,8 @@
     "skipped": "Son propriétaire l'a masquée. Suivante !",
     "shareRecap": "Partager",
     "whenWasItTaken": "Prise en quelle année ?",
-    "slowReveal": "🔍 Révélation lente : l'image devient nette…"
+    "slowReveal": "🔍 Révélation lente : l'image devient nette…",
+    "joinRematch": "Rejoindre la revanche de {name}"
   },
   "result": {
     "greatGuess": "🎉 Bonne réponse !",
@@ -169,7 +171,8 @@
     "fooled": "a piégé {count}×",
     "roundNumber": "Manche {round}",
     "seriesTitle": "Série",
-    "seriesSubtitle": "Après {count} parties dans ce salon"
+    "seriesSubtitle": "Après {count} parties dans ce salon",
+    "bestCaption": "Meilleure légende"
   },
   "warning": {
     "waitForPlayers": "Attendre les joueurs",
@@ -215,8 +218,8 @@
   },
   "settings": {
     "title": "Réglages",
-    "mediaSourcesTitle": "Albums exclus",
-    "mediaSourcesSubtitle": "Choisissez les albums à ne jamais utiliser dans le jeu",
+    "mediaSourcesTitle": "Albums utilisés en jeu",
+    "mediaSourcesSubtitle": "Choisis les albums dans lesquels le jeu peut piocher",
     "legalSectionTitle": "Mentions légales",
     "terms": "Conditions d'utilisation",
     "privacy": "Politique de confidentialité",
@@ -234,13 +237,9 @@
     "title": "Conditions d'utilisation"
   },
   "extras": {
-    "title": "Extras de soirée",
-    "captionThis": "✍️ Légende",
-    "storyTime": "🎤 L'histoire",
-    "hint": "Toutes les 3 manches. Touche pour activer ou désactiver.",
     "secondsLeft": "{seconds} s restantes",
     "captionTitle": "✍️ Légende",
-    "captionPrompt": "Écris la légende la plus drôle pour celle-ci",
+    "captionPrompt": "Légende cette photo : la plus drôle gagne",
     "captionPlaceholder": "Ta légende…",
     "sendCaption": "Envoyer",
     "updateCaption": "Modifier ma légende",
@@ -253,13 +252,17 @@
     "votes": {
       "one": "{count} vote",
       "other": "{count} votes"
-    },
-    "storyTitle": "🎤 L'histoire",
-    "storyYourTurn": "À toi : raconte l'histoire derrière celle-ci !",
-    "storyPrompt": "{name} raconte l'histoire derrière celle-ci",
-    "storyDone": "J'ai fini",
-    "applaud": "👏 Applaudir",
-    "applauded": "👏 Applaudi !",
-    "storyResult": "{name} a reçu 👏 ×{count} (+{points} pts)"
+    }
+  },
+  "albums": {
+    "title": "Albums utilisés en jeu",
+    "explanation": "Désactive les albums que le jeu ne doit jamais utiliser (photos privées, travail, documents…). Ce réglage ne concerne que ce téléphone.",
+    "allUsed": "Tous les albums sont utilisés",
+    "summary": "{excluded} albums exclus sur {total}",
+    "search": "Rechercher un album",
+    "useAll": "Tout utiliser",
+    "excludeAll": "Tout exclure",
+    "noResults": "Aucun album ne correspond à ta recherche.",
+    "systemAlbums": "Albums système"
   }
 }

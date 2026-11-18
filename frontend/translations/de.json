@@ -19,7 +19,9 @@
     "pts": "Pkt",
     "nobody": "Niemand",
     "insufficientMedia": "Unzureichende Medien",
-    "notEnoughMediaForMode": "Sie müssen mehr Medien aufnehmen, bevor Sie spielen können!\n\nErforderlich:\n{required}\n\nVerfügbar:\n{available}"
+    "notEnoughMediaForMode": "Sie müssen mehr Medien aufnehmen, bevor Sie spielen können!\n\nErforderlich:\n{required}\n\nVerfügbar:\n{available}",
+    "connectionError": "Verbindungsfehler",
+    "connectionFailed": "Der Spielserver ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es erneut."
   },
   "home": {
     "username": "Benutzername",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "Möchtest du wirklich gehen? Ein zufälliger Spieler wird zum neuen Host.",
     "confirmLeave": "Ja, verlassen",
     "stayInGame": "Bleiben",
-    "shareInvite": "Einladung teilen",
-    "inviteMessage": "Spiel mit mir Media Roulette! PIN: {pin}\n{link}",
     "you": "Du",
     "seriesWins": {
       "one": "{count} Spiel gewonnen",
@@ -111,7 +111,8 @@
     "blindMode": "Blindmodus",
     "blindModeDescription": "Medienauswahl überspringen - zufällige Medien werden für alle eine Überraschung sein! 🎲",
     "timeMachine": "⏳ Zeitmaschine",
-    "slowReveal": "🔍 Langsame Enthüllung"
+    "slowReveal": "🔍 Langsame Enthüllung",
+    "captionMode": "✍️ Bildunterschrift"
   },
   "game": {
     "round": "Runde {current} von {total}",
@@ -125,7 +126,8 @@
     "skipped": "Der Besitzer hat es ausgeblendet. Weiter!",
     "shareRecap": "Teilen",
     "whenWasItTaken": "Wann wurde es aufgenommen?",
-    "slowReveal": "🔍 Langsame Enthüllung: das Bild wird schärfer…"
+    "slowReveal": "🔍 Langsame Enthüllung: das Bild wird schärfer…",
+    "joinRematch": "Bei {name}s Revanche mitmachen"
   },
   "result": {
     "greatGuess": "🎉 Gute Antwort!",
@@ -169,7 +171,8 @@
     "fooled": "{count}× getäuscht",
     "roundNumber": "Runde {round}",
     "seriesTitle": "Serie",
-    "seriesSubtitle": "Nach {count} Spielen in diesem Raum"
+    "seriesSubtitle": "Nach {count} Spielen in diesem Raum",
+    "bestCaption": "Beste Bildunterschrift"
   },
   "warning": {
     "waitForPlayers": "Auf Spieler warten",
@@ -215,8 +218,8 @@
   },
   "settings": {
     "title": "Einstellungen",
-    "mediaSourcesTitle": "Ausgeschlossene Alben",
-    "mediaSourcesSubtitle": "Wähle Alben, die nie im Spiel verwendet werden sollen",
+    "mediaSourcesTitle": "Alben im Spiel",
+    "mediaSourcesSubtitle": "Wähle, aus welchen Alben das Spiel auswählen darf",
     "legalSectionTitle": "Rechtliches",
     "terms": "Nutzungsbedingungen",
     "privacy": "Datenschutzerklärung",
@@ -234,13 +237,9 @@
     "title": "Nutzungsbedingungen"
   },
   "extras": {
-    "title": "Party-Extras",
-    "captionThis": "✍️ Bildunterschrift",
-    "storyTime": "🎤 Geschichte",
-    "hint": "Jede 3. Runde. Tippen zum Ein- oder Ausschalten.",
     "secondsLeft": "Noch {seconds} s",
     "captionTitle": "✍️ Bildunterschrift",
-    "captionPrompt": "Schreib die lustigste Bildunterschrift dafür",
+    "captionPrompt": "Schreib eine Bildunterschrift: die lustigste gewinnt",
     "captionPlaceholder": "Deine Bildunterschrift…",
     "sendCaption": "Senden",
     "updateCaption": "Meine Bildunterschrift ändern",
@@ -253,13 +252,17 @@
     "votes": {
       "one": "{count} Stimme",
       "other": "{count} Stimmen"
-    },
-    "storyTitle": "🎤 Geschichte",
-    "storyYourTurn": "Du bist dran: erzähl die Geschichte dahinter!",
-    "storyPrompt": "{name} erzählt die Geschichte dahinter",
-    "storyDone": "Fertig",
-    "applaud": "👏 Applaus",
-    "applauded": "👏 Applaudiert!",
-    "storyResult": "{name} bekommt 👏 ×{count} (+{points} Pkt.)"
+    }
+  },
+  "albums": {
+    "title": "Alben im Spiel",
+    "explanation": "Schalte Alben aus, die das Spiel nie verwenden soll (private Fotos, Arbeit, Dokumente…). Gilt nur für dieses Handy.",
+    "allUsed": "Alle Alben werden verwendet",
+    "summary": "{excluded} von {total} Alben ausgeschlossen",
+    "search": "Album suchen",
+    "useAll": "Alle verwenden",
+    "excludeAll": "Alle ausschließen",
+    "noResults": "Kein Album passt zu deiner Suche.",
+    "systemAlbums": "Systemalben"
   }
 }

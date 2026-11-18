@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { View, Pressable } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import { useLocalSearchParams } from "expo-router";
@@ -13,8 +13,7 @@ import {
   CaptionResultsView,
   CaptionVoteView,
   CaptionWriteView,
-  StoryView,
-} from "../../components/organisms/PartyExtras";
+} from "../../components/organisms/CaptionViews";
 import { useSocket } from "../../stores/useSocket";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useGameScreenLogic } from "./useGameScreenLogic";
@@ -51,14 +50,10 @@ export function GameScreen() {
     captionChoices,
     myCaptionVote,
     captionResults,
-    storyOwner,
-    hasApplauded,
-    applauseCount,
-    storyResult,
+    rematchHost,
+    isJoiningRematch,
     handleSubmitCaption,
     handleVoteCaption,
-    handleApplaud,
-    handleEndStory,
     handlePlayerSelect,
     handleTimeExpired,
     handleMediaShown,
@@ -100,20 +95,6 @@ export function GameScreen() {
     score: p.seriesScore ?? 0,
   }));
 
-  // Media Overlay when showing again
-  if (isShowingMediaAgain && currentMedia) {
-    const playVideoWithSound = room?.settings?.playVideoWithSound !== false; // Default to true
-    return (
-      <Pressable
-        className="flex-1 bg-black items-center justify-center"
-        onPressOut={handleShowAgainEnd}
-        style={{ flex: 1 }}
-      >
-        <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />
-      </Pressable>
-    );
-  }
-
   if (gameState === "podium") {
     return (
       <View className="flex-1 bg-black">
@@ -131,10 +112,12 @@ export function GameScreen() {
           <Podium players={finalLeaderboard} />
         )}
         <View className="px-6 py-3 border-t border-gray-800 bg-black gap-3">
+          {/* Each player decides: the first one starts the rematch and hosts it. */}
           <Button
-            title={t("game.playAgain")}
+            title={rematchHost ? t("game.joinRematch", { name: rematchHost }) : t("game.playAgain")}
             onPress={handlePlayAgain}
             variant="primary"
+            disabled={isJoiningRematch}
           />
           <View className="flex-row gap-3">
             {gameStats && (
@@ -167,21 +150,13 @@ export function GameScreen() {
       roundResults.results.find((r: any) => r.playerId === actualOwnerId)?.playerName ||
       t("game.owner");
 
-    // Media Overlay when showing again (also works in leaderboard state)
-    if (isShowingMediaAgain && currentMedia) {
-      const playVideoWithSound = room?.settings?.playVideoWithSound !== false; // Default to true
-      return (
-        <Pressable
-          className="flex-1 bg-black items-center justify-center"
-          onPressOut={handleShowAgainEnd}
-          style={{ flex: 1 }}
-        >
-          <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />
-        </Pressable>
-      );
-    }
-
+    // "Show again": the photo is drawn on top of the results while the owner holds
+    // the button. The results stay mounted underneath and the overlay ignores
+    // touches, so the owner's finger stays on the button and releasing it hides
+    // the photo for everyone.
+    const playVideoWithSound = room?.settings?.playVideoWithSound !== false;
     return (
+      <View style={{ flex: 1 }}>
       <RoundResultsPage
         currentRound={currentRound}
         totalRounds={totalRounds}
@@ -194,40 +169,44 @@ export function GameScreen() {
         allPlayers={players}
         currentMedia={currentMedia}
       />
+      {isShowingMediaAgain && currentMedia && (
+        <View
+          pointerEvents="none"
+          className="bg-black items-center justify-center"
+          style={StyleSheet.absoluteFill}
+        >
+          <MediaDisplay media={currentMedia} playVideoWithSound={playVideoWithSound} />
+        </View>
+      )}
+      </View>
     );
   }
 
-  // Party extras, after some rounds' results.
+  // Caption mode: write a caption, vote anonymously, see the results.
   if (gameState === "caption") {
-    return <CaptionWriteView media={currentMedia} endsAt={extraEndsAt} submitted={myCaption} onSubmit={handleSubmitCaption} />;
+    return (
+      <CaptionWriteView
+        media={currentMedia}
+        endsAt={extraEndsAt}
+        submitted={myCaption}
+        onSubmit={handleSubmitCaption}
+        onMediaLongPress={handleMediaLongPress}
+      />
+    );
   }
   if (gameState === "captionVote") {
     return <CaptionVoteView endsAt={extraEndsAt} choices={captionChoices} myVote={myCaptionVote} onVote={handleVoteCaption} />;
   }
   if (gameState === "captionResults") {
-    const ownerName = players.find((p) => p.id === actualOwnerId)?.name || t("game.owner");
+    // The host moves the game on (the photo's owner stays anonymous in this mode).
+    const hostName = room?.players.find((p) => p.isHost)?.name || t("lobby.host");
     return (
       <CaptionResultsView
         media={currentMedia}
         results={captionResults}
-        isOwner={isOwner}
-        ownerName={ownerName}
+        isOwner={!!room?.players.find((p) => p.id === currentPlayerId)?.isHost}
+        ownerName={hostName}
         onContinue={handleContinue}
-      />
-    );
-  }
-  if ((gameState === "story" || gameState === "storyEnded") && storyOwner) {
-    return (
-      <StoryView
-        media={currentMedia}
-        endsAt={extraEndsAt}
-        ownerName={storyOwner.name}
-        isOwner={storyOwner.id === currentPlayerId}
-        hasApplauded={hasApplauded}
-        applauseCount={applauseCount}
-        result={gameState === "storyEnded" ? storyResult : null}
-        onApplaud={handleApplaud}
-        onEnd={handleEndStory}
       />
     );
   }

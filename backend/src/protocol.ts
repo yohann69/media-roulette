@@ -26,8 +26,7 @@ export const settingsSchema = z
     blindMode: z.boolean().optional().catch(false),
     timeMachine: z.boolean().optional().catch(false),
     slowReveal: z.boolean().optional().catch(false),
-    captionThis: z.boolean().optional().catch(false),
-    storyTime: z.boolean().optional().catch(false),
+    captionMode: z.boolean().optional().catch(false),
   })
   .partial();
 
@@ -52,7 +51,6 @@ export const schemas = {
         })
       )
       .max(100),
-    playAgain: z.boolean().optional(),
   }),
   /** The owner uploaded (encrypted) the media the server asked for. */
   "uploads-complete": z.object({
@@ -77,11 +75,10 @@ export const schemas = {
   "skip-media": z.object({ pin }),
   "show-media-again": z.object({ pin }),
   "hide-media-again": z.object({ pin }),
-  "play-again": z.object({ pin }),
+  /** After a game: start the rematch (first player) or join it. */
+  rematch: z.object({ pin, publicKey: publicKey.optional() }),
   /** The host removes a player from the lobby. */
   "kick-player": z.object({ pin, playerId: z.string().min(1).max(64) }),
-  /** Host, in the lobby: turn the party extras on or off. */
-  "update-extras": z.object({ pin, captionThis: z.boolean().optional(), storyTime: z.boolean().optional() }),
   "submit-caption": z.object({
     pin,
     text: z
@@ -90,10 +87,7 @@ export const schemas = {
       .pipe(z.string().min(1)),
   }),
   "vote-caption": z.object({ pin, captionId: z.string().min(1).max(16) }),
-  /** Applause for the story being told (once per player). */
-  applaud: z.object({ pin }),
-  /** The owner finished telling the story. */
-  "end-story": z.object({ pin }),
+
 } as const;
 
 export type ClientEvent = keyof typeof schemas;

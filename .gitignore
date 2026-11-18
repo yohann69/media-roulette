@@ -27,3 +27,4 @@ backend/credentials/
 /dist
 *.apk
 *.ipa
+/builds/

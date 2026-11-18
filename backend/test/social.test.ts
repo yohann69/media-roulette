@@ -60,30 +60,44 @@ describe("lobby: host can remove a player", () => {
   });
 });
 
-describe("rematch and series", () => {
-  it("keeps the room, players, settings and host, and adds up a series", async () => {
+describe("rematch: each player decides", () => {
+  it("lets the first player start a new room as host; others join if they want, keeping their series", async () => {
     const host = await env.create("Host", { rounds: 2, timer: 3 });
     const p2 = await env.join(host.pin, "P2");
+    const p3 = await env.join(host.pin, "P3");
     await env.setPool(host, 2);
     await env.setPool(p2, 2);
-    await env.startGame(host, [host, p2]);
-    const final = await playToTheEnd(host, p2);
-    expect(final.stats.masterOfDisguise).toBeDefined();
+    await env.setPool(p3, 2);
+    const p3Finished = waitFor<any>(p3.socket, "game-finished", 5000);
+    p3.socket.on("new-round", () => p3.socket.emit("submit-guess", { pin: p3.pin, targetUser: host.playerId }));
+    p3.socket.on("round-result", () => p3.socket.emit("continue-game", { pin: p3.pin }));
+    await env.startGame(host, [host, p2, p3]);
+    await playToTheEnd(host, p2);
+    await p3Finished;
 
-    // P2 asks for the rematch: the host stays host.
-    const again = waitFor<any>(host.socket, "play-again-initiated");
-    const room = waitForMatch<any>(host.socket, "room-update", (r) => r.gameState === "lobby");
-    p2.socket.emit("play-again", { pin: p2.pin });
-    expect((await again).newHostId).toBe(host.playerId);
-    const lobby = await room;
-    expect(lobby.gamesPlayed).toBe(1);
-    expect(lobby.settings.rounds).toBe(2);
-    const hostEntry = lobby.players.find((p: any) => p.id === host.playerId);
-    expect(hostEntry.isHost).toBe(true);
-    expect(hostEntry.score).toBe(0);
-    const totals = lobby.players.map((p: any) => p.seriesScore);
-    expect(totals.some((t: number) => t > 0)).toBe(true);
-    expect(lobby.players.reduce((n: number, p: any) => n + p.seriesWins, 0)).toBeGreaterThanOrEqual(1);
+    // P2 asks first: P2 hosts the rematch, in a new room with the same settings.
+    const available = waitFor<any>(host.socket, "rematch-available");
+    p2.socket.emit("rematch", { pin: p2.pin });
+    const p2Entry = await waitFor<any>(p2.socket, "rematch-entered");
+    expect(p2Entry.created).toBe(true);
+    expect(p2Entry.pin).not.toBe(host.pin);
+    expect(p2Entry.room.settings.rounds).toBe(2);
+    expect(p2Entry.room.gamesPlayed).toBe(1);
+    expect(p2Entry.room.players).toEqual([expect.objectContaining({ name: "P2", isHost: true })]);
+    expect((await available).hostName).toBe("P2");
+
+    // The host joins it as a regular player; P3 doesn't.
+    host.socket.emit("rematch", { pin: host.pin });
+    const hostEntry = await waitFor<any>(host.socket, "rematch-entered");
+    expect(hostEntry.created).toBe(false);
+    expect(hostEntry.pin).toBe(p2Entry.pin);
+    const names = hostEntry.room.players.map((p: any) => [p.name, p.isHost]);
+    expect(names).toEqual([
+      ["P2", true],
+      ["Host", false],
+    ]);
+    const series = hostEntry.room.players.reduce((n: number, p: any) => n + p.seriesWins, 0);
+    expect(series).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -133,7 +147,7 @@ describe("Time Machine", () => {
 });
 
 describe("Slow Reveal", () => {
-  it("marks every fourth photo round as a slow reveal", async () => {
+  it("never pixelates photos outside Slow Reveal mode", async () => {
     const host = await env.create("Host", { rounds: 4, timer: 3 });
     const p2 = await env.join(host.pin, "P2");
     await env.setPool(host, 2);
@@ -142,7 +156,7 @@ describe("Slow Reveal", () => {
     host.socket.on("new-round", (r) => twists.push(r.twist));
     await env.startGame(host, [host, p2]); // round 1 is recorded by the listener
     await playToTheEnd(host, p2);
-    expect(twists).toEqual([null, null, null, "slowReveal"]);
+    expect(twists).toEqual([null, null, null, null]);
   });
 });
 
@@ -154,5 +168,55 @@ describe("invite links", () => {
     expect(html).toContain("mediaroulette://join?pin=123456");
     expect(page.headers.get("content-security-policy")).toContain("default-src 'none'");
     expect((await fetch(`${env.url}/j/12345a`)).status).toBe(404);
+  });
+});
+
+describe("show again", () => {
+  /** Plays round 1 to its result; returns the owner and the other player. */
+  async function toResults(rounds = 2) {
+    const host = await env.create("Host", { rounds, timer: 3 });
+    const p2 = await env.join(host.pin, "P2");
+    await env.setPool(host, 2);
+    await env.setPool(p2, 2);
+    const result = waitFor<any>(host.socket, "round-result");
+    await env.startGame(host, [host, p2]);
+    host.socket.emit("submit-guess", { pin: host.pin, targetUser: host.playerId });
+    p2.socket.emit("submit-guess", { pin: p2.pin, targetUser: host.playerId });
+    const r = await result;
+    const [owner, other] = r.actualOwnerId === host.playerId ? [host, p2] : [p2, host];
+    return { owner, other };
+  }
+
+  it("shows the photo to everyone only while the owner holds the button", async () => {
+    const { owner, other } = await toResults();
+    other.socket.emit("show-media-again", { pin: other.pin }); // not the owner: ignored
+    expect(await arrives(other.socket, "show-media-again", 200)).toBe(false);
+
+    const shown = waitFor(other.socket, "show-media-again");
+    owner.socket.emit("show-media-again", { pin: owner.pin });
+    await shown;
+    const hidden = waitFor(other.socket, "hide-media-again");
+    owner.socket.emit("hide-media-again", { pin: owner.pin });
+    await hidden;
+  });
+
+  it("hides it when the game moves on, even if the release was lost", async () => {
+    const { owner, other } = await toResults();
+    const shown = waitFor(other.socket, "show-media-again");
+    owner.socket.emit("show-media-again", { pin: owner.pin });
+    await shown;
+    const hidden = waitFor(other.socket, "hide-media-again");
+    owner.socket.emit("continue-game", { pin: owner.pin });
+    await hidden;
+  });
+
+  it("hides it when the owner disconnects", async () => {
+    const { owner, other } = await toResults();
+    const shown = waitFor(other.socket, "show-media-again");
+    owner.socket.emit("show-media-again", { pin: owner.pin });
+    await shown;
+    const hidden = waitFor(other.socket, "hide-media-again");
+    owner.socket.disconnect();
+    await hidden;
   });
 });

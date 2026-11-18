@@ -19,7 +19,9 @@
     "pts": "pts",
     "nobody": "Ninguém",
     "insufficientMedia": "Mídias insuficientes",
-    "notEnoughMediaForMode": "Você precisa capturar mais mídias antes de jogar!\n\nRequerido:\n{required}\n\nDisponível:\n{available}"
+    "notEnoughMediaForMode": "Você precisa capturar mais mídias antes de jogar!\n\nRequerido:\n{required}\n\nDisponível:\n{available}",
+    "connectionError": "Erro de conexão",
+    "connectionFailed": "Não foi possível conectar ao servidor do jogo. Verifique sua internet e tente novamente."
   },
   "home": {
     "username": "Nome de usuário",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "Tem certeza de que deseja sair? Um jogador aleatório se tornará o novo anfitrião.",
     "confirmLeave": "Sim, sair",
     "stayInGame": "Ficar",
-    "shareInvite": "Compartilhar convite",
-    "inviteMessage": "Entre na minha partida de Media Roulette! PIN: {pin}\n{link}",
     "you": "Você",
     "seriesWins": {
       "one": "{count} partida vencida",
@@ -111,7 +111,8 @@
     "blindMode": "Modo cego",
     "blindModeDescription": "Pular seleção de mídias - mídias aleatórias serão uma surpresa para todos! 🎲",
     "timeMachine": "⏳ Máquina do tempo",
-    "slowReveal": "🔍 Revelação lenta"
+    "slowReveal": "🔍 Revelação lenta",
+    "captionMode": "✍️ Legenda"
   },
   "game": {
     "round": "Rodada {current} de {total}",
@@ -125,7 +126,8 @@
     "skipped": "O dono escondeu este. Próximo!",
     "shareRecap": "Compartilhar",
     "whenWasItTaken": "Quando foi tirada?",
-    "slowReveal": "🔍 Revelação lenta: vai ficando nítida…"
+    "slowReveal": "🔍 Revelação lenta: vai ficando nítida…",
+    "joinRematch": "Entrar na revanche de {name}"
   },
   "result": {
     "greatGuess": "🎉 Ótimo palpite!",
@@ -169,7 +171,8 @@
     "fooled": "enganou {count}×",
     "roundNumber": "Rodada {round}",
     "seriesTitle": "Série",
-    "seriesSubtitle": "Depois de {count} partidas nesta sala"
+    "seriesSubtitle": "Depois de {count} partidas nesta sala",
+    "bestCaption": "Melhor legenda"
   },
   "warning": {
     "waitForPlayers": "Aguardar jogadores",
@@ -215,8 +218,8 @@
   },
   "settings": {
     "title": "Definições",
-    "mediaSourcesTitle": "Álbuns excluídos",
-    "mediaSourcesSubtitle": "Escolha os álbuns que nunca quer usar no jogo",
+    "mediaSourcesTitle": "Álbuns no jogo",
+    "mediaSourcesSubtitle": "Escolha de quais álbuns o jogo pode escolher",
     "legalSectionTitle": "Legal",
     "terms": "Termos e condições",
     "privacy": "Política de privacidade",
@@ -234,13 +237,9 @@
     "title": "Termos e condições"
   },
   "extras": {
-    "title": "Extras de festa",
-    "captionThis": "✍️ Legenda",
-    "storyTime": "🎤 A história",
-    "hint": "A cada 3 rodadas. Toque para ligar ou desligar.",
     "secondsLeft": "Faltam {seconds} s",
     "captionTitle": "✍️ Legenda",
-    "captionPrompt": "Escreva a legenda mais engraçada",
+    "captionPrompt": "Legende esta foto: a mais engraçada vence",
     "captionPlaceholder": "Sua legenda…",
     "sendCaption": "Enviar",
     "updateCaption": "Mudar minha legenda",
@@ -253,13 +252,17 @@
     "votes": {
       "one": "{count} voto",
       "other": "{count} votos"
-    },
-    "storyTitle": "🎤 A história",
-    "storyYourTurn": "Sua vez: conte a história por trás desta!",
-    "storyPrompt": "{name} conta a história por trás desta",
-    "storyDone": "Terminei",
-    "applaud": "👏 Aplaudir",
-    "applauded": "👏 Aplaudido!",
-    "storyResult": "{name} ganhou 👏 ×{count} (+{points} pts)"
+    }
+  },
+  "albums": {
+    "title": "Álbuns no jogo",
+    "explanation": "Desative os álbuns que o jogo nunca deve usar (fotos privadas, trabalho, documentos…). Vale só para este celular.",
+    "allUsed": "Todos os álbuns são usados",
+    "summary": "{excluded} de {total} álbuns excluídos",
+    "search": "Buscar um álbum",
+    "useAll": "Usar todos",
+    "excludeAll": "Excluir todos",
+    "noResults": "Nenhum álbum corresponde à busca.",
+    "systemAlbums": "Álbuns do sistema"
   }
 }

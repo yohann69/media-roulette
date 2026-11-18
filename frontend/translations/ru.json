@@ -19,7 +19,9 @@
     "pts": "очков",
     "nobody": "Никто",
     "insufficientMedia": "Недостаточно медиа",
-    "notEnoughMediaForMode": "Вам нужно захватить больше медиа перед игрой!\n\nТребуется:\n{required}\n\nДоступно:\n{available}"
+    "notEnoughMediaForMode": "Вам нужно захватить больше медиа перед игрой!\n\nТребуется:\n{required}\n\nДоступно:\n{available}",
+    "connectionError": "Ошибка соединения",
+    "connectionFailed": "Не удаётся связаться с игровым сервером. Проверьте подключение к интернету и попробуйте снова."
   },
   "home": {
     "username": "Имя пользователя",
@@ -77,8 +79,6 @@
     "exitWarningHostMessage": "Вы уверены, что хотите выйти? Случайный игрок станет новым хостом.",
     "confirmLeave": "Да, выйти",
     "stayInGame": "Остаться",
-    "shareInvite": "Поделиться приглашением",
-    "inviteMessage": "Присоединяйся к моей игре Media Roulette! PIN: {pin}\n{link}",
     "you": "Вы",
     "seriesWins": "Побед: {count}",
     "removePlayer": "Удалить {name}",
@@ -108,7 +108,8 @@
     "blindMode": "Режим вслепую",
     "blindModeDescription": "Пропустить выбор медиа - случайные медиа будут сюрпризом для всех! 🎲",
     "timeMachine": "⏳ Машина времени",
-    "slowReveal": "🔍 Медленное раскрытие"
+    "slowReveal": "🔍 Медленное раскрытие",
+    "captionMode": "✍️ Подпись"
   },
   "game": {
     "round": "Раунд {current} из {total}",
@@ -122,7 +123,8 @@
     "skipped": "Владелец скрыл это. Дальше!",
     "shareRecap": "Поделиться",
     "whenWasItTaken": "Когда это снято?",
-    "slowReveal": "🔍 Медленное раскрытие: изображение проясняется…"
+    "slowReveal": "🔍 Медленное раскрытие: изображение проясняется…",
+    "joinRematch": "Присоединиться к реваншу {name}"
   },
   "result": {
     "greatGuess": "🎉 Отличная догадка!",
@@ -166,7 +168,8 @@
     "fooled": "обманул {count}×",
     "roundNumber": "Раунд {round}",
     "seriesTitle": "Серия",
-    "seriesSubtitle": "После {count} игр в этой комнате"
+    "seriesSubtitle": "После {count} игр в этой комнате",
+    "bestCaption": "Лучшая подпись"
   },
   "warning": {
     "waitForPlayers": "Ждать игроков",
@@ -212,8 +215,8 @@
   },
   "settings": {
     "title": "Настройки",
-    "mediaSourcesTitle": "Исключённые альбомы",
-    "mediaSourcesSubtitle": "Выберите альбомы, которые никогда не будут использоваться в игре",
+    "mediaSourcesTitle": "Альбомы в игре",
+    "mediaSourcesSubtitle": "Выберите, из каких альбомов игра может брать фото",
     "legalSectionTitle": "Правовая информация",
     "terms": "Условия использования",
     "privacy": "Политика конфиденциальности",
@@ -231,13 +234,9 @@
     "title": "Условия использования"
   },
   "extras": {
-    "title": "Дополнения для вечеринки",
-    "captionThis": "✍️ Подпись",
-    "storyTime": "🎤 История",
-    "hint": "Каждый 3-й раунд. Нажмите, чтобы включить или выключить.",
     "secondsLeft": "Осталось {seconds} с",
     "captionTitle": "✍️ Подпись",
-    "captionPrompt": "Придумайте самую смешную подпись",
+    "captionPrompt": "Придумайте подпись: побеждает самая смешная",
     "captionPlaceholder": "Ваша подпись…",
     "sendCaption": "Отправить",
     "updateCaption": "Изменить подпись",
@@ -247,13 +246,17 @@
     "yourCaption": "Ваша подпись (за неё нельзя голосовать)",
     "captionResultsTitle": "😂 Самые смешные подписи",
     "noCaptions": "В этот раз никто ничего не написал.",
-    "votes": "Голосов: {count}",
-    "storyTitle": "🎤 История",
-    "storyYourTurn": "Ваша очередь: расскажите историю этого фото!",
-    "storyPrompt": "{name} рассказывает историю этого фото",
-    "storyDone": "Готово",
-    "applaud": "👏 Аплодировать",
-    "applauded": "👏 Вы поаплодировали!",
-    "storyResult": "{name}: 👏 ×{count} (+{points} очк.)"
+    "votes": "Голосов: {count}"
+  },
+  "albums": {
+    "title": "Альбомы в игре",
+    "explanation": "Отключите альбомы, которые игра никогда не должна использовать (личные фото, работа, документы…). Действует только на этом телефоне.",
+    "allUsed": "Используются все альбомы",
+    "summary": "Исключено альбомов: {excluded} из {total}",
+    "search": "Найти альбом",
+    "useAll": "Использовать все",
+    "excludeAll": "Исключить все",
+    "noResults": "Нет подходящих альбомов.",
+    "systemAlbums": "Системные альбомы"
   }
 }

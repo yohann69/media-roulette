@@ -4,12 +4,10 @@ export type PlayerState = "selecting" | "compressing" | "uploading" | "ready";
 export type GameState = "lobby" | "syncing" | "playing" | "finished";
 
 /**
- * Sub-phase while `gameState === "playing"`. After some rounds' results, a party
- * extra runs: captions are written, voted on and shown, or the owner tells the story.
+ * Sub-phase while `gameState === "playing"`: a guessing round and its results,
+ * or, in caption mode, writing captions, voting, and the caption results.
  */
-export type RoundPhase = "round" | "results" | "caption" | "captionVote" | "captionResults" | "story" | "storyEnded";
-
-export type ExtraKind = "caption" | "story";
+export type RoundPhase = "round" | "results" | "caption" | "captionVote" | "captionResults";
 
 export interface CaptionEntry {
   /** Opaque id shown while voting, so captions stay anonymous until the results. */
@@ -18,14 +16,11 @@ export interface CaptionEntry {
   text: string;
 }
 
-export interface ExtraState {
-  kind: ExtraKind;
+export interface CaptionState {
   endsAt: number;
   captions: CaptionEntry[];
   /** Voter id → caption id. */
   votes: Map<string, string>;
-  /** Players who applauded the story. */
-  applause: Set<string>;
   /** Last result sent, replayed to players who reconnect. */
   result: unknown;
 }
@@ -42,9 +37,8 @@ export interface GameSettings {
   timeMachine: boolean;
   /** Slow Reveal mode: every photo starts blurred and sharpens. */
   slowReveal: boolean;
-  /** Party extras, every few rounds: write captions and vote, or the owner tells the story. */
-  captionThis: boolean;
-  storyTime: boolean;
+  /** Caption mode: instead of guessing, players caption each photo and vote for the best caption. */
+  captionMode: boolean;
 }
 
 export interface Player {
@@ -160,8 +154,12 @@ export interface Room {
   totalRounds: number;
   currentMedia: DeckItem | null;
   currentTwist: RoundTwist | null;
-  /** The party extra running after the current round, if any. */
-  extra: ExtraState | null;
+  /** Caption mode: the captions and votes of the current round. */
+  caption: CaptionState | null;
+  /** Caption mode: the most voted caption of the game so far. */
+  bestCaption: { playerName: string; text: string; votes: number } | null;
+  /** Once finished: the room of the rematch, which other players can join. */
+  rematchPin: string | null;
   roundStartedAt: number;
   guesses: Map<string, Guess>;
   readyPlayers: Set<string>;
@@ -183,6 +181,8 @@ export interface GameStats {
   hardestRound: { round: number | null; correctCount: number };
   /** The owner whose media fooled the most guesses. */
   masterOfDisguise: { playerName: string | null; fooled: number };
+  /** Caption mode: the most voted caption. */
+  bestCaption?: { playerName: string; text: string; votes: number } | null;
 }
 
 /** The only room representation ever sent to clients. */
